@@ -28,7 +28,7 @@ eq(d.reworkTotal, 80, "reworkTotal = round 2 tokens");
 eq(d.errorCount, 1, "errorCount = 1");
 
 // nonexistent ledger returns []
-eq(readLedger("nao-existe", "token"), [], "nonexistent ledger = []");
+eq(readLedger("does-not-exist", "token"), [], "nonexistent ledger = []");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });

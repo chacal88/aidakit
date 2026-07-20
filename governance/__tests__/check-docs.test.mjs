@@ -21,43 +21,44 @@ function run(validator, args, env = {}) {
 }
 
 // ── check-adr-format ──
-const adrBom = `# ADR-001: Usar Postgres
+// (Bilingual PT|EN coverage lives in check-adr-format.test.mjs; here we use an EN ADR.)
+const goodAdr = `# ADR-001: Use Postgres
 
-- **Status:** aceita
-- **Data:** 2026-07-17
+- **Status:** accepted
+- **Date:** 2026-07-17
 
-## Contexto
-Precisamos de um banco.
+## Context
+We need a database.
 
-## Decisão
+## Decision
 Postgres.
 
-## Consequências
-- Positivas: maduro.
-- Negativas: nenhuma — **Aceita**.
+## Consequences
+- Positives: mature.
+- Negatives: none — **Accepted**.
 
-## Alternativas consideradas
-| Opção | Prós | Contras |
+## Alternatives considered
+| Option | Pros | Cons |
 |---|---|---|
-| Mongo | flexível | sem joins |
+| Mongo | flexible | no joins |
 `;
-writeFileSync(join(tmp, "ADR-001-postgres.md"), adrBom);
+writeFileSync(join(tmp, "ADR-001-postgres.md"), goodAdr);
 {
   const r = run(adrVal, [join(tmp, "ADR-001-postgres.md")]);
   ok(r.code === 0 && r.json.ok, "complete ADR → valid");
 }
 
-// ADR missing the Alternativas section.
-writeFileSync(join(tmp, "ADR-002-incompleto.md"), "# ADR-002: X\n\n- **Status:** aceita\n\n## Contexto\nx\n\n## Decisão\ny\n\n## Consequências\nz\n");
+// ADR missing the Alternatives section.
+writeFileSync(join(tmp, "ADR-002-incomplete.md"), "# ADR-002: X\n\n- **Status:** accepted\n\n## Context\nx\n\n## Decision\ny\n\n## Consequences\nz\n");
 {
-  const r = run(adrVal, [join(tmp, "ADR-002-incompleto.md")]);
+  const r = run(adrVal, [join(tmp, "ADR-002-incomplete.md")]);
   ok(r.code === 1 && r.json.errors.some((e) => e.rule === "section-alternatives"), "ADR without Alternatives → fails naming the section");
 }
 
 // Name outside the pattern.
-writeFileSync(join(tmp, "decisao.md"), adrBom);
+writeFileSync(join(tmp, "decision.md"), goodAdr);
 {
-  const r = run(adrVal, [join(tmp, "decisao.md")]);
+  const r = run(adrVal, [join(tmp, "decision.md")]);
   ok(r.code === 1 && r.json.errors.some((e) => e.rule === "name-invalid"), "name outside ADR-NNN-slug → fails");
 }
 
@@ -92,7 +93,7 @@ writeFileSync(join(projRoot, "docs", "features", "feat-x", "proposal.md"), "# pr
 // (3) An n/a item is skipped (doesn't block).
 writeManifest([
   { doc: "proposal", path: "docs/features/feat-x/proposal.md", status: "resolved", kind: "doc" },
-  { doc: "ADR", path: "docs/decisions/ADR-999-x.md", status: "n/a", condition: "só se toca arquitetura", kind: "adr" },
+  { doc: "ADR", path: "docs/decisions/ADR-999-x.md", status: "n/a", condition: "only if it touches architecture", kind: "adr" },
 ]);
 {
   const r = run(manVal, [manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
@@ -100,9 +101,9 @@ writeManifest([
 }
 
 // (4) Required ADR that exists but is malformed → BLOCKS.
-writeFileSync(join(projRoot, "docs", "decisions", "ADR-003-ruim.md"), "# ADR-003\nsó isso, sem seções\n");
+writeFileSync(join(projRoot, "docs", "decisions", "ADR-003-bad.md"), "# ADR-003\njust this, no sections\n");
 writeManifest([
-  { doc: "ADR", path: "docs/decisions/ADR-003-ruim.md", status: "pending", kind: "adr" },
+  { doc: "ADR", path: "docs/decisions/ADR-003-bad.md", status: "pending", kind: "adr" },
 ]);
 {
   const r = run(manVal, [manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
