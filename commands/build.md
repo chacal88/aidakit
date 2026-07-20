@@ -1,21 +1,21 @@
 ---
-description: Constrói um change do plano ao PR via o engine de flows do aidakit — start, resume, status, abort, list
+description: Builds a change from plan to PR via the aidakit flow engine — start, resume, status, abort, list
 ---
 
-Interface humana para construir **um change** — do plano ao PR — sobre o engine de flows executáveis (o engine em `governance/`, que NÃO muda de nome). Traduza o pedido do usuário para o CLI do engine e execute via Bash:
+Human interface to build **one change** — from plan to PR — on top of the executable flow engine (the engine in `governance/`, which does NOT get renamed). Translate the user's request into the engine's CLI and run it via Bash:
 
-- `start <flow> [chave=valor ...]` → `node governance/cli.js start <flow> ...` (inicia; ex.: `build start rapido pedido="..."`)
-- `resume <flow_id> <outcome>` → `node governance/cli.js resume <flow_id> <outcome>` (retoma um flow pausado)
+- `start <flow> [key=value ...]` → `node governance/cli.js start <flow> ...` (starts; e.g. `build start rapido request="..."`)
+- `resume <flow_id> <outcome>` → `node governance/cli.js resume <flow_id> <outcome>` (resumes a paused flow)
 - `status <flow_id>` → `node governance/cli.js status <flow_id>`
 - `abort <flow_id>` → `node governance/cli.js abort <flow_id>`
-- `list` → `node governance/cli.js list` (flows disponíveis: os defaults do plugin + os de `.aidakit/flows/` do repo)
+- `list` → `node governance/cli.js list` (available flows: the plugin defaults + those in the repo's `.aidakit/flows/`)
 
-**1º passo escolhe o change:** o primeiro passo dos flows (`governance/flows/rapido.yaml` e `completo.yaml`) roda o agente `aidakit:orchestrator` para escolher o próximo change pronto do plano (lógica antes exposta como comando à parte, agora absorvida). Você não precisa apontar o change na mão — o flow o seleciona no arranque; se o usuário nomear um change explícito no pedido, passe-o adiante como parâmetro.
+**The 1st step picks the change:** the first step of the flows (`governance/flows/rapido.yaml` and `completo.yaml`) runs the `aidakit:orchestrator` agent to pick the next ready change from the plan (logic previously exposed as a separate command, now absorbed). You don't have to point at the change by hand — the flow selects it at startup; if the user names an explicit change in the request, pass it through as a parameter.
 
-**Inversão de controle:** quando o flow pausa num passo `agent`, o CLI imprime o despacho (qual skill/subagente rodar). Rode-o (via a skill/agente `aidakit:*` nomeado), obtenha o outcome, e retome com `resume`. Quando pausa num `human_gate`/`human_handoff`, apresente o prompt ao usuário e aguarde a resposta dele antes de retomar. Nunca invente um outcome — um outcome inválido re-pausa o gate.
+**Inversion of control:** when the flow pauses on an `agent` step, the CLI prints the dispatch (which skill/subagent to run). Run it (via the named `aidakit:*` skill/agent), obtain the outcome, and resume with `resume`. When it pauses on a `human_gate`/`human_handoff`, present the prompt to the user and wait for their answer before resuming. Never invent an outcome — an invalid outcome re-pauses the gate.
 
-Guia completo: `docs/guides/flows.md`. Fonte da verdade do engine: `governance/README.md`.
+Full guide: `docs/guides/flows.md`. Engine source of truth: `governance/README.md`.
 
-Pedido do usuário: $ARGUMENTS
+User request: $ARGUMENTS
 
-<!-- aidakit v0.3 — /aidakit:build: constrói um change (engine de flows em governance/); 1º passo absorve a escolha do change, 2026-07-17 -->
+<!-- aidakit v0.3 — /aidakit:build: builds a change (flow engine in governance/); 1st step absorbs the change selection, 2026-07-17 -->

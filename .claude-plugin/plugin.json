@@ -1,6 +1,6 @@
 {
   "name": "aidakit",
-  "description": "Kit de desenvolvimento pré-aida: roteiro DDD guiado em 4 fases, pipeline spec-driven (aidakit:*), arquitetura padronizada de documentos, governança de execução com hooks ativos e índice curado de ferramentas.",
+  "description": "Pre-aida development kit: guided 4-phase DDD design, spec-driven pipeline (aidakit:*), standardized document architecture, execution governance with active hooks and a curated tool catalog.",
   "version": "0.2.0",
   "author": {
     "name": "Kauê Santos",

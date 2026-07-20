@@ -17,12 +17,12 @@ const ADR_NAME = /^ADR-\d{3,}-[a-z0-9-]+\.md$/;
 // BILINGUAL (PT|EN): the kit is EN but generates prose in the project's `language`; an ADR
 // is valid with the headings in either of the two languages ("status" is the same
 // word in both). Each regex matches the PT or the EN form.
-const SECOES = [
-  { rule: "section-status", re: /^\s*(-\s*\*\*)?status\b/im, nome: "Status" },
-  { rule: "section-context", re: /^#+\s*(contexto|context)\b/im, nome: "## Contexto / ## Context" },
-  { rule: "section-decision", re: /^#+\s*(decis[aã]o|decision)\b/im, nome: "## Decisão / ## Decision" },
-  { rule: "section-consequences", re: /^#+\s*(consequ[eê]ncias|consequences)\b/im, nome: "## Consequências / ## Consequences" },
-  { rule: "section-alternatives", re: /^#+\s*(alternativas|alternatives)\b/im, nome: "## Alternativas consideradas / ## Alternatives considered" },
+const SECTIONS = [
+  { rule: "section-status", re: /^\s*(-\s*\*\*)?status\b/im, name: "Status" },
+  { rule: "section-context", re: /^#+\s*(contexto|context)\b/im, name: "## Contexto / ## Context" },
+  { rule: "section-decision", re: /^#+\s*(decis[aã]o|decision)\b/im, name: "## Decisão / ## Decision" },
+  { rule: "section-consequences", re: /^#+\s*(consequ[eê]ncias|consequences)\b/im, name: "## Consequências / ## Consequences" },
+  { rule: "section-alternatives", re: /^#+\s*(alternativas|alternatives)\b/im, name: "## Alternativas consideradas / ## Alternatives considered" },
 ];
 // Controlled-vocabulary status (DOCS.md §2.2): accepts supersede/amend variations.
 const STATUS_OK = /\b(aceita|accepted|proposta|proposed|superseded|supersedida|amends|emenda|deprecated)\b/i;
@@ -55,8 +55,8 @@ function validateAdr(file) {
   }
   const content = readFileSync(file, "utf8");
   if (/<!--\s*check-adr:\s*ignore\s*-->/.test(content)) return errors.length ? errors : []; // grandfathering
-  for (const s of SECOES) {
-    if (!s.re.test(content)) errors.push({ rule: s.rule, file, message: `required section missing: ${s.nome}` });
+  for (const s of SECTIONS) {
+    if (!s.re.test(content)) errors.push({ rule: s.rule, file, message: `required section missing: ${s.name}` });
   }
   // Status present and using a valid vocabulary. Anchor on the real status marker
   // (`- **Status:**` or a `## Status` heading line), and skip HTML comments — a

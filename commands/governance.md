@@ -1,9 +1,9 @@
 ---
-description: Explica, audita ou faz onboarding da governança de execução do projeto (GOVERNANCE.md + hook)
+description: Explains, audits or onboards the project's execution governance (GOVERNANCE.md + hook)
 ---
 
-Invoque a skill `aidakit:governance` deste plugin e siga o protocolo dela conforme o modo: **explicar** (responde dúvidas citando a seção exata de GOVERNANCE.md — inclusive por que um comando foi bloqueado pelo hook `pre-bash` e como usar `AIDAKIT_BYPASS=1` com pedido explícito do humano), **auditar** (revisa conformidade: log de bypasses, vereditos single-writer, ausência de commit direto na main por agente, scripts versionados), **onboarding** (prepara um repo: as 3 escalações, proteção de branch, ADR de adoção). A skill nunca desativa regra nem concede exceção — exceção é decisão humana registrada.
+Invoke this plugin's `aidakit:governance` skill and follow its protocol according to the mode: **explain** (answers questions citing the exact section of GOVERNANCE.md — including why a command was blocked by the `pre-bash` hook and how to use `AIDAKIT_BYPASS=1` with an explicit human request), **audit** (reviews conformance: bypass log, single-writer verdicts, no direct commit on main by an agent, versioned scripts), **onboarding** (prepares a repo: the 3 escalations, branch protection, adoption ADR). The skill never disables a rule nor grants an exception — an exception is a recorded human decision.
 
-Modo e contexto: $ARGUMENTS
+Mode and context: $ARGUMENTS
 
-<!-- aidakit v0.3 — comando da skill governance, 2026-07-17 -->
+<!-- aidakit v0.3 — command for the governance skill, 2026-07-17 -->

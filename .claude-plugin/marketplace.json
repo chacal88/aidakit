@@ -8,7 +8,7 @@
     {
       "name": "aidakit",
       "source": "./",
-      "description": "Kit de desenvolvimento pré-aida: roteiro DDD guiado, pipeline spec-driven aidakit:*, arquitetura padronizada de documentos e governança de execução."
+      "description": "Pre-aida development kit: guided DDD design, spec-driven pipeline aidakit:*, standardized document architecture and execution governance."
     }
   ]
 }

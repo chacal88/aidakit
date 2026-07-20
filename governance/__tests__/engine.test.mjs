@@ -297,23 +297,23 @@ steps:
   const { writeFileSync, mkdirSync } = await import("node:fs");
   const flowsUser = join(tmp, ".aidakit", "flows");
   mkdirSync(flowsUser, { recursive: true });
-  writeFileSync(join(flowsUser, "quebrado.yaml"), `flow: quebrado
-description: target inexistente
+  writeFileSync(join(flowsUser, "broken.yaml"), `flow: broken
+description: nonexistent target
 steps:
   - id: a
     type: terminal
-    on_success: NAO_EXISTE
+    on_success: DOES_NOT_EXIST
 `);
-  const { errors } = loadFlow("quebrado");
+  const { errors } = loadFlow("broken");
   ok(errors.length > 0, "5b: flow with a nonexistent target is REJECTED at load");
-  ok(errors.some((e) => e.message.includes("NAO_EXISTE")), "5b: error names the invalid target");
+  ok(errors.some((e) => e.message.includes("DOES_NOT_EXIST")), "5b: error names the invalid target");
 }
 
 // (5c) '#' in an unquoted value is preserved (not truncated as a comment).
 {
   const { parse } = await import("../engine/yaml-min.js");
-  eq(parse("prompt: corrige o bug #42 agora"), { prompt: "corrige o bug #42 agora" }, "5c: # in value preserved");
-  eq(parse("titulo: use ## heading"), { titulo: "use ## heading" }, "5c: ## in value preserved");
+  eq(parse("prompt: fix the bug #42 now"), { prompt: "fix the bug #42 now" }, "5c: # in value preserved");
+  eq(parse("title: use ## heading"), { title: "use ## heading" }, "5c: ## in value preserved");
 }
 
 // ── 6. invoke/invoca: new format AND backward-compat of the legacy 'agent' ──
@@ -323,29 +323,29 @@ steps:
   mkdirSync(flowsUser, { recursive: true });
 
   // (6a) NEW format: type: invoke + invoca: — should pause with step_type "invoke".
-  writeFileSync(join(flowsUser, "novo.yaml"), `flow: novo
-description: formato invoke novo
+  writeFileSync(join(flowsUser, "new-format.yaml"), `flow: new-format
+description: new invoke format
 steps:
-  - id: passo1
+  - id: step1
     type: invoke
     invoca: aidakit:plan
     expects:
       - success
-    on_success: fim
-  - id: fim
+    on_success: end
+  - id: end
     type: terminal
     outcome: completed
 `);
-  const rNovo = loadFlow("novo");
-  eq(rNovo.errors, [], "6a: flow with type:invoke/invoca loads without error");
-  const res6a = startFlow({ flow: rNovo.flow, inputs: {}, startedBy: "test", idOpts: { rand: "inv6a", now: new Date("2026-07-17T00:00:00Z") } });
+  const rNew = loadFlow("new-format");
+  eq(rNew.errors, [], "6a: flow with type:invoke/invoca loads without error");
+  const res6a = startFlow({ flow: rNew.flow, inputs: {}, startedBy: "test", idOpts: { rand: "inv6a", now: new Date("2026-07-17T00:00:00Z") } });
   eq(res6a.state.status, "paused", "6a: pauses at the invoke step");
   eq(res6a.state.pause.step_type, "invoke", "6a: step_type is 'invoke'");
   eq(res6a.state.pause.invoca, "aidakit:plan", "6a: pause.invoca names the skill/agent");
 
   // (6b) BACKWARD-COMPAT: type: agent + agent: (legacy) — parser normalizes to invoke.
-  writeFileSync(join(flowsUser, "legado.yaml"), `flow: legado
-description: formato agent legado
+  writeFileSync(join(flowsUser, "legacy.yaml"), `flow: legacy
+description: legacy agent format
 steps:
   - id: p1
     type: agent
@@ -353,12 +353,12 @@ steps:
     expects:
       - pass
     on_result:
-      pass: fim
-  - id: fim
+      pass: end
+  - id: end
     type: terminal
     outcome: completed
 `);
-  const rLeg = loadFlow("legado");
+  const rLeg = loadFlow("legacy");
   eq(rLeg.errors, [], "6b: legacy flow (type:agent) loads without error");
   ok(rLeg.flow.steps[0].type === "invoke", "6b: parser normalized type agent→invoke");
   ok(rLeg.flow.steps[0].invoca === "aidakit:review" && rLeg.flow.steps[0].agent === undefined, "6b: agent→invoca field");

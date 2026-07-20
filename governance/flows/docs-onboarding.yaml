@@ -12,7 +12,7 @@ description: |
 version: 1
 
 inputs:
-  - name: projeto
+  - name: project
     type: string
     required: true
     description: Name/description of the existing project whose documentation will be organized.
@@ -29,7 +29,7 @@ steps:
       "issues" if there are divergences to migrate (the common case in an existing repo).
     invoca: aidakit:docs
     input:
-      projeto: "${inputs.projeto}"
+      project: "${inputs.project}"
       mode: audit
     expects:
       - ok
@@ -48,7 +48,7 @@ steps:
       the disk in the next step — the ruler of the migration.
     invoca: aidakit:doc-planner
     input:
-      projeto: "${inputs.projeto}"
+      project: "${inputs.project}"
     expects:
       - success
       - failure
@@ -78,7 +78,7 @@ steps:
       moves, the links that would break and how to preserve them — and stops at the gate.
     invoca: aidakit:docs
     input:
-      projeto: "${inputs.projeto}"
+      project: "${inputs.project}"
     expects:
       - success
       - failure
@@ -91,7 +91,7 @@ steps:
       Migration GATE — the owner approves the from-to map before any move.
       Moving or deleting an existing doc is always a human gate (DOCS.md; GOVERNANCE.md §1).
     prompt: |
-      Docs migration proposed for "${inputs.projeto}": review the from-to map above
+      Docs migration proposed for "${inputs.project}": review the from-to map above
       (what is created, what moves and where to, the stubs that preserve the links, the
       retroactive ADRs reconstructed from the code). Nothing has been moved yet. Approve the migration?
     options:
@@ -111,7 +111,7 @@ steps:
       that the validator will re-check next.
     invoca: aidakit:docs
     input:
-      projeto: "${inputs.projeto}"
+      project: "${inputs.project}"
     expects:
       - success
       - failure

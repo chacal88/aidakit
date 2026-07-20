@@ -1,9 +1,9 @@
 ---
-description: Consulta o índice de ferramentas do aidakit — qual skill/comando/agente usar para cada situação
+description: Query the aidakit tool index — which skill/command/agent to use for each situation
 ---
 
-Leia o arquivo `INDEX.md` da skill `aidakit:catalog` deste plugin (`skills/catalog/INDEX.md`) e responda à pergunta do usuário sobre qual ferramenta usar: $ARGUMENTS
+Read the `INDEX.md` file of this plugin's `aidakit:catalog` skill (`skills/catalog/INDEX.md`) and answer the user's question about which tool to use: $ARGUMENTS
 
-Se o usuário não perguntou nada específico, apresente um resumo do índice agrupado por categoria (uma linha por grupo, com as 2-3 ferramentas mais úteis de cada).
+If the user didn't ask anything specific, present a summary of the index grouped by category (one line per group, with the 2-3 most useful tools of each).
 
-<!-- aidakit v0.2 — renomeado de kit-index para /aidakit:catalog -->
+<!-- aidakit v0.2 — renamed from kit-index to /aidakit:catalog -->

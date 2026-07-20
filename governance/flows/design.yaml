@@ -8,7 +8,7 @@ description: |
 version: 1
 
 inputs:
-  - name: projeto
+  - name: project
     type: string
     required: true
     description: Name/description of the project to design (or "resume" to continue a design in progress).
@@ -22,12 +22,12 @@ steps:
       reads the STATE internally and the correct phase is resumed within the phase itself.
     invoca: aidakit:docs
     input:
-      projeto: "${inputs.projeto}"
+      project: "${inputs.project}"
     expects:
-      - novo
+      - new
       - resume
     on_result:
-      novo: phase1
+      new: phase1
       resume: phase1
 
   - id: phase1

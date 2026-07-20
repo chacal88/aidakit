@@ -1,9 +1,9 @@
 ---
-description: Roda o gate de revisão pré-ship — banca adversarial de agentes em paralelo, agrega vereditos, decide consenso
+description: Runs the pre-ship review gate — adversarial bench of agents in parallel, aggregates verdicts, decides consensus
 ---
 
-Invoque a skill `aidakit:review` deste plugin e siga o protocolo dela: validação estrutural mecânica primeiro, depois a banca adversarial (os agentes revisores em paralelo, convocados por matriz papel×flag), agregação dos vereditos com severidades, e decisão de consenso (rodadas com teto). Report, don't fix — a skill reporta, não conserta; o merge é sempre humano.
+Invoke this plugin's `aidakit:review` skill and follow its protocol: mechanical structural validation first, then the adversarial bench (the reviewer agents in parallel, convened by a role×flag matrix), aggregation of the verdicts with severities, and a consensus decision (rounds with a ceiling). Report, don't fix — the skill reports, it doesn't fix; the merge is always the human's.
 
-Alvo da revisão (change-id ou `--diff`): $ARGUMENTS
+Review target (change-id or `--diff`): $ARGUMENTS
 
-<!-- aidakit v0.3 — comando da skill review, 2026-07-17 -->
+<!-- aidakit v0.3 — command for the review skill, 2026-07-17 -->

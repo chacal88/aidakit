@@ -1,9 +1,9 @@
 ---
-description: Inicia o planejamento plan-only de uma change — autora proposal/design/tasks sem código de produto
+description: Starts the plan-only planning of a change — authors proposal/design/tasks without product code
 ---
 
-Invoque a skill `aidakit:plan` deste plugin e siga o protocolo dela: gerar o prompt autocontido para o agente `aidakit:planner` autorar os artefatos plan-only da mudança (proposal/design/tasks/evidence), como mudança OpenSpec ou sob `docs/features/<change-id>/` no modo kit. Plan-only — nunca escreve código de produto nesta fase.
+Invoke this plugin's `aidakit:plan` skill and follow its protocol: generate the self-contained prompt for the `aidakit:planner` agent to author the change's plan-only artifacts (proposal/design/tasks/evidence), as an OpenSpec change or under `docs/features/<change-id>/` in kit mode. Plan-only — never writes product code in this phase.
 
-Change a planejar (change-id ou descrição): $ARGUMENTS
+Change to plan (change-id or description): $ARGUMENTS
 
-<!-- aidakit v0.3 — comando da skill plan, 2026-07-17 -->
+<!-- aidakit v0.3 — command for the plan skill, 2026-07-17 -->
