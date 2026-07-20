@@ -1,0 +1,139 @@
+flow: rapido
+description: |
+  Fast flow, Margi-style: from the chosen change to the PR, with minimal ceremony.
+  The orchestrator picks the next change and plans it; readiness gate; implementation
+  with TDD; review; PR; and the human merge gate. No brainstorm nor full panel —
+  for small, reversible work where practicality matters more than rigor.
+  `agent` steps pause for Claude to dispatch the skill/subagent (inversion of
+  control) and resume with the outcome.
+version: 1
+
+inputs:
+  - name: request
+    type: string
+    required: true
+    description: Free-form description of the change to build (or the change-id if a backlog already exists).
+
+steps:
+  - id: select
+    type: invoke
+    description: |
+      aidakit:orchestrator — picks/confirms the change ready to build. Detects the
+      tracking mode (OpenSpec in openspec/changes/ or docs/features/), inspects
+      the active changes, runs git log for the repo state, checks the archive
+      (openspec/changes/archive/ or docs/archive/) and the cited dependencies, and picks
+      the first ready change whose plan artifacts validate and whose dependencies have
+      already been delivered. If the request already carries a change-id, it confirms it instead of selecting.
+    invoca: aidakit:orchestrator
+    input:
+      request: "${inputs.request}"
+    expects:
+      - success
+      - failure
+    on_success: plan
+    on_failure: aborted
+
+  - id: plan
+    type: invoke
+    description: aidakit:plan — plans the chosen change (implementation plan).
+    invoca: aidakit:plan
+    input:
+      request: "${inputs.request}"
+    expects:
+      - success
+      - failure
+    on_success: readiness
+    on_failure: aborted
+
+  - id: readiness
+    type: invoke
+    description: aidakit:readiness — GATE 1, readiness review of the plan before coding.
+    invoca: aidakit:readiness
+    expects:
+      - approved
+      - needs-revision
+      - blocked
+    on_result:
+      approved: implement
+      needs-revision: plan
+      blocked: aborted
+
+  - id: implement
+    type: invoke
+    description: Implementation with TDD (skill test-driven-development) + aidakit:test.
+    invoca: aidakit:implement
+    expects:
+      - success
+      - failure
+    on_success: review
+    on_failure: aborted
+
+  - id: review
+    type: invoke
+    description: aidakit:review on the diff — conformance with specs/ADRs + bug hunting.
+    invoca: aidakit:review
+    expects:
+      - pass
+      - fail
+    on_result:
+      pass: document
+      fail: implement
+
+  - id: document
+    type: invoke
+    description: |
+      aidakit:doc-planner — DOC-LEASH. Builds/updates the manifest of required
+      documents for the change (.aidakit/tasks/${inputs.request}/doc-manifest.json) and
+      dispatches the fronts that fill in the missing docs. Decides the rigor (what is
+      required, under which condition and kind); the truth remains the disk.
+    invoca: aidakit:doc-planner
+    input:
+      request: "${inputs.request}"
+    expects:
+      - success
+      - failure
+    on_success: check_docs
+    on_failure: aborted
+
+  - id: check_docs
+    type: runs
+    description: |
+      LEASH GATE — check-doc-manifest verifies item by item and LOCKS the flow
+      until the list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0
+      (incomplete) goes back to document until the list is complete.
+    command: "node governance/validators/check-doc-manifest.js .aidakit/tasks/${inputs.request}/doc-manifest.json"
+    on_success: pr
+    on_failure: document
+
+  - id: pr
+    type: invoke
+    description: commit + PR via commit-commands. Stops at the PR URL — never merges.
+    invoca: aidakit:ship
+    expects:
+      - success
+      - failure
+    on_success: merge
+    on_failure: aborted
+
+  - id: merge
+    type: human_gate
+    description: Human GATE — the merge is always human (GOVERNANCE.md §1).
+    prompt: |
+      PR ready for ${inputs.request}. Review it on the git host and do the merge yourself.
+      Then, confirm here for the orchestrator to archive the change.
+    options:
+      - merged
+      - discard
+    on_result:
+      merged: done
+      discard: aborted
+
+  - id: done
+    type: terminal
+    outcome: completed
+    message: "Change delivered and merged. aidakit:docs archives and promotes specs."
+
+  - id: aborted
+    type: terminal
+    outcome: aborted
+    message: "Flow interrupted before the merge."

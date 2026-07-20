@@ -1,0 +1,145 @@
+flow: docs-onboarding
+description: |
+  The DOC-LEASH for EXISTING PROJECTS: takes a repo that already has code and docs
+  scattered around and brings it to the standardized structure without destroying anything.
+  The agent audits what exists today, a planner builds the TARGET LIST of what SHOULD
+  exist (the manifest), the deterministic validator check-doc-manifest.js checks
+  item by item what is missing, and the owner approves the migration map before any
+  move. Only then does it create what is missing, move with anti-rot-link stubs and generate
+  retroactive ADRs by reading the code. The gate at the end locks: the flow ONLY ends when the
+  list is 100%. The order lives here; the behavior lives in the skills that the steps
+  invoke (aidakit:docs, aidakit:doc-planner) and in the validator that the runs steps run.
+version: 1
+
+inputs:
+  - name: projeto
+    type: string
+    required: true
+    description: Name/description of the existing project whose documentation will be organized.
+
+steps:
+  - id: inventory
+    type: invoke
+    description: |
+      aidakit:docs (audit mode) — does an X-ray of what EXISTS today: walks docs/
+      (or the legacy layout itself), checks the seven inviolable rules of DOCS.md
+      against the disk, detects the mode (OpenSpec vs kit) and reports wrong placement,
+      malformatted ADRs, broken links and index↔reality drift. It moves nothing
+      — it only diagnoses the starting point. Returns "ok" if the docs are already healthy,
+      "issues" if there are divergences to migrate (the common case in an existing repo).
+    invoca: aidakit:docs
+    input:
+      projeto: "${inputs.projeto}"
+      mode: audit
+    expects:
+      - ok
+      - issues
+    on_result:
+      ok: manifest
+      issues: manifest
+
+  - id: manifest
+    type: invoke
+    description: |
+      aidakit:doc-planner — builds the TARGET LIST of what SHOULD exist: the project
+      manifest (level:project, change_id:PROJECT) with vision, model, architecture,
+      the foundational ADRs and the decision indexes. Writes
+      .aidakit/doc-manifest-project.json. It is the target the validator will enforce against
+      the disk in the next step — the ruler of the migration.
+    invoca: aidakit:doc-planner
+    input:
+      projeto: "${inputs.projeto}"
+    expects:
+      - success
+      - failure
+    on_success: diff
+    on_failure: aborted
+
+  - id: diff
+    type: runs
+    description: |
+      check-doc-manifest.js over the PROJECT manifest — deterministic, exit 0/1:
+      checks item by item which target documents already exist on disk and which are MISSING.
+      It is the diff between what exists (inventory) and what should (manifest). success
+      (100%, nothing missing) → propose anyway, so the mapping confirms everything is
+      in the right place; failure (docs missing) → propose the migration that creates/moves them.
+    command: "node governance/validators/check-doc-manifest.js .aidakit/doc-manifest-project.json"
+    on_success: propose
+    on_failure: propose
+
+  - id: propose
+    type: invoke
+    description: |
+      aidakit:docs — from the validator's diff, proposes the MIGRATION MAP (from-to)
+      WITHOUT destroying: each existing doc gets a canonical destination with an anti-rot-link stub
+      at the old location; each missing target doc is planned; each locked decision already alive
+      in the code becomes a RETROACTIVE ADR (reading the real code to reconstruct context,
+      decision and consequences in the 5-section format). It presents the from-to, the
+      moves, the links that would break and how to preserve them — and stops at the gate.
+    invoca: aidakit:docs
+    input:
+      projeto: "${inputs.projeto}"
+    expects:
+      - success
+      - failure
+    on_success: gate_migration
+    on_failure: aborted
+
+  - id: gate_migration
+    type: human_gate
+    description: |
+      Migration GATE — the owner approves the from-to map before any move.
+      Moving or deleting an existing doc is always a human gate (DOCS.md; GOVERNANCE.md §1).
+    prompt: |
+      Docs migration proposed for "${inputs.projeto}": review the from-to map above
+      (what is created, what moves and where to, the stubs that preserve the links, the
+      retroactive ADRs reconstructed from the code). Nothing has been moved yet. Approve the migration?
+    options:
+      - approve
+      - revise
+    on_result:
+      approve: apply
+      revise: propose
+
+  - id: apply
+    type: invoke
+    description: |
+      aidakit:docs — EXECUTES the approved migration: creates the missing documents, moves
+      the existing ones to the canonical destination leaving a stub at the old location (anti-rot-
+      link), and writes the retroactive ADRs by reading the code. Everything via a short branch + PR —
+      the merge is left to the owner (GOVERNANCE.md §1–2). It is the half that fills the list
+      that the validator will re-check next.
+    invoca: aidakit:docs
+    input:
+      projeto: "${inputs.projeto}"
+    expects:
+      - success
+      - failure
+    on_success: check
+    on_failure: aborted
+
+  - id: check
+    type: runs
+    description: |
+      check-doc-manifest.js again over the same project manifest — the gate that
+      LOCKS. Re-checks the disk: is the list 100%? success → done (the documentation was
+      rescued, nothing was lost). failure → back to apply, the back-edge that closes the
+      items still missing. The flow does NOT end until the list is complete.
+    command: "node governance/validators/check-doc-manifest.js .aidakit/doc-manifest-project.json"
+    on_success: done
+    on_failure: apply
+
+  - id: done
+    type: terminal
+    outcome: completed
+    message: |
+      Project documentation organized: the canonical structure is in place, the existing
+      docs migrated with stubs, the retroactive ADRs record the decisions already alive
+      in the code, and the manifest closed at 100%. The DOC-LEASH let nothing be lost.
+
+  - id: aborted
+    type: terminal
+    outcome: aborted
+    message: "Docs onboarding interrupted — no document was lost; the migration was not applied."
+
+# aidakit v0.3 — flow docs-onboarding: the DOC-LEASH for existing projects (audit → target-manifest → diff → from-to → gate → apply → check 100%), written on 2026-07-17

@@ -1,0 +1,140 @@
+flow: design
+description: |
+  Architecture design in 4 DDD phases on a leash: the engine enforces the order
+  (Business → Modeling → Architecture → Implementation), stops at each human gate
+  and persists state. Each phase invokes the interview skill that drives the
+  conversation; the engine guarantees no phase is skipped and no gate is bypassed.
+  At the end, the vertical changes are ready for /aidakit:build.
+version: 1
+
+inputs:
+  - name: projeto
+    type: string
+    required: true
+    description: Name/description of the project to design (or "resume" to continue a design in progress).
+
+steps:
+  - id: prepare
+    type: invoke
+    description: |
+      aidakit:docs (init) — deploys the standard docs/ structure if it's a new project;
+      reads docs/design/STATE.md on a resume, to know which phase to stop at. The skill
+      reads the STATE internally and the correct phase is resumed within the phase itself.
+    invoca: aidakit:docs
+    input:
+      projeto: "${inputs.projeto}"
+    expects:
+      - novo
+      - resume
+    on_result:
+      novo: phase1
+      resume: phase1
+
+  - id: phase1
+    type: invoke
+    description: |
+      aidakit:design-business (Phase 1 — Business) — interview: objectives, processes,
+      rules, experts, ubiquitous language. Produces docs/design/1-business-vision.md
+      and returns "ready" when the exit checklist is complete.
+    invoca: aidakit:design-business
+    expects:
+      - ready
+    on_success: gate1
+
+  - id: gate1
+    type: human_gate
+    description: GATE Phase 1 — the owner approves the business vision before modeling.
+    prompt: |
+      Phase 1 (Business) complete — review docs/design/1-business-vision.md
+      (objective with observable criterion, process, rules, ubiquitous glossary).
+      Approve to proceed to DDD Modeling?
+    options:
+      - approve
+      - revise
+    on_result:
+      approve: phase2
+      revise: phase1
+
+  - id: phase2
+    type: invoke
+    description: |
+      aidakit:design-modeling (Phase 2 — DDD Modeling) — bounded contexts,
+      entities, value objects, aggregates and domain events, still without technology.
+      Produces docs/design/2-domain-model.md and returns "ready".
+    invoca: aidakit:design-modeling
+    expects:
+      - ready
+    on_success: gate2
+
+  - id: gate2
+    type: human_gate
+    description: GATE Phase 2 — the owner approves the domain model before architecture.
+    prompt: |
+      Phase 2 (DDD Modeling) complete — review docs/design/2-domain-model.md
+      (aggregates with invariants traceable to R#, entities, VOs, bounded contexts).
+      Approve to proceed to Architecture?
+    options:
+      - approve
+      - revise
+    on_result:
+      approve: phase3
+      revise: phase2
+
+  - id: phase3
+    type: invoke
+    description: |
+      aidakit:design-architecture (Phase 3 — Architecture) — APIs, events, integrations,
+      databases, cross-cutting concerns + one ADR per structural decision. Produces
+      docs/design/3-architecture.md and ADRs in docs/decisions/; returns "ready".
+    invoca: aidakit:design-architecture
+    expects:
+      - ready
+    on_success: gate3
+
+  - id: gate3
+    type: human_gate
+    description: GATE Phase 3 — the owner approves the architecture and ADRs before the plan.
+    prompt: |
+      Phase 3 (Architecture) complete — review docs/design/3-architecture.md and the
+      ADRs in docs/decisions/. Does each structural decision have an ADR?
+      Approve to proceed to the implementation plan?
+    options:
+      - approve
+      - revise
+    on_result:
+      approve: phase4
+      revise: phase3
+
+  - id: phase4
+    type: invoke
+    description: |
+      aidakit:design-implementation (Phase 4 — Implementation) — scaffold mirroring the
+      context map, stack traced to ADRs, minimal pipeline and a backlog of vertical
+      changes ordered by risk+value. Produces docs/design/4-implementation-plan.md
+      and returns "ready".
+    invoca: aidakit:design-implementation
+    expects:
+      - ready
+    on_success: gate4
+
+  - id: gate4
+    type: human_gate
+    description: GATE Phase 4 — the owner approves the change backlog. Design complete.
+    prompt: |
+      Phase 4 (Implementation) complete — review docs/design/4-implementation-plan.md
+      (vertical changes ordered by risk+value, each with an acceptance criterion).
+      Approve? On approval, the design is complete and the first change is ready
+      for /aidakit:build.
+    options:
+      - approve
+      - revise
+    on_result:
+      approve: done
+      revise: phase4
+
+  - id: done
+    type: terminal
+    outcome: completed
+    message: |
+      Design complete. The vertical changes are in docs/design/4-implementation-plan.md.
+      Run /aidakit:build to build the first change.
