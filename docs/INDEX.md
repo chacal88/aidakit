@@ -6,6 +6,7 @@
 
 ## Reading order for newcomers
 
+0. **[Overview / field guide](OVERVIEW.md)** — the whole kit on one page: the 4 layers, the canonical cycle, skills, agents, the engine, and how to use it. A visual version renders at [`overview.html`](overview.html). Start here for the map, then read the guides for depth.
 1. **[Getting started](guides/getting-started.md)** — 5-minute guide: install the plugin, what comes into effect (skills, commands, active `pre-bash` hook), and how to confirm it worked.
 2. **[New project flow](guides/new-project-flow.md)** — from zero to the first change: the 4-phase architecture design with gates, narrated with the razor example project.
 3. **[Per-change flow](guides/change-flow.md)** — the canonical execution cycle end-to-end: plan → readiness (GATE 1) → TDD → test/coverage → review `--diff` (GATE 2) → PR → human merge → archive.

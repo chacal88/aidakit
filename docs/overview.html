@@ -1,0 +1,477 @@
+<title>aidakit field guide</title>
+<style>
+  :root {
+    --paper: #f7f5ef;
+    --paper-2: #efece2;
+    --ink: #1a2430;
+    --ink-soft: #47535f;
+    --line: #d8d3c6;
+    --line-strong: #c3bdac;
+    --accent: #b9791f;
+    --accent-soft: #f0e2c6;
+    --good: #3f7358;
+    --good-soft: #dfe9e1;
+    --cool: #6a7787;
+    --code-bg: #ece9df;
+    --shadow: 0 1px 0 rgba(26,36,48,.04), 0 8px 28px -18px rgba(26,36,48,.35);
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+    --sans: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", "Palatino", "Georgia", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0f1620;
+      --paper-2: #151e2a;
+      --ink: #e6e9ec;
+      --ink-soft: #9aa6b3;
+      --line: #263241;
+      --line-strong: #33404f;
+      --accent: #d59a41;
+      --accent-soft: #2a2416;
+      --good: #6bab86;
+      --good-soft: #16271e;
+      --cool: #8794a3;
+      --code-bg: #172130;
+      --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #f7f5ef; --paper-2: #efece2; --ink: #1a2430; --ink-soft: #47535f;
+    --line: #d8d3c6; --line-strong: #c3bdac; --accent: #b9791f; --accent-soft: #f0e2c6;
+    --good: #3f7358; --good-soft: #dfe9e1; --cool: #6a7787; --code-bg: #ece9df;
+    --shadow: 0 1px 0 rgba(26,36,48,.04), 0 8px 28px -18px rgba(26,36,48,.35);
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f1620; --paper-2: #151e2a; --ink: #e6e9ec; --ink-soft: #9aa6b3;
+    --line: #263241; --line-strong: #33404f; --accent: #d59a41; --accent-soft: #2a2416;
+    --good: #6bab86; --good-soft: #16271e; --cool: #8794a3; --code-bg: #172130;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased; font-feature-settings: "kern";
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- Masthead ---- */
+  header.mast {
+    border-bottom: 2px solid var(--ink);
+    padding: 40px 0 22px; margin-bottom: 8px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .eyebrow::after { content: ""; height: 1px; flex: 1; background: var(--line-strong); }
+  h1.title {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(38px, 6vw, 60px);
+    line-height: 1.02; margin: 0 0 16px; letter-spacing: -.01em; text-wrap: balance;
+  }
+  h1.title .k { font-style: italic; color: var(--accent); }
+  .lede {
+    font-size: clamp(16px, 1.6vw, 19px); color: var(--ink-soft); max-width: 62ch;
+    margin: 0;
+  }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 22px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft);
+  }
+  .mast-meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---- one-liner definition ---- */
+  .whatis {
+    margin: 28px 0 44px; padding: 20px 22px; background: var(--paper-2);
+    border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 3px; box-shadow: var(--shadow);
+  }
+  .whatis p { margin: 0; font-size: 15.5px; }
+  .whatis strong { color: var(--ink); }
+
+  /* ---- section headers ---- */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 13px; color: var(--accent);
+    font-weight: 600; letter-spacing: .05em;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(24px, 3vw, 31px);
+    margin: 0; letter-spacing: -.01em;
+  }
+  .sec-sub { color: var(--ink-soft); font-size: 15px; margin: 4px 0 24px; max-width: 68ch; }
+
+  /* ---- layer blocks ---- */
+  .layers { display: flex; flex-direction: column; gap: 14px; }
+  .layer {
+    background: var(--paper-2); border: 1px solid var(--line); border-radius: 5px;
+    padding: 20px 22px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .layer::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent); opacity: .85;
+  }
+  .layer-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .layer-tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--cool); border: 1px solid var(--line-strong); padding: 2px 7px; border-radius: 3px;
+  }
+  .layer h3 { font-family: var(--serif); font-size: 20px; margin: 0; font-weight: 600; }
+  .layer .cmd {
+    font-family: var(--mono); font-size: 13px; background: var(--code-bg);
+    color: var(--accent); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line);
+  }
+  .layer p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+  .layer p + p { margin-top: 8px; }
+
+  /* ---- the canonical flow strip ---- */
+  .flow-scroll { overflow-x: auto; padding-bottom: 6px; margin: 0 -4px; }
+  .flow {
+    display: flex; align-items: stretch; gap: 0; min-width: 760px; padding: 4px;
+  }
+  .flow-step {
+    flex: 1; min-width: 96px; background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 5px; padding: 12px 12px 13px; position: relative; text-align: left;
+  }
+  .flow-step:not(:last-child) { margin-right: 26px; }
+  .flow-step:not(:last-child)::after {
+    content: "→"; position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+    color: var(--line-strong); font-size: 16px;
+  }
+  .flow-step .fs-cmd { font-family: var(--mono); font-size: 11.5px; color: var(--ink); font-weight: 600; display: block; }
+  .flow-step .fs-note { font-size: 11px; color: var(--ink-soft); margin-top: 3px; display: block; line-height: 1.35; }
+  .flow-step.gate { border-color: var(--accent); background: var(--accent-soft); }
+  .flow-step.gate .fs-tag {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; display: block; margin-bottom: 3px;
+  }
+  .flow-step.human { border-style: dashed; border-color: var(--cool); }
+
+  /* ---- tables ---- */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 5px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 540px; font-size: 14px; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--cool); font-weight: 600;
+    padding: 11px 16px; background: var(--paper-2); border-bottom: 1px solid var(--line-strong);
+    position: sticky; top: 0;
+  }
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--paper-2); }
+  td code, .ic {
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink); background: var(--code-bg);
+    padding: 1.5px 6px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap;
+  }
+  td.name code { color: var(--accent); background: transparent; border: none; padding: 0; font-weight: 600; }
+  td .desc { color: var(--ink-soft); }
+
+  /* ---- pills / status ---- */
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .03em;
+    padding: 2px 8px; border-radius: 20px; border: 1px solid var(--line-strong);
+    color: var(--ink-soft);
+  }
+  .pill.det { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+  .pill.ai { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---- two-col cards ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 14px; }
+  .card {
+    background: var(--paper-2); border: 1px solid var(--line); border-radius: 5px;
+    padding: 18px 18px 16px; box-shadow: var(--shadow);
+  }
+  .card h4 { font-family: var(--mono); font-size: 13px; margin: 0 0 4px; color: var(--accent); font-weight: 600; }
+  .card p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .card .file { font-family: var(--mono); font-size: 11.5px; color: var(--cool); margin-top: 8px; display: block; }
+
+  /* ---- callout ---- */
+  .principle {
+    display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
+    margin-top: 16px; padding: 16px 18px; border: 1px solid var(--line);
+    border-radius: 5px; background: var(--paper-2);
+  }
+  .principle .mark { font-family: var(--serif); font-style: italic; font-size: 22px; color: var(--accent); line-height: 1; }
+  .principle p { margin: 0; font-size: 14.5px; }
+
+  /* ---- quickstart steps ---- */
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: start; }
+  ol.steps li::before {
+    content: counter(s); font-family: var(--mono); font-weight: 700; font-size: 13px;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 50%;
+    width: 26px; height: 26px; display: grid; place-items: center;
+  }
+  ol.steps .st-body { font-size: 14.5px; }
+  ol.steps .st-body b { color: var(--ink); }
+  pre {
+    margin: 8px 0 0; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 12px 14px; overflow-x: auto;
+  }
+  pre code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: pre; }
+  .cmt { color: var(--cool); }
+
+  footer {
+    margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 12px; color: var(--cool);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  a { color: var(--accent); }
+  @media (max-width: 620px) {
+    .principle { grid-template-columns: 1fr; }
+    .layer-top { gap: 8px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Development kit · v0.4 · plugin reference</p>
+    <h1 class="title">The <span class="k">aidakit</span> field guide</h1>
+    <p class="lede">A Claude Code plugin that carries a full engineering process into any repo: guided architecture design, a spec-driven execution pipeline with human gates, document &amp; execution doctrine enforced by an active hook, an in-repo roadmap, and shared knowledge — no Jira, no Confluence, the truth is always the disk.</p>
+    <div class="mast-meta">
+      <span><b>29</b> skills</span>
+      <span><b>12</b> agents</span>
+      <span><b>5</b> validators</span>
+      <span><b>4</b> flows</span>
+      <span><b>1</b> hook</span>
+      <span><b>139</b> tests green</span>
+    </div>
+  </header>
+
+  <div class="whatis">
+    <p>The kit's one idea: <strong>a deterministic engine does the enforcing, the AI does the thinking.</strong> Anything mechanical — validating docs, blocking dangerous git, deriving status, checking a manifest — runs as zero-dependency Node and cannot be talked out of it. Anything that needs judgment is a skill or an agent. The two halves never blur.</p>
+  </div>
+
+  <!-- ============ THE 4 LAYERS ============ -->
+  <section id="layers">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The four layers</h2></div>
+    <p class="sec-sub">Everything in the kit belongs to one of four layers. This is the whole product, top to bottom.</p>
+
+    <div class="layers">
+      <div class="layer">
+        <div class="layer-top">
+          <span class="layer-tag">Layer 1 · design</span>
+          <h3>Architecture design</h3>
+          <span class="cmd">/aidakit:design</span>
+        </div>
+        <p>A sequential 4-phase interview with gates — <b>1 Business</b> → <b>2 DDD Modeling</b> → <b>3 Architecture</b> (decisions become ADRs) → <b>4 Implementation</b> (hands the baton to the pipeline). One question at a time; each phase yields a document in <code class="ic">docs/design/</code> and only advances on explicit approval.</p>
+        <p>State lives in <code class="ic">docs/design/STATE.md</code> — close the session, resume weeks later.</p>
+      </div>
+
+      <div class="layer">
+        <div class="layer-top">
+          <span class="layer-tag">Layer 2 · pipeline</span>
+          <h3>Execution pipeline</h3>
+          <span class="cmd">/aidakit:build</span>
+        </div>
+        <p>Each change runs the canonical cycle from plan to PR (see the strip below). Skills delegate to agents with <b>separated roles</b> — author ≠ reviewer ≠ shipper. The kit stops at the PR URL; <b>the human merges</b>.</p>
+        <p>Change artifacts live in <code class="ic">docs/features/&lt;change-id&gt;/</code> (or <code class="ic">openspec/changes/</code>). One key ties it all: <b>change-id = branch = PR suffix = archive dir</b>.</p>
+      </div>
+
+      <div class="layer">
+        <div class="layer-top">
+          <span class="layer-tag">Layer 3 · doctrine</span>
+          <h3>Document &amp; execution doctrine</h3>
+          <span class="cmd">/aidakit:docs</span>
+          <span class="cmd">/aidakit:governance</span>
+        </div>
+        <p><b>DOCS.md</b> — the standardized document architecture: canonical <code class="ic">docs/</code> tree, seven inviolable rules (ADR is WORM, every dir has an index, dated archive…), a placement decision tree, WORKING → DURABLE.</p>
+        <p><b>GOVERNANCE.md</b> — how agents work: permissive by design with exactly 3 human escalations (merge a PR, supersede an ADR, go out of scope). Enforced by the active <code class="ic">pre-bash</code> hook.</p>
+      </div>
+
+      <div class="layer">
+        <div class="layer-top">
+          <span class="layer-tag">Layer 4 · catalog</span>
+          <h3>Catalog &amp; archive</h3>
+          <span class="cmd">/aidakit:catalog</span>
+        </div>
+        <p>A grouped, searchable index of everything you have — authored skills, agents, hooks, doctrine, installed official plugins, and a verified community archive loaded on demand. Ask <em>"do I have something for X?"</em> and it points you to the tool.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CANONICAL CYCLE ============ -->
+  <section id="cycle">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The canonical cycle</h2></div>
+    <p class="sec-sub">What one change goes through, left to right. Amber steps are <b>gates</b> that block progress; the dashed step is the human's — the kit never merges.</p>
+    <div class="flow-scroll">
+      <div class="flow">
+        <div class="flow-step"><span class="fs-cmd">build</span><span class="fs-note">picks next ready change</span></div>
+        <div class="flow-step"><span class="fs-cmd">plan</span><span class="fs-note">proposal · tasks · design (no code)</span></div>
+        <div class="flow-step gate"><span class="fs-tag">Gate 1</span><span class="fs-cmd">readiness</span><span class="fs-note">plan package is ready?</span></div>
+        <div class="flow-step"><span class="fs-cmd">implement</span><span class="fs-note">TDD: red → green → refactor</span></div>
+        <div class="flow-step"><span class="fs-cmd">test · coverage</span><span class="fs-note">per-surface suites</span></div>
+        <div class="flow-step gate"><span class="fs-tag">Gate 2</span><span class="fs-cmd">review --diff</span><span class="fs-note">adversarial bench, PASS/FAIL</span></div>
+        <div class="flow-step"><span class="fs-cmd">learn</span><span class="fs-note">consolidate + crystallize DNA</span></div>
+        <div class="flow-step"><span class="fs-cmd">ship</span><span class="fs-note">commit · push · PR → stops at URL</span></div>
+        <div class="flow-step human"><span class="fs-cmd">merge</span><span class="fs-note">the human, on the git host</span></div>
+      </div>
+    </div>
+    <div class="principle">
+      <span class="mark">“</span>
+      <p>The plan only becomes history when the implementation has validated it. Shipped changes move to a dated <code class="ic">archive/</code> and become jurisprudence — new changes cite precedents by archive-id.</p>
+    </div>
+  </section>
+
+  <!-- ============ AUTHORED SKILLS ============ -->
+  <section id="skills">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Authored skills</h2></div>
+    <p class="sec-sub">The kit's own skills — invoke by qualified name, e.g. <code class="ic">aidakit:review</code>, or via the <code class="ic">/aidakit:*</code> slash commands where one exists.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Skill</th><th>What it does</th><th>Gate?</th></tr></thead>
+        <tbody>
+          <tr><td class="name"><code>design</code></td><td class="desc">Start/resume the 4-phase architecture interview with gates</td><td></td></tr>
+          <tr><td class="name"><code>build</code></td><td class="desc">Drive a change plan → PR; 1st step picks the next ready change</td><td></td></tr>
+          <tr><td class="name"><code>plan</code></td><td class="desc">Author a plan-only change (proposal/design/tasks/evidence), no product code</td><td></td></tr>
+          <tr><td class="name"><code>spec</code></td><td class="desc">Read specs with related-spec discovery, ADR linkage, validation commands</td><td></td></tr>
+          <tr><td class="name"><code>readiness</code></td><td class="desc">Readiness review of the plan package before coding</td><td><span class="pill">Gate 1</span></td></tr>
+          <tr><td class="name"><code>review</code></td><td class="desc">Canonical pre-ship gate: parallel reviewers + structural validation → PASS/FAIL</td><td><span class="pill">Gate 2</span></td></tr>
+          <tr><td class="name"><code>test</code></td><td class="desc">Per-surface test suites with a coverage report</td><td></td></tr>
+          <tr><td class="name"><code>coverage</code></td><td class="desc">Cross-surface coverage-gap analysis with concrete suggestions</td><td></td></tr>
+          <tr><td class="name"><code>implement</code></td><td class="desc">Dispatch a change's implementation to the isolated implementer agent (TDD)</td><td></td></tr>
+          <tr><td class="name"><code>ship</code></td><td class="desc">Commit + push + PR (has a DNA mode for the dedicated DNA PR); stops at the URL</td><td></td></tr>
+          <tr><td class="name"><code>reflect</code></td><td class="desc">Lightweight per-phase retro (3 questions) that feeds learn</td><td></td></tr>
+          <tr><td class="name"><code>learn</code></td><td class="desc">Consolidate learnings; crystallize DNA; propose promotion to docs/knowledge/</td><td></td></tr>
+          <tr><td class="name"><code>roadmap</code></td><td class="desc">In-repo roadmap (epics→features→changes); status derived from disk</td><td></td></tr>
+          <tr><td class="name"><code>docs</code></td><td class="desc">Deploy / audit / index / archive the DOCS.md document architecture</td><td></td></tr>
+          <tr><td class="name"><code>governance</code></td><td class="desc">Explain / audit / onboard the GOVERNANCE.md execution doctrine</td><td></td></tr>
+          <tr><td class="name"><code>catalog</code></td><td class="desc">Searchable index of every tool ("do I have something for X?")</td><td></td></tr>
+          <tr><td class="name"><code>identify-domain</code></td><td class="desc">Classify a change into domain × type × flags → selects review matrix + brainstorm ammo</td><td></td></tr>
+          <tr><td class="name"><code>brainstorm</code></td><td class="desc">Default-on adversarial grill BEFORE spending spec tokens</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sec-sub" style="margin-top:16px">Plus <b>16 curated third-party skills</b> loaded on demand when a change touches their domain — <code class="ic">react-best-practices</code>, <code class="ic">postgresql</code>, <code class="ic">neon-postgres</code>, <code class="ic">saas-multi-tenant</code>, <code class="ic">security-threat-model</code>, <code class="ic">test-driven-development</code>, <code class="ic">systematic-debugging</code>, <code class="ic">vitest</code>, <code class="ic">ddd-strategic-design</code>, <code class="ic">multi-agent-patterns</code>, <code class="ic">advanced-evaluation</code>, <code class="ic">tool-design</code>, <code class="ic">ai-native-cli</code>, <code class="ic">context-compression</code>, <code class="ic">skill-scanner</code>, <code class="ic">postgres-best-practices</code>.</p>
+  </section>
+
+  <!-- ============ AGENTS ============ -->
+  <section id="agents">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Agents</h2></div>
+    <p class="sec-sub">Isolated-context subagents that receive a task, work alone, and return a verdict. Role separation is the point — the one who writes is never the one who reviews.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Agent</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td class="name"><code>orchestrator</code></td><td class="desc">Picks the next ready change (reads the roadmap for priority order); generates self-contained prompts; tracks progress. Never merges.</td></tr>
+          <tr><td class="name"><code>planner</code></td><td class="desc">Authors the plan-only artifacts + spec deltas; cross-checks citations and paths. Never writes product code.</td></tr>
+          <tr><td class="name"><code>implementer</code></td><td class="desc">Implements a change task-by-task with TDD in isolated context; returns diff, marked tasks, outcome, correction events.</td></tr>
+          <tr><td class="name"><code>reviewer-architecture</code></td><td class="desc">Reviews structure / responsibility / boundary changes.</td></tr>
+          <tr><td class="name"><code>reviewer-security</code></td><td class="desc">Reviews contract / auth / sensitive-data changes (6 vuln categories + false-positive filter).</td></tr>
+          <tr><td class="name"><code>reviewer-quality</code></td><td class="desc">Quality + performance gate (N+1, pagination, hot-path costs).</td></tr>
+          <tr><td class="name"><code>spec-reviewer</code></td><td class="desc">Independent critic that audits a spec before the pre-apply gate.</td></tr>
+          <tr><td class="name"><code>adr-reviewer</code></td><td class="desc">Reviews ADRs for format and decision soundness.</td></tr>
+          <tr><td class="name"><code>doc-planner</code></td><td class="desc">Assembles the doc-manifest (the leash) — decides which docs a change must produce.</td></tr>
+          <tr><td class="name"><code>brainstorm</code></td><td class="desc">Runs the adversarial grill phase against the domain's ammunition.</td></tr>
+          <tr><td class="name"><code>tester</code></td><td class="desc">Runs and reports the per-surface test suites.</td></tr>
+          <tr><td class="name"><code>research</code></td><td class="desc">Scoped research that returns a structured result without bloating the main context.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ THE ENGINE ============ -->
+  <section id="engine">
+    <div class="sec-head"><span class="sec-num">05</span><h2>The deterministic engine</h2></div>
+    <p class="sec-sub">Pure Node, zero dependencies. This is the "leash" — mechanical enforcement the model cannot argue with. Every validator follows the same contract: <code class="ic">exit 0/1/2</code>, JSON on stdout, a human report on stderr.</p>
+
+    <div class="cards">
+      <div class="card">
+        <h4>pre-bash hook</h4>
+        <p>Runs before every Bash command, blocks what GOVERNANCE §4 forbids (<code class="ic">push --force</code>, <code class="ic">add -A</code>, <code class="ic">reset --hard</code>, <code class="ic">gh pr merge</code>…). Fail-open: when in doubt, allow. Bypass via <code class="ic">AIDAKIT_BYPASS=1</code> is logged.</p>
+        <span class="file">hooks/pre-bash.js</span>
+      </div>
+      <div class="card">
+        <h4>flow engine</h4>
+        <p>A declarative state machine that runs a flow as steps (invoke · runs · human_gate · loop · parallel · terminal). Inversion of control: it pauses and asks the operator to dispatch a skill, then routes on the outcome.</p>
+        <span class="file">governance/engine/ · flows/*.yaml</span>
+      </div>
+      <div class="card">
+        <h4>check-doc-manifest</h4>
+        <p>The doc leash. A change can't pass the gate until every required document exists <em>on disk</em> — not because the model said "documented", but because the file is there.</p>
+        <span class="file">validators/check-doc-manifest.js</span>
+      </div>
+      <div class="card">
+        <h4>check-adr-format</h4>
+        <p>Enforces the 5-section ADR format &amp; controlled status vocabulary. Bilingual (PT|EN) headings.</p>
+        <span class="file">validators/check-adr-format.js</span>
+      </div>
+      <div class="card">
+        <h4>check-links</h4>
+        <p>Every internal markdown link must resolve on disk — a formal readiness criterion (DOCS §2.4).</p>
+        <span class="file">validators/check-links.js</span>
+      </div>
+      <div class="card">
+        <h4>derive-roadmap-status</h4>
+        <p>Reads the epics and derives each item's status from the disk (features/ vs archive/ vs PR). The roadmap can't lie.</p>
+        <span class="file">validators/derive-roadmap-status.js</span>
+      </div>
+      <div class="card">
+        <h4>check-dna-freshness</h4>
+        <p>Flags a crystallized test/rule as stale when its origin ADR is superseded — a gate that never expires would become the bug it once caught.</p>
+        <span class="file">validators/check-dna-freshness.js</span>
+      </div>
+      <div class="card">
+        <h4>ledgers + DNA</h4>
+        <p>Token/error ledgers per change; <code class="ic">deriveCandidates</code> spots an error recurring ≥3× and <code class="ic">writeDna</code> crystallizes the lesson into a regression test or rule.</p>
+        <span class="file">governance/ledgers/ · dna/</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRACKING ============ -->
+  <section id="tracking">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Tracking &amp; memory — in the repo</h2></div>
+    <p class="sec-sub">The newest layer: planning and shared knowledge without an external tool. Both live in <code class="ic">docs/</code>, versioned and PR-reviewed.</p>
+    <div class="cards">
+      <div class="card">
+        <h4>docs/roadmap/</h4>
+        <p><b>Epic → Feature → Change</b> as markdown. Epics group features; features point to changes by change-id. Status is <b>derived from disk</b>, never a hand-edited field — so it can't drift like a Jira board. <code class="ic">ROADMAP.md</code> is generated.</p>
+        <span class="file">aidakit:roadmap · ADR-002</span>
+      </div>
+      <div class="card">
+        <h4>docs/knowledge/</h4>
+        <p>Durable shared knowledge that is neither a decision nor a how-to: <code class="ic">conventions</code>, <code class="ic">glossary</code>, <code class="ic">gotchas</code>, <code class="ic">context</code>. Filled by <b>promotion</b> — learn proposes moving a durable lesson here via PR.</p>
+        <span class="file">aidakit:learn §7 · ADR-003</span>
+      </div>
+      <div class="card">
+        <h4>.aidakit/memory/</h4>
+        <p>The operational funnel: <code class="ic">learnings.md</code>, one line per lesson, read at the start of the next build. Durable entries get promoted up into docs/knowledge/.</p>
+        <span class="file">WORKING → DURABLE</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section id="use">
+    <div class="sec-head"><span class="sec-num">07</span><h2>How to use it</h2></div>
+    <p class="sec-sub">Install once per project, then two starting points: design a new project from zero, or execute the next change on an existing one.</p>
+
+    <ol class="steps">
+      <li><div class="st-body"><b>Install in any repo.</b>
+        <pre><code>/plugin marketplace add /Users/kauesantos/Documents/winker/aidakit
+/plugin install aidakit@aidakit</code></pre>
+      </div></li>
+      <li><div class="st-body"><b>New project → design first.</b> Run <code class="ic">/aidakit:design</code> and answer the 4-phase interview. It writes <code class="ic">docs/design/</code> + ADRs and, at phase 4, produces the change backlog. <span class="pill ai">judgment</span></div></li>
+      <li><div class="st-body"><b>Existing repo → adopt the structure.</b> Run <code class="ic">/aidakit:docs</code> (init mode) to deploy the canonical <code class="ic">docs/</code> tree (decisions, guides, knowledge, roadmap…) without steamrolling what's there.</div></li>
+      <li><div class="st-body"><b>Execute a change.</b> Run <code class="ic">/aidakit:build</code> — it picks the next ready change (roadmap gives the order) and drives the cycle: plan → readiness → TDD → review → ship. You approve the gates; the kit stops at the PR URL.</div></li>
+      <li><div class="st-body"><b>You merge.</b> Merge on the git host. Then <code class="ic">aidakit:docs</code> archives the change (it flips to <em>done</em> on the roadmap on its own) and <code class="ic">aidakit:learn</code> proposes any DNA or knowledge to promote.</div></li>
+      <li><div class="st-body"><b>Check status anytime.</b> <code class="ic">aidakit:roadmap</code> for Now/Next/Later, <code class="ic">/aidakit:catalog</code> to find a tool, <code class="ic">/aidakit:governance</code> when a command was blocked and you want to know why.</div></li>
+    </ol>
+
+    <div class="principle" style="margin-top:24px">
+      <span class="mark">⚙</span>
+      <p><b>Configure per project</b> via <code class="ic">aidakit.config.yaml</code>: the content <code class="ic">language</code>, the <code class="ic">domains.by-path</code> map (which globs belong to which domain, and their strictness order), and the <code class="ic">review.matrix</code> (which reviewers each flag summons). Absent → sensible defaults, English.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>aidakit v0.4 · Claude Code plugin</span>
+    <span>the truth is the disk</span>
+  </footer>
+
+</div>

@@ -2,6 +2,8 @@
 
 Pre-[aida](../ai-dev-assistant/) development kit: while aida isn't ready, this plugin brings the full process to any project — guided architecture design, a spec-driven execution pipeline, document doctrine and governance with an active hook, and a searchable tool catalog.
 
+> 📖 **New here? Read the [field guide / overview](docs/OVERVIEW.md)** — the whole kit on one page (a visual version is at [`docs/overview.html`](docs/overview.html)).
+
 > **Names updated in v0.3:** `roteiro` → `design`, `flow` → `build`, `next` absorbed into `build`.
 
 > **Precedence:** this README summarizes and points. If it diverges from the doctrine ([DOCS.md](DOCS.md), [GOVERNANCE.md](GOVERNANCE.md), [PROCESS.md](PROCESS.md)) or from a plugin `SKILL.md`, the other wins and this file gets corrected.
