@@ -25,10 +25,15 @@ language: en
 # `process` domain. If omitted, the project has a single domain `product`.
 domains:
   by-path:
-    core: ["src/core/**", "packages/*/src/**"]
-    web: ["apps/web/**"]
+    core:
+      - "src/core/**"
+      - "packages/*/src/**"
+    web:
+      - "apps/web/**"
   # strictest first — a change touching multiple domains takes the strictest one
-  strictness: [core, web]
+  strictness:
+    - core
+    - web
 
 # ── review ────────────────────────────────────────────────────────────────
 # Referenced by aidakit:review. Maps a classification flag to the reviewer
@@ -37,6 +42,10 @@ domains:
 # run and need not be listed.
 review:
   matrix:
-    architecture: [reviewer-architecture]
-    contract: [reviewer-security, reviewer-architecture]
-    ui: [reviewer-quality]
+    architecture:
+      - reviewer-architecture
+    contract:
+      - reviewer-security
+      - reviewer-architecture
+    ui:
+      - reviewer-quality

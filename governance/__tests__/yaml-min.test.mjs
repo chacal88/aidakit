@@ -8,6 +8,16 @@ function t(name, text, expected){
     else { fail++; console.log(`FAIL ${name}\n  esperado: ${JSON.stringify(expected)}\n  obtido:   ${JSON.stringify(got)}`); }
   } catch(e){ fail++; console.log(`ERRO ${name}: ${e.message}`); }
 }
+// Asserts that parsing `text` throws an Error whose message matches `re`.
+function tThrows(name, text, re){
+  try {
+    const got = parse(text);
+    fail++; console.log(`FAIL ${name}\n  esperava erro, obteve: ${JSON.stringify(got)}`);
+  } catch(e){
+    if (re.test(e.message)) { pass++; }
+    else { fail++; console.log(`FAIL ${name}\n  erro não casou ${re}: ${e.message}`); }
+  }
+}
 
 t('scalars', `flow: teste\nversion: 1\nativo: true\nvazio: null`, {flow:'teste',version:1,ativo:true,vazio:null});
 t('quoted string', `msg: "olá mundo"\nmsg2: 'simples'`, {msg:'olá mundo',msg2:'simples'});
@@ -22,6 +32,13 @@ t('negative num and float', `a: -5\nb: 1.5`, {a:-5,b:1.5});
 t('doc marker', `---\nflow: y`, {flow:'y'});
 t('on_result map', `on_result:\n  approved: gate\n  rejected: back`, {on_result:{approved:'gate',rejected:'back'}});
 t('list of maps with nested input', `steps:\n  - id: a\n    type: agent\n    input:\n      x: "1"\n  - id: b\n    type: terminal`, {steps:[{id:'a',type:'agent',input:{x:'1'}},{id:'b',type:'terminal'}]});
+// aidakit.config.yaml shape: block lists nested under maps (domains / review.matrix).
+t('config block-lists (domains + matrix)', `domains:\n  by-path:\n    core:\n      - "src/core/**"\n      - "packages/*/src/**"\n  strictness:\n    - core\n    - web\nreview:\n  matrix:\n    contract:\n      - reviewer-security\n      - reviewer-architecture`, {domains:{'by-path':{core:['src/core/**','packages/*/src/**']},strictness:['core','web']},review:{matrix:{contract:['reviewer-security','reviewer-architecture']}}});
+// Flow-style collections are out of scope: throw (with the line), never mis-read as a string.
+tThrows('inline array throws', `strictness: [core, web]`, /line 1:.*flow-style/);
+tThrows('inline map throws', `on_result: {approved: gate}`, /flow-style/);
+// A bracketed value that is genuinely literal text stays legal when quoted.
+t('quoted brackets stay literal', `label: "[core, web]"`, {label:'[core, web]'});
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);

@@ -55,10 +55,15 @@ Consumed by [aidakit:identify-domain](../../skills/identify-domain/SKILL.md) at 
 ```yaml
 domains:
   by-path:
-    core: ["src/core/**", "packages/*/src/**"]
-    web: ["apps/web/**"]
+    core:
+      - "src/core/**"
+      - "packages/*/src/**"
+    web:
+      - "apps/web/**"
   # strictest first — a change touching multiple domains takes the strictest one
-  strictness: [core, web]
+  strictness:
+    - core
+    - web
 ```
 
 - **`by-path`** — a map of `domain-name → [glob, …]`. `identify-domain` applies the **first match by path** to name the change's domain.
@@ -80,9 +85,13 @@ Consumed by [aidakit:review](../../skills/review/SKILL.md) at the summon step. M
 ```yaml
 review:
   matrix:
-    architecture: [reviewer-architecture]
-    contract: [reviewer-security, reviewer-architecture]
-    ui: [reviewer-quality]
+    architecture:
+      - reviewer-architecture
+    contract:
+      - reviewer-security
+      - reviewer-architecture
+    ui:
+      - reviewer-quality
 ```
 
 - Each key is a classification flag; each value is the list of agents summoned when that flag is set.

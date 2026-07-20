@@ -14,9 +14,10 @@
 //   - comments with # (outside quotes) and blank lines
 //   - document-start `---` (ignored)
 //
-// Does NOT support: anchors/aliases, tags, complex nested flow-style
-// ({a: 1}, [1,2]), multi-line keys. The aidakit flows don't need this; if a
-// flow uses it, the parser throws a clear error instead of silently accepting.
+// Does NOT support: anchors/aliases, tags, flow-style collections
+// ({a: 1}, [1, 2]), multi-line keys. The aidakit flows don't need this; a
+// flow-style value throws a clear error (with its line) instead of being
+// silently mis-read as a string — write block lists ("- item") and block maps.
 //
 // KNOWN LIMITATIONS (write the flows within them):
 //   - Indent with SPACES, never tabs (2 spaces per level is the convention).
@@ -101,7 +102,7 @@ function parseList(lines, start, indent) {
       arr.push(value);
       i = j;
     } else {
-      arr.push(parseScalar(after.trim()));
+      arr.push(parseScalar(after.trim(), lines[i]));
       i++;
     }
   }
@@ -132,7 +133,7 @@ function parseMap(lines, start, indent) {
       obj[key] = value;
       i = next;
     } else {
-      obj[key] = parseScalar(rest.trim());
+      obj[key] = parseScalar(rest.trim(), lines[i]);
       i++;
     }
   }
@@ -161,12 +162,20 @@ function parseBlockScalar(lines, start, parentIndent, marker) {
   return { value: text, next: i };
 }
 
-function parseScalar(s) {
+function parseScalar(s, line) {
   if (s === "" ) return null;
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
     const inner = s.slice(1, -1);
     if (s[0] === '"') return inner.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
     return inner;
+  }
+  // Flow-style collections ([a, b], {a: 1}) are out of scope (see the header).
+  // Fail loudly instead of returning the literal "[a, b]" string — a silent
+  // wrong value is worse than a clear error. Use block lists ("- a") / block
+  // maps instead. A value that legitimately needs brackets must be quoted.
+  if ((s.startsWith("[") && s.endsWith("]")) || (s.startsWith("{") && s.endsWith("}"))) {
+    const err = "flow-style collections are not supported — use a block list (\"- item\") or block map, or quote the value if it is literal text";
+    throw line ? yerr(line, err) : new Error(`yaml: ${err}`);
   }
   // We do NOT strip an inline " #" comment from unquoted values: flow prompts
   // and descriptions are free text and use legitimate '#' (markdown headers,
