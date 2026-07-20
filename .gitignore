@@ -1,0 +1,19 @@
+# aidakit operational state — machine-generated, per-run, never committed
+.aidakit/
+
+# node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# logs / caches
+*.log
+.claude/.cache/

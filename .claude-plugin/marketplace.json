@@ -1,0 +1,14 @@
+{
+  "name": "aidakit",
+  "owner": {
+    "name": "Kauê Santos",
+    "email": "kauemsc@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "aidakit",
+      "source": "./",
+      "description": "Kit de desenvolvimento pré-aida: roteiro DDD guiado, pipeline spec-driven aidakit:*, arquitetura padronizada de documentos e governança de execução."
+    }
+  ]
+}

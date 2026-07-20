@@ -1,0 +1,42 @@
+# aidakit.config.example.yaml
+#
+# Per-project configuration for the aidakit plugin. Copy this file to the ROOT of
+# your target project as `aidakit.config.yaml` and edit it. Every field is
+# OPTIONAL — the kit works with no config file at all, using the defaults below.
+#
+# The kit itself is written in English. This file lets a project choose the
+# language of the CONTENT the kit GENERATES (documents, interview questions,
+# operator prompts) and declare its domains and review matrix. Identifiers,
+# machine-parseable verdicts, and structural headers stay fixed regardless of
+# language — only human-readable prose follows `language`.
+
+# ── language ──────────────────────────────────────────────────────────────
+# The language of generated content. The kit reads this and produces the
+# interview questions, deliverables, ADRs and prompts in this language.
+# BCP-47-ish tag or plain name; the model generates in it directly (no
+# translation table in the kit). Default when absent: en.
+# Examples: en · pt-BR · es · fr
+language: en
+
+# ── domains ───────────────────────────────────────────────────────────────
+# Referenced by aidakit:identify-domain. Maps a domain name to the path globs
+# that belong to it, and declares the strictness order (first = strictest).
+# Mechanism-only paths (docs/, .aidakit/, scripts/, config) map to the built-in
+# `process` domain. If omitted, the project has a single domain `product`.
+domains:
+  by-path:
+    core: ["src/core/**", "packages/*/src/**"]
+    web: ["apps/web/**"]
+  # strictest first — a change touching multiple domains takes the strictest one
+  strictness: [core, web]
+
+# ── review ────────────────────────────────────────────────────────────────
+# Referenced by aidakit:review. Maps a classification flag to the reviewer
+# agents summoned when that flag is present. Without this, the skill uses its
+# built-in matrix. The two base reviewers (adr-reviewer, spec-reviewer) always
+# run and need not be listed.
+review:
+  matrix:
+    architecture: [reviewer-architecture]
+    contract: [reviewer-security, reviewer-architecture]
+    ui: [reviewer-quality]
