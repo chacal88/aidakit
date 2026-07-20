@@ -8,10 +8,15 @@ Pre-[aida](../ai-dev-assistant/) development kit: while aida isn't ready, this p
 
 ## Installation (in any project)
 
+Clone this repo, then point the plugin marketplace at your local checkout:
+
 ```
-/plugin marketplace add /Users/kauesantos/Documents/winker/aidakit
+git clone git@github.com:chacal88/aidakit.git
+/plugin marketplace add /path/to/aidakit
 /plugin install aidakit@aidakit
 ```
+
+Replace `/path/to/aidakit` with wherever you cloned it.
 
 ## The 4 layers
 
