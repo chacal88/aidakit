@@ -146,18 +146,18 @@ Surfaces are whatever the target repo's layout defines (apps, packages, services
 
 ### Running the cycle as an executable flow
 
-Everything above describes the cycle in prose: you (or an executing session) call the skills in order, by hand. The same cycle can now **also be EXECUTED** by the flow engine in [governance/](governance/README.md) — the deterministic spine that carries the order, the gates, and the resumable state, letting Claude dispatch each skill via inversion of control. The engine never runs the skill by itself: each `invoke` step (the field is `invoca:` — the step dispatches a SKILL **or** an agent; the legacy type/field `agent`/`agent:` is still accepted as a backward-compatible synonym) pauses, Claude executes the skill and resumes the flow with the outcome (see [governance/README.md](governance/README.md), the source of truth of the engine).
+Everything above describes the cycle in prose: you (or an executing session) call the skills in order, by hand. The same cycle can now **also be EXECUTED** by the flow engine in [governance/](governance/README.md) — the deterministic spine that carries the order, the gates, and the resumable state, letting Claude dispatch each skill via inversion of control. The engine never runs the skill by itself: each `invoke` step (the field is `invoke_target:` — the step dispatches a SKILL **or** an agent; the legacy type/field `agent`/`agent:` is still accepted as a backward-compatible synonym) pauses, Claude executes the skill and resumes the flow with the outcome (see [governance/README.md](governance/README.md), the source of truth of the engine).
 
 Two default flows cover the two weights of work:
 
-- **[`rapido`](governance/flows/rapido.yaml)** — light, small, reversible work: from change to PR with minimal ceremony (it's the canonical cycle of section 2).
-- **[`completo`](governance/flows/completo.yaml)** — broad, architectural, or irreversible work: adds adversarial brainstorm, independent spec critic, pre-apply gate, bench review, and a learning step before the PR.
+- **[`fast`](governance/flows/fast.yaml)** — light, small, reversible work: from change to PR with minimal ceremony (it's the canonical cycle of section 2).
+- **[`full`](governance/flows/full.yaml)** — broad, architectural, or irreversible work: adds adversarial brainstorm, independent spec critic, pre-apply gate, bench review, and a learning step before the PR.
 
 The step-by-step usage lives in the [docs/guides/flows.md](docs/guides/flows.md) guide; here is only the mapping of each cycle step to the skill the flow invokes:
 
 | Cycle step | Skill the flow invokes |
 |---|---|
-| pick the change (1st step) | `aidakit:orchestrator` picks the next ready change (in the `rapido` flow, that 1st step already fires `aidakit:plan`) |
+| pick the change (1st step) | `aidakit:orchestrator` picks the next ready change (in the `fast` flow, that 1st step already fires `aidakit:plan`) |
 | plan | `aidakit:plan` |
 | readiness | `aidakit:readiness` |
 | implement | `aidakit:implement` |
@@ -227,7 +227,7 @@ Invoked via the `Agent` tool — normally by the skills above, rarely directly. 
 |---|---|---|---|
 | `aidakit:orchestrator` | opus | Coordinates the pipeline: picks the next ready change, generates self-contained prompts (serial or parallel with worktrees), updates the state on "done" reports. **Never merges a PR.** | `aidakit:build` (1st step), `aidakit:plan`, done reports |
 | `aidakit:planner` | opus | Authors the plan-only artifacts (proposal/design/tasks/evidence + spec deltas). Reads decisions and specs; cross-checks citations and paths. **Never writes product code.** | `aidakit:plan` |
-| `aidakit:brainstorm` | sonnet | Grills the owner on the 4 attack axes (scope, end effect, edges, confrontation with the law) via `AskUserQuestion`, one line of reasoning at a time. Only extracts requirements — never implements nor writes a spec. Returns premises, acceptance criteria, questions asked, and a trail event. | `aidakit:brainstorm`, 1st step of the `completo` flow |
+| `aidakit:brainstorm` | sonnet | Grills the owner on the 4 attack axes (scope, end effect, edges, confrontation with the law) via `AskUserQuestion`, one line of reasoning at a time. Only extracts requirements — never implements nor writes a spec. Returns premises, acceptance criteria, questions asked, and a trail event. | `aidakit:brainstorm`, 1st step of the `full` flow |
 | `aidakit:implementer` | sonnet | Implements a change task by task with TDD (RED → GREEN → REFACTOR) in isolated context, applying the kit's quality bars and re-inspecting the repo before coding. Returns the diff, marked tasks, outcome success\|failure, and correction events. | `aidakit:implement`, the build's `implement` step |
 | `aidakit:tester` | sonnet | Analyzes coverage through the **behavioral** lens (not % of lines): maps each new/changed behavior to a test, prioritizes gaps (score 1-10 + where to write it), and points out fragile tests. Returns a structured coverage verdict. | `aidakit:review --diff`, `aidakit:test`/`aidakit:coverage` |
 | `aidakit:reviewer-quality` | sonnet | Reviews the diff's **code quality** in 4 phases (context → architecture → line-by-line → summary). Severity-tagged findings (blocking/important/nit/praise) with file:line. Report, don't fix. Returns ONE verdict approved\|rejected. | `aidakit:review` (bench) |

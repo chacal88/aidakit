@@ -81,6 +81,6 @@ When the plan touches 2+ surfaces and the orchestrator routed in parallel mode (
 - [aidakit:test](../test/SKILL.md) / [aidakit:coverage](../coverage/SKILL.md) — validation after implementing.
 - [aidakit:review](../review/SKILL.md) — GATE 2, against the implemented diff.
 - [aidakit:ship](../ship/SKILL.md) — the next step (commit/PR).
-- Invoked at the `implement` step of the [rapido](../../governance/flows/rapido.yaml) and [completo](../../governance/flows/completo.yaml) flows.
+- Invoked at the `implement` step of the [fast](../../governance/flows/fast.yaml) and [full](../../governance/flows/full.yaml) flows.
 
 <!-- aidakit v0.3 — thin envelope that dispatches the aidakit:implementer agent (doctrine + dispatch, isolated executor), 2026-07-17 — translated to EN -->

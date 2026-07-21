@@ -6,7 +6,7 @@
 /**
  * @typedef {"invoke"|"runs"|"human_handoff"|"human_gate"|"loop"|"parallel"|"terminal"} StepType
  *
- * "invoke" dispatches a SKILL or an AGENT (the `invoca:` field names which one).
+ * "invoke" dispatches a SKILL or an AGENT (the `invoke_target:` field names which one).
  * The engine doesn't distinguish the two — both are isolated-context units that
  * the operator-Claude runs and reports the outcome for (inversion of control).
  * The legacy type "agent" is still accepted by the parser as a synonym for
@@ -35,7 +35,7 @@
  * @property {Object.<string,string>} [on_result]
  */
 
-/** @typedef {BaseStep & {type:"invoke", invoca:string, input?:Object.<string,unknown>, expects?:string[]}} InvokeStep — dispatches the skill/agent named in `invoca`. */
+/** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[]}} InvokeStep — dispatches the skill/agent named in `invoke_target`. */
 /** @typedef {BaseStep & {type:"runs", command:string, cwd?:string, env?:Object.<string,string>}} RunsStep */
 /** @typedef {BaseStep & {type:"human_handoff", prompt:string}} HumanHandoffStep */
 /** @typedef {BaseStep & {type:"human_gate", prompt:string, options:string[]}} HumanGateStep */
@@ -78,7 +78,7 @@
  * @property {"human_handoff"|"human_gate"|"invoke"} step_type
  * @property {string} prompt
  * @property {string[]} [options]
- * @property {string} [invoca]  name of the skill/agent to dispatch (on an "invoke" pause)
+ * @property {string} [invoke_target]  name of the skill/agent to dispatch (on an "invoke" pause)
  * @property {Object.<string,unknown>} [input]
  * @property {string[]} path
  * @property {string} paused_at

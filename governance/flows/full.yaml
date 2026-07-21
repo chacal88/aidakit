@@ -1,4 +1,4 @@
-flow: completo
+flow: full
 description: |
   Full flow, codeflow/psim style: maximum rigor for broad, architectural, or
   irreversible work. Adversarial brainstorm that grills the owner BEFORE spending
@@ -25,7 +25,7 @@ steps:
       the first ready change whose plan artifacts validate and whose dependencies have
       already been delivered. If the request already carries a change-id, it confirms it
       instead of selecting.
-    invoca: aidakit:orchestrator
+    invoke_target: aidakit:orchestrator
     input:
       request: "${inputs.request}"
     expects:
@@ -37,7 +37,7 @@ steps:
   - id: classify
     type: invoke
     description: aidakit:identify-domain — classifies domain×type×flags (selects the brainstorm ammunition and the review matrix).
-    invoca: aidakit:identify-domain
+    invoke_target: aidakit:identify-domain
     input:
       request: "${inputs.request}"
     expects:
@@ -49,7 +49,7 @@ steps:
   - id: brainstorm
     type: invoke
     description: aidakit:brainstorm — default-on adversarial grill against the domain's ammunition, before spending spec tokens.
-    invoca: aidakit:brainstorm
+    invoke_target: aidakit:brainstorm
     input:
       request: "${inputs.request}"
       domain: "${context.classify.outcome}"
@@ -63,7 +63,7 @@ steps:
   - id: specify
     type: invoke
     description: aidakit:plan — authors proposal/design/tasks from the brainstorm (plan-only).
-    invoca: aidakit:plan
+    invoke_target: aidakit:plan
     expects:
       - success
       - failure
@@ -73,7 +73,7 @@ steps:
   - id: critic
     type: invoke
     description: aidakit:spec-reviewer (independent critic) — audits the spec before the gate.
-    invoca: aidakit:spec-reviewer
+    invoke_target: aidakit:spec-reviewer
     expects:
       - ok
       - revise
@@ -97,7 +97,7 @@ steps:
   - id: readiness
     type: invoke
     description: aidakit:readiness — mechanical GATE 1 for the plan package's readiness.
-    invoca: aidakit:readiness
+    invoke_target: aidakit:readiness
     expects:
       - approved
       - needs-revision
@@ -110,7 +110,7 @@ steps:
   - id: implement
     type: invoke
     description: Implementation with TDD; post-phase reflection feeds the learning.
-    invoca: aidakit:implement
+    invoke_target: aidakit:implement
     expects:
       - success
       - failure
@@ -120,7 +120,7 @@ steps:
   - id: review_bench
     type: invoke
     description: aidakit:review — adversarial bench summoned by a role×flag matrix, capped rounds; consensus gates the advance.
-    invoca: aidakit:review
+    invoke_target: aidakit:review
     expects:
       - consensus
       - rejected
@@ -131,7 +131,7 @@ steps:
   - id: hardening
     type: invoke
     description: Late hardening — full suite, anti-hardcode, hard DoD (only after the owner validates the functionality).
-    invoca: aidakit:test
+    invoke_target: aidakit:test
     expects:
       - success
       - failure
@@ -145,7 +145,7 @@ steps:
       not block. High-confidence learnings (an error recurring ≥3x via
       deriveCandidates) are CRYSTALLIZED into executable DNA (test/rule) in staging
       .aidakit/dna/${inputs.request}/ — promoted by a DEDICATED PR, not the feature's.
-    invoca: aidakit:learn
+    invoke_target: aidakit:learn
     input:
       request: "${inputs.request}"
     expects:
@@ -182,7 +182,7 @@ steps:
       aidakit:ship in DNA MODE — commits the artifacts from .aidakit/dna/${inputs.request}/
       on a DEDICATED branch (aidakit/dna/${inputs.request}) and its OWN PR, separate from the
       feature's PR (don't mix evolving-the-process with delivering-the-product). Stops at the URL.
-    invoca: aidakit:ship
+    invoke_target: aidakit:ship
     input:
       request: "${inputs.request}"
       mode: "dna"
@@ -200,7 +200,7 @@ steps:
       manifest (.aidakit/tasks/${inputs.request}/doc-manifest.json) and dispatches the fronts
       that fill the missing docs. Decides the rigor (what is mandatory, with what condition
       and kind — in the full flow, architecture REQUIRES an ADR); the truth remains the disk.
-    invoca: aidakit:doc-planner
+    invoke_target: aidakit:doc-planner
     input:
       request: "${inputs.request}"
     expects:
@@ -222,7 +222,7 @@ steps:
   - id: pr
     type: invoke
     description: commit + PR via commit-commands. Stops at the PR URL.
-    invoca: aidakit:ship
+    invoke_target: aidakit:ship
     expects:
       - success
       - failure

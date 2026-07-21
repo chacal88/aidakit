@@ -27,7 +27,7 @@ steps:
       malformatted ADRs, broken links and index↔reality drift. It moves nothing
       — it only diagnoses the starting point. Returns "ok" if the docs are already healthy,
       "issues" if there are divergences to migrate (the common case in an existing repo).
-    invoca: aidakit:docs
+    invoke_target: aidakit:docs
     input:
       project: "${inputs.project}"
       mode: audit
@@ -46,7 +46,7 @@ steps:
       the foundational ADRs and the decision indexes. Writes
       .aidakit/doc-manifest-project.json. It is the target the validator will enforce against
       the disk in the next step — the ruler of the migration.
-    invoca: aidakit:doc-planner
+    invoke_target: aidakit:doc-planner
     input:
       project: "${inputs.project}"
     expects:
@@ -76,7 +76,7 @@ steps:
       in the code becomes a RETROACTIVE ADR (reading the real code to reconstruct context,
       decision and consequences in the 5-section format). It presents the from-to, the
       moves, the links that would break and how to preserve them — and stops at the gate.
-    invoca: aidakit:docs
+    invoke_target: aidakit:docs
     input:
       project: "${inputs.project}"
     expects:
@@ -109,7 +109,7 @@ steps:
       link), and writes the retroactive ADRs by reading the code. Everything via a short branch + PR —
       the merge is left to the owner (GOVERNANCE.md §1–2). It is the half that fills the list
       that the validator will re-check next.
-    invoca: aidakit:docs
+    invoke_target: aidakit:docs
     input:
       project: "${inputs.project}"
     expects:

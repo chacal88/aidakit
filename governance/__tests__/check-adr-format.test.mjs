@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const VALIDATOR = join(here, "..", "validators", "check-adr-format.js");
-const EXAMPLE = join(here, "..", "..", "docs", "exemplos", "ADR-003-appointment-as-aggregate.md");
+const EXAMPLE = join(here, "..", "..", "docs", "examples", "ADR-003-appointment-as-aggregate.md");
 const tmp = mkdtempSync(join(tmpdir(), "adr-fmt-"));
 
 let pass = 0, fail = 0;

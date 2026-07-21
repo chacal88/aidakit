@@ -103,6 +103,6 @@ Assumptions and acceptance criteria (input for the spec) + the `brainstorm-event
 - [aidakit:brainstorm (agent)](../../agents/brainstorm.md) — the isolated executor this skill dispatches and whose output it integrates.
 - [aidakit:identify-domain](../identify-domain/SKILL.md) — classifies first, selects the ammunition.
 - [aidakit:plan](../plan/SKILL.md) — receives the assumptions and criteria.
-- Invoked as the 1st step of the [completo](../../governance/flows/completo.yaml) flow.
+- Invoked as the 1st step of the [full](../../governance/flows/full.yaml) flow.
 
 <!-- aidakit v0.3 — went thin: doctrine (4 axes, default-on, opt-out, trail, calibration) + dispatch of the aidakit:brainstorm agent (isolated context); port of guided-discovery (codeflow/psim, ADR-0049) 2026-07-17 — translated to EN -->

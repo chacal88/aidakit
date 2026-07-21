@@ -10,7 +10,7 @@ Three orthogonal pieces, **model B** (data, not code):
 
 - **A generic engine** — a pure Node interpreter (zero-dep, ESM) that reads a flow and executes it step by step, with outcome routing, gates, persisted state, and inversion of control. It knows nothing about "review" or "PR"; it only knows how to run steps. Source: [governance/README.md](../../governance/README.md).
 - **Flows as data** — declarative YAML files (`flow`, `inputs`, `steps`). The **order** of the steps and the routing live here; the **behavior** does not.
-- **Skills that the steps invoke** — the `invoke` step names a skill/subagent in `invoca:` (`aidakit:plan`, `aidakit:review`…); the rich behavior lives in the skill, whose source of truth is its `SKILL.md`. The order lives in the flow, the intelligence in the skill.
+- **Skills that the steps invoke** — the `invoke` step names a skill/subagent in `invoke_target:` (`aidakit:plan`, `aidakit:review`…); the rich behavior lives in the skill, whose source of truth is its `SKILL.md`. The order lives in the flow, the intelligence in the skill.
 
 This separation is deliberate: it is the **embryo of the aida engine** (see the product-vision memory). The engine is the deterministic, portable spine; the flows are the versionable composition; the skills are the muscle. Swapping the flow reorders the process without touching code; swapping the skill changes the behavior without touching the flow.
 
@@ -20,7 +20,7 @@ Every step has an `id` and a `type`, and routes to the next via `on_result[outco
 
 | Type | What it does | When to use |
 |---|---|---|
-| `invoke` | **Does not execute.** It pauses and asks Claude to run the skill/subagent named in `invoca:` and resume with the outcome (see §4). Outcomes restricted to the `expects` list (default `success`/`failure`). The legacy `agent` type is still accepted as a synonym. | Every step that requires intelligence: plan, review, implement, learn. |
+| `invoke` | **Does not execute.** It pauses and asks Claude to run the skill/subagent named in `invoke_target:` and resume with the outcome (see §4). Outcomes restricted to the `expects` list (default `success`/`failure`). The legacy `agent` type is still accepted as a synonym. | Every step that requires intelligence: plan, review, implement, learn. |
 | `runs` | Runs a deterministic shell command via `bash -lc`; routes by exit code (`0` → `success`, `≠0` → `failure`). The cheap "command" half. | Deterministic steps: lint, tests, validators, tree checks. |
 | `human_gate` | Pauses and asks the human to choose among `options`. The resume value must match an option; routes by `on_result[option]`. | Human-authority decisions: the merge, the pre-apply gate. |
 | `human_handoff` | Pauses and hands off a free-text task; the (free) resume value becomes `context.<id>.response` and routes by `on_success`. | Handing the human/Claude a step with no closed menu of options. |
@@ -78,26 +78,26 @@ This way the engine is the **deterministic spine** (order, gates, state that sur
 | `abort <flow_id> [reason]` | Aborts a flow in flight. |
 | `list` | Lists the available flows (project + the plugin default). |
 
-### End-to-end example with the `rapido` flow
+### End-to-end example with the `fast` flow
 
 ```console
-$ node governance/cli.js start rapido request="add a date filter to the listing"
+$ node governance/cli.js start fast request="add a date filter to the listing"
 
-[rapido-260717-8f2a] PAUSED at "select" (invoke)
+[fast-260717-8f2a] PAUSED at "select" (invoke)
 Dispatch skill/agent: aidakit:orchestrator
 Purpose: the orchestrator picks/confirms the next change ready to build (1st step of the flow).
 Input: { "request": "add a date filter to the listing" }
 Expected outcomes: success | failure
 When done, run:
-  node governance/cli.js resume rapido-260717-8f2a <outcome>
+  node governance/cli.js resume fast-260717-8f2a <outcome>
 ```
 
 Claude runs the `aidakit:orchestrator` agent, which picks the change, and resumes — the flow advances to the `plan` step:
 
 ```console
-$ node governance/cli.js resume rapido-260717-8f2a success
+$ node governance/cli.js resume fast-260717-8f2a success
 
-[rapido-260717-8f2a] PAUSED at "plan" (invoke)
+[fast-260717-8f2a] PAUSED at "plan" (invoke)
 Dispatch skill/agent: aidakit:plan
 Purpose: aidakit:plan — plans the chosen change (implementation plan).
 Expected outcomes: success | failure
@@ -106,32 +106,32 @@ Expected outcomes: success | failure
 Claude runs the `aidakit:plan` skill, produces the plan, resumes with `success`, and the flow proceeds to GATE 1:
 
 ```console
-$ node governance/cli.js resume rapido-260717-8f2a success
+$ node governance/cli.js resume fast-260717-8f2a success
 
-[rapido-260717-8f2a] PAUSED at "readiness" (invoke)
+[fast-260717-8f2a] PAUSED at "readiness" (invoke)
 Dispatch skill/agent: aidakit:readiness
 ...
 Expected outcomes: approved | needs-revision | blocked
 ```
 
-Then comes `resume rapido-260717-8f2a approved` → the `implement` step, and so on, up to the merge `human_gate`:
+Then comes `resume fast-260717-8f2a approved` → the `implement` step, and so on, up to the merge `human_gate`:
 
 ```console
-$ node governance/cli.js resume rapido-260717-8f2a pass      # review passed → goes to pr
+$ node governance/cli.js resume fast-260717-8f2a pass      # review passed → goes to pr
 ...
-[rapido-260717-8f2a] PAUSED at "merge" (human_gate)
+[fast-260717-8f2a] PAUSED at "merge" (human_gate)
 PR ready to add a date filter to the listing. Review it on the git host and merge it yourself.
 Options: merged | discard
 
-$ node governance/cli.js resume rapido-260717-8f2a merged
+$ node governance/cli.js resume fast-260717-8f2a merged
 
-[rapido-260717-8f2a] COMPLETED (completed)
+[fast-260717-8f2a] COMPLETED (completed)
 Change delivered and merged. aidakit:docs archives and promotes specs.
 ```
 
-Between one step and the next, `node governance/cli.js status rapido-260717-8f2a` shows where the run stopped. The resumable state lives in `.aidakit/flows/state/<flow_id>.json` and the event log in `.aidakit/flows/logs/<flow_id>.log` in the target project (ephemeral — gitignore recommended).
+Between one step and the next, `node governance/cli.js status fast-260717-8f2a` shows where the run stopped. The resumable state lives in `.aidakit/flows/state/<flow_id>.json` and the event log in `.aidakit/flows/logs/<flow_id>.log` in the target project (ephemeral — gitignore recommended).
 
-For the step-by-step of the process the `rapido` flow enacts, see the [change-flow.md](change-flow.md) guide.
+For the step-by-step of the process the `fast` flow enacts, see the [change-flow.md](change-flow.md) guide.
 
 ## 6. Creating a flow of your own
 
@@ -141,8 +141,8 @@ Minimal structure: a top-level map with `flow` (string), `description` (string),
 
 ### The two default flows
 
-- **[rapido.yaml](../../governance/flows/rapido.yaml)** — Margi style: from change to PR with minimal ceremony (pick → plan → readiness → TDD → review → PR → human merge). For small, reversible work.
-- **[completo.yaml](../../governance/flows/completo.yaml)** — codeflow/psim style: maximum rigor (adversarial brainstorm → spec with a critic → pre-apply gate → readiness → TDD → bench review with a ceiling → hardening → learn → PR → merge). For broad, architectural, or irreversible work.
+- **[fast.yaml](../../governance/flows/fast.yaml)** — Margi style: from change to PR with minimal ceremony (pick → plan → readiness → TDD → review → PR → human merge). For small, reversible work.
+- **[full.yaml](../../governance/flows/full.yaml)** — codeflow/psim style: maximum rigor (adversarial brainstorm → spec with a critic → pre-apply gate → readiness → TDD → bench review with a ceiling → hardening → learn → PR → merge). For broad, architectural, or irreversible work.
 
 ## 7. Limitations of the mini YAML parser
 

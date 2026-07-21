@@ -12,10 +12,10 @@ function t(name, text, expected){
 function tThrows(name, text, re){
   try {
     const got = parse(text);
-    fail++; console.log(`FAIL ${name}\n  esperava erro, obteve: ${JSON.stringify(got)}`);
+    fail++; console.log(`FAIL ${name}\n  expected error, got: ${JSON.stringify(got)}`);
   } catch(e){
     if (re.test(e.message)) { pass++; }
-    else { fail++; console.log(`FAIL ${name}\n  erro não casou ${re}: ${e.message}`); }
+    else { fail++; console.log(`FAIL ${name}\n  error did not match ${re}: ${e.message}`); }
   }
 }
 

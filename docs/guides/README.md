@@ -1,6 +1,6 @@
 # guides/ — index of the aidakit usage guides
 
-> **Scope:** narrative guides on HOW to use the kit — install, run the architecture design, execute a change, adopt it in a legacy repo, and live the governance. All use the fictional **razor** project to tell a single story. **Anti-scope:** the law does not live here — the what/why lives in the root doctrine ([PROCESS.md](../../PROCESS.md), [DOCS.md](../../DOCS.md), [GOVERNANCE.md](../../GOVERNANCE.md)) and the behavior of each skill in its source of truth (`SKILL.md`). Point reference for lookups lives in [reference/](../reference/README.md); filled-in artifacts, in [exemplos/](../exemplos/README.md).
+> **Scope:** narrative guides on HOW to use the kit — install, run the architecture design, execute a change, adopt it in a legacy repo, and live the governance. All use the fictional **razor** project to tell a single story. **Anti-scope:** the law does not live here — the what/why lives in the root doctrine ([PROCESS.md](../../PROCESS.md), [DOCS.md](../../DOCS.md), [GOVERNANCE.md](../../GOVERNANCE.md)) and the behavior of each skill in its source of truth (`SKILL.md`). Point reference for lookups lives in [reference/](../reference/README.md); filled-in artifacts, in [examples/](../examples/README.md).
 >
 > **Precedence:** this index sequences and points, never duplicates ([DOCS.md §2](../../DOCS.md), rule 1). If it diverges from any linked guide, skill, or doctrine, the other wins and this file is corrected.
 

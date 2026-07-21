@@ -60,7 +60,7 @@ export function parseFlowFile(path) {
     return { errors: [{ path, message: `yaml parse error: ${err.message}` }] };
   }
   // Backward-compat: normalize the legacy type "agent" → "invoke" and the field
-  // "agent:" → "invoca:" before validating, so the rest of the engine only deals
+  // "agent:" → "invoke_target:" before validating, so the rest of the engine only deals
   // with "invoke". Old flows keep loading without edits.
   if (data && Array.isArray(data.steps)) normalizeLegacyInvoke(data.steps);
 
@@ -110,18 +110,22 @@ export function validateFlowShape(data) {
 }
 
 /**
- * Normalizes in-place the legacy type "agent" → "invoke" and the field "agent" →
- * "invoca", recursively (loop body, parallel branches). Idempotent: a step
- * already on "invoke" is left untouched.
+ * Normalizes in-place the legacy type "agent" → "invoke" and the legacy fields
+ * "agent" / "invoca" → "invoke_target", recursively (loop body, parallel
+ * branches). Idempotent: a step already on "invoke_target" is left untouched.
  */
 function normalizeLegacyInvoke(steps) {
   if (!Array.isArray(steps)) return;
   for (const s of steps) {
     if (s && typeof s === "object") {
       if (s.type === "agent") s.type = "invoke";
-      if (s.type === "invoke" && s.invoca === undefined && typeof s.agent === "string") {
-        s.invoca = s.agent;
+      if (s.type === "invoke" && s.invoke_target === undefined && typeof s.agent === "string") {
+        s.invoke_target = s.agent;
         delete s.agent;
+      }
+      if (s.type === "invoke" && s.invoke_target === undefined && typeof s.invoca === "string") {
+        s.invoke_target = s.invoca;
+        delete s.invoca;
       }
       if (Array.isArray(s.body)) normalizeLegacyInvoke(s.body);
       if (Array.isArray(s.branches)) s.branches.forEach((b) => normalizeLegacyInvoke(b));
@@ -137,7 +141,7 @@ function validateSteps(steps, where, errs) {
     if (typeof s.id !== "string" || !s.id) errs.push(`${at}: 'id' (string) is required`);
     if (!STEP_TYPES.includes(s.type)) errs.push(`${at}: invalid 'type' "${s.type}" (expected ${STEP_TYPES.join("|")})`);
     // Per-type validation of the required fields.
-    if (s.type === "invoke" && typeof s.invoca !== "string") errs.push(`${at}: invoke step requires 'invoca' (string — the skill/agent to dispatch)`);
+    if (s.type === "invoke" && typeof s.invoke_target !== "string") errs.push(`${at}: invoke step requires 'invoke_target' (string — the skill/agent to dispatch)`);
     if (s.type === "runs" && typeof s.command !== "string") errs.push(`${at}: runs step requires 'command' (string)`);
     if ((s.type === "human_handoff" || s.type === "human_gate") && typeof s.prompt !== "string") errs.push(`${at}: step ${s.type} requires 'prompt' (string)`);
     if (s.type === "human_gate" && !Array.isArray(s.options)) errs.push(`${at}: human_gate step requires 'options' (list)`);

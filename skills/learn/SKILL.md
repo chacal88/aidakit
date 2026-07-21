@@ -52,7 +52,7 @@ Some learnings are strong enough that leaving them as **text to be re-read** (th
 
 **How to write it — never by hand into the live tree.** Call `writeDna(...)` from [dna.js](../../governance/dna/dna.js). It writes to **staging** (`.aidakit/dna/<change-id>/`) with the mandatory provenance header (`@dna-origin-change`, `@dna-origin-premise`, `@dna-type`, `@dna-created-at`, `@dna-trigger`). The provenance is not optional: it is what lets [check-dna-freshness](../../governance/validators/check-dna-freshness.js) later mark the DNA **stale** when its origin ADR is superseded — a gate that never expires becomes the bug it once caught. Set `originPremise` to the ADR the lesson depends on (`ADR-020`) when there is one, or `environment:<x>` / `version:<x>` otherwise. Inject `createdAt` yourself (the module does not read the clock).
 
-**Where it does NOT go.** The crystallized DNA stays in `.aidakit/dna/` staging — it is **not** committed into the feature's PR and **not** dropped into `governance/validators/` or the feature's test files. Mixing "evolving the process" with "shipping the product" pollutes both. The DNA is promoted only through its **own dedicated PR** (branch `aidakit/dna/<change-id>`), reviewed in isolation, merged by a human. In the [completo](../../governance/flows/completo.yaml) flow that is the `dna_gate` → `dna_freshness` → `dna_pr` branch, which runs beside the feature's own PR without blocking it.
+**Where it does NOT go.** The crystallized DNA stays in `.aidakit/dna/` staging — it is **not** committed into the feature's PR and **not** dropped into `governance/validators/` or the feature's test files. Mixing "evolving the process" with "shipping the product" pollutes both. The DNA is promoted only through its **own dedicated PR** (branch `aidakit/dna/<change-id>`), reviewed in isolation, merged by a human. In the [full](../../governance/flows/full.yaml) flow that is the `dna_gate` → `dna_freshness` → `dna_pr` branch, which runs beside the feature's own PR without blocking it.
 
 **Still proposes, never applies.** Writing to `.aidakit/dna/` staging is not "applying" — the DNA takes effect only when the human merges its PR. This preserves the inviolable principle: the DNA PR *is* the proposal.
 
@@ -87,7 +87,7 @@ This is the WORKING → DURABLE cycle (DOCS.md §4) applied to knowledge: the op
 
 - [aidakit:reflect](../reflect/SKILL.md) — lightweight per-phase reflection that feeds this consolidation.
 - [/aidakit:build](../../commands/build.md) — serves the memory back at the start of the next change (the `aidakit:orchestrator` on the 1st step, logic once exposed as `aidakit:orchestrator` (1st step of `/aidakit:build`)).
-- Invoked at the `learn` step of the [completo](../../governance/flows/completo.yaml) flow.
+- Invoked at the `learn` step of the [full](../../governance/flows/full.yaml) flow.
 
 <!-- aidakit v0.3 — ported from learner/post-task-learning (codeflow/psim), no cloud: local memory + auto-memory — translated to EN -->
 <!-- aidakit v0.4 — executable DNA: §6 crystallizes recurring learnings into regression tests / rules in .aidakit/dna/ staging, promoted via a dedicated DNA PR (conceito GENESI) on 2026-07-20 -->

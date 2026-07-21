@@ -146,15 +146,15 @@ The three compose: `check-doc-manifest` calls `check-adr-format` internally for 
 ### (e) Who assembles and who blocks in the flow
 
 - **Assembling the list** is an agent's job (it requires intelligence): the `aidakit:doc-planner` agent reads the diff, the specs, the touched ADRs, and the project's `config.docs`, and **assembles the manifest** — it decides which documents are mandatory for this change, with what `condition` and `kind`, and writes `.aidakit/tasks/<change-id>/doc-manifest.json`. It decides the list; that does not count as "documented" (the truth remains the disk).
-- **Blocking the gate** is a command's job (deterministic): the `documentar → check-docs` step in the flow runs `check-doc-manifest.js` over the manifest. Because it is deterministic and routes by exit code, it is a `runs` step (the "command" half of the command-vs-agent separation), not an `invoke`. If the validator exits with exit 0, the gate releases and the flow proceeds; if it exits with exit 1, the flow **does not advance** — it goes back to requiring the missing documents.
+- **Blocking the gate** is a command's job (deterministic): the `document → check-docs` step in the flow runs `check-doc-manifest.js` over the manifest. Because it is deterministic and routes by exit code, it is a `runs` step (the "command" half of the command-vs-agent separation), not an `invoke`. If the validator exits with exit 0, the gate releases and the flow proceeds; if it exits with exit 1, the flow **does not advance** — it goes back to requiring the missing documents.
 
 The skeleton of the step, in the engine's real grammar (`type: runs`, routing by exit code — 0 → `success`, ≠0 → `failure`):
 
 ```yaml
-  - id: documentar
+  - id: document
     type: invoke
     description: aidakit:doc-planner — assembles/updates the change's doc-manifest (the required list).
-    invoca: aidakit:doc-planner
+    invoke_target: aidakit:doc-planner
     input:
       request: "${inputs.request}"
     expects:
@@ -168,7 +168,7 @@ The skeleton of the step, in the engine's real grammar (`type: runs`, routing by
     description: leash GATE — check-doc-manifest blocks the flow until the list is 100%.
     command: node governance/validators/check-doc-manifest.js .aidakit/tasks/${inputs.change_id}/doc-manifest.json
     on_success: <next-step>
-    on_failure: documentar
+    on_failure: document
 ```
 
 The engine has no way to "decide" that the docs are ready — the gate is the exit code of the deterministic validator. It is the same inversion as the command-vs-agent separation: the intelligence assembles the list (`invoke` → `aidakit:doc-planner`), the cheap command checks it (`runs` → `check-docs`), and the flow only passes when the disk confirms. The docs are not lost because there is no path in the flow graph that skips the blocked gate.
