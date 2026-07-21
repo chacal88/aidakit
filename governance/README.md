@@ -22,7 +22,7 @@ A flow is a sequence of **steps** of 7 types. Each step routes to the next via `
 | `human_gate` | Pauses and asks the human to choose among `options`. |
 | `human_handoff` | Pauses and hands a free-text task to the human/Claude. |
 | `loop` | Iterates the `body` over an array, with a `max` ceiling and/or an `until` condition (so it never runs forever). |
-| `parallel` | Runs `branches`; all must pass. (Real subagent parallelism = Claude dispatches via the Task tool in one message.) |
+| `parallel` | Runs `branches` sequentially inside the engine — the parallelism here is logical, not concurrent. **Not used by any shipped flow.** Real subagent concurrency is a **bench** dispatch (below), not this step type. |
 | `terminal` | Ends the flow (`completed` or `aborted`). |
 
 > **Backward compatibility:** the parser still accepts the legacy `agent` type and the `agent:` field as synonyms for `invoke`/`invoke_target:` — old flows load without edits (the parser normalizes `agent` → `invoke` and `agent:` → `invoke_target:` before validating, in [`engine/parser.js`](engine/parser.js)). New flows and the doctrine use `invoke`/`invoke_target:`, because the step dispatches a skill **or** an agent and the old name pretended to dispatch only an agent.
@@ -39,6 +39,18 @@ Available expressions: `${inputs.x}`, `${context.<step>.<field>}`, `${flow_id}`,
 ## Inversion of control (the central point)
 
 The engine **never dispatches a skill/subagent** — that is Claude's job. An `invoke` step pauses with `step_type: "invoke"` (carrying `invoke_target:` = the skill/agent to run), Claude runs the skill/agent and calls `resume <flow_id> <outcome>`. This way the engine is the deterministic spine (order, gates, state that survives the session) and Claude is the intelligence engine. Each one resolves what the other does poorly.
+
+## Real parallelism: the "bench" pattern
+
+The engine is single-threaded by design (pause/resume against persisted state on disk — that's what survives a crash or a session end). It cannot itself run subagents concurrently, and the `parallel` step type above is dead code precisely because of that constraint. Real parallelism — N independent subagents genuinely running at once — only happens **inside a skill**, when Claude fires N `Agent` tool calls in the *same message*. `aidakit:review`'s reviewer bench (`skills/review/SKILL.md`) is the canonical example; `aidakit:implement`'s per-surface fan-out (`skills/implement/SKILL.md`) is the other.
+
+That kind of dispatch used to be pure-prose trust: the skill said "dispatch N agents in parallel," and nothing checked that it actually happened, that every agent reported, or that the consensus the skill relayed to the flow matched what the agents actually said. **This is what `bench.ndjson` + `governance/validators/check-bench.js` close:**
+
+1. **Before dispatching anyone**, the skill writes a `__manifest__` record to `.aidakit/tasks/<change-id>/bench.ndjson` (`recordBenchManifest`, [`governance/ledgers/ledger.js`](ledgers/ledger.js)) — the full list of roles this round commits to. It must be the round's *earliest* record, so it can't be quietly shrunk after seeing a role fail.
+2. **As each subagent returns**, the skill records its normalized verdict (`recordBench`) with `dispatched_at`/`returned_at` — the role's own dispatch/return timestamps, not the ledger-write time.
+3. A `runs` step right after the `invoke` (e.g. `check_review_bench` in `full.yaml`/`fast.yaml`) calls `check-bench.js`, which mechanically verifies: every manifested role reported exactly once; the consensus derived from the roles' own verdicts matches what the skill reported to the engine; and the roles' dispatch windows genuinely *overlap* — proof of real concurrency, not a sequential dispatch dressed up as one. Any violation routes back to redo the round, exactly like the doc-leash routes back to `document`.
+
+This is the reusable "team" primitive of the kit: any skill that fans out to N independent subagents and returns one consolidated outcome is a **bench**, and gets the same manifest → dispatch → verdict → mechanical-check shape — see `check-bench.js`'s own header for the exact ndjson contract.
 
 ## State
 

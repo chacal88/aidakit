@@ -56,7 +56,11 @@ Invocation forms:
    - `subagent_type: "aidakit:spec-reviewer"` with the prompt:
      > Review `<the change <change-id> / the current diff>` against the repo's canonical specs (`openspec/specs/` in OpenSpec mode; otherwise `docs/specs/`, plus the change artifacts under `docs/features/<change-id>/` and the architecture deliverables under `docs/design/`). Identify the in-scope specs by domain match. Check coverage (each requirement: covered / partial / missing) and scope creep (anything in the change not derivable from a requirement). Also cross-check against the paired tech spec, if the repo maintains one. Report the findings per your output format.
 
-5. **Summon the adversarial bench by a role×flag matrix — each role is a concrete isolated-context AGENT.** The matrix dispatches the real agents: the two base ones from step 4 run **always**; the rest come in by the classification's flag ([aidakit:identify-domain](../identify-domain/SKILL.md)). Do not summon anyone who doesn't add value (each subagent costs ~15× a chat turn; a superfluous summon is waste — GOVERNANCE.md and the aida cost doctrine). Each role gets the `{diff}` (or the change-id) and returns ONE structured verdict — the judgment lives in the isolated agent, not here:
+5. **Summon the adversarial bench by a role×flag matrix — each role is a concrete isolated-context AGENT.** The matrix dispatches the real agents: the two base ones from step 4 run **always**; the rest come in by the classification's flag ([aidakit:identify-domain](../identify-domain/SKILL.md)). Do not summon anyone who doesn't add value (each subagent costs ~15× a chat turn; a superfluous summon is waste — GOVERNANCE.md and the aida cost doctrine).
+
+   **Before dispatching anyone, write the bench manifest** (`recordBenchManifest` in [governance/ledgers/ledger.js](../../governance/ledgers/ledger.js)) — the full list of roles this round is committing to, appended to `.aidakit/tasks/<change-id>/bench.ndjson` as `{ bench: "review", round: N, role: "__manifest__", roles: [...] }`. This is what [check-bench.js](../../governance/validators/check-bench.js) (the PARALLELISM LEASH, wired into the flows right after this step) treats as the source of truth for who was expected — it must be the round's **earliest** record, precisely so the manifest can't be shrunk after seeing which role failed. Write it, THEN dispatch.
+
+   Each role gets the `{diff}` (or the change-id) and returns ONE structured verdict — the judgment lives in the isolated agent, not here:
 
    | Role | Agent | Summoned when | RECEIVES → RETURNS |
    |---|---|---|---|
@@ -68,7 +72,7 @@ Invocation forms:
    | tests | `aidakit:tester` | **always** when there's a code diff; doubled focus when it touches business logic, validation, auth, or a cross-process flow | diff → verdict `Coverage verdict: PASS\|FAIL` (behavioral coverage; gaps prioritized 1-10; brittle tests) |
    | performance | — (no dedicated agent; the role is covered by the perf gate of `aidakit:reviewer-quality`, phase 2) | flag `ui`, type `migration`, or a "I optimized" claim | reinforce the perf focus in the `aidakit:reviewer-quality` prompt (N+1, pagination, `COUNT(*)` on a hot path); if and when a performance agent exists, plug it in here |
 
-   **All summoned agents run in parallel, in a single message** — one `Agent` tool call per role in the SAME turn, never sequential. That is what keeps each judgment independent and out of the main context (per-role context isolation). The project can declare the matrix in `aidakit.config.yaml` (mapping `flag → agents`); without it, use the table above. Suggested prompts per agent: those from step 4 for the two base ones; for the rest, pass the target (`<change-id>` or "the current diff, via `git diff`/`git diff --cached`"), the change package (proposal/tasks/DoD when it exists), and the instruction to emit ONE verdict in the agent's own output format.
+   **All summoned agents run in parallel, in a single message** — one `Agent` tool call per role in the SAME turn, never sequential. That is what keeps each judgment independent and out of the main context (per-role context isolation), and it's what the leash mechanically checks (see step 7): record each role's real `dispatched_at` (when you fired the `Agent` call) and `returned_at` (when it returned), not the ledger-write time — a sequential dispatch dressed up as a bench shows up as non-overlapping windows and the gate rejects it. The project can declare the matrix in `aidakit.config.yaml` (mapping `flag → agents`); without it, use the table above. Suggested prompts per agent: those from step 4 for the two base ones; for the rest, pass the target (`<change-id>` or "the current diff, via `git diff`/`git diff --cached`"), the change package (proposal/tasks/DoD when it exists), and the instruction to emit ONE verdict in the agent's own output format.
 
 6. **Adversarial posture — refute, don't confirm.** Each agent hunts for the solution's flaws in its specialty, it does not approve it (the posture belongs to the agent itself; the skill only requires and collects it). Push-back on a finding is only valid **with technical evidence** (real code/test/output that disproves it). A generic approval ("LGTM", "looks good") is an **invalid** verdict and goes back for re-emission. The quality and architecture agents name at least one good point (praise) — this avoids the hunt-only bias.
 
@@ -78,7 +82,15 @@ Invocation forms:
    - `aidakit:reviewer-security` → `verdict: approved` = PASS; `verdict: vetoed` = FAIL (a security veto blocks the advance); a role **declined** for lack of surface = non-blocking.
    - `aidakit:reviewer-architecture` → `verdict: approved` = PASS; `verdict: rejected` = FAIL (≥1 `blocking` finding).
    - `aidakit:tester` → `Coverage verdict: PASS` = PASS; `FAIL` (critical gaps 8-10 without a plan) = FAIL.
-   Record the round's verdict set as an **artifact** — an append to `.aidakit/tasks/<change-id>/vereditos.ndjson` (1 record per role per round, with each agent's raw `verdict`/`Status`): an auditable trail of who said what, when. Each agent writes ONLY its own verdict (single-writer, GOVERNANCE.md §3); the skill only aggregates.
+
+   Record each role's normalized verdict via `recordBench` (same [ledger.js](../../governance/ledgers/ledger.js), same `.aidakit/tasks/<change-id>/bench.ndjson`) as it returns:
+   ```
+   { bench: "review", round: N, role: "<role>", agent: "<subagent_type>",
+     verdict_raw: "<the agent's own Status/verdict line>", verdict: "pass"|"fail",
+     dispatched_at: "<ISO — when you fired this role's Agent call>",
+     returned_at:   "<ISO — when this role's Agent call returned>" }
+   ```
+   This is the auditable trail [check-bench.js](../../governance/validators/check-bench.js) reads: an auditable record of who said what, when, and whether the dispatch was genuinely concurrent. Each agent's finding stays in the agent's own output format in the conversation (single-writer, GOVERNANCE.md §3) — the ledger only carries the normalized verdict + timing, not the findings themselves; the skill aggregates, it does not rewrite the verdicts.
 
 8. **Aggregate and decide by consensus.** Round N: the bench of agents emits in parallel. Normalize each verdict per the step 7 map. All non-declined roles = PASS → **consensus** → PASS. Any FAIL (`rejected`/`vetoed`/`NEEDS-REVISION`/`BLOCKED`/`Coverage verdict: FAIL`) → FAIL: the author fixes and runs **round N+1**, re-summoning only the agents that failed. **Cap of 2 rounds** before escalating to the human — if it didn't converge in 2, the deadlock is a human decision, not an automatic third round. A declined role (e.g., security with no surface) counts as non-blocking. Finalize with:
 
@@ -90,7 +102,7 @@ Invocation forms:
 
 - An aggregated report in the conversation: one section per summoned role (Structural + the bench agents that ran — ADRs, specs, quality, security, architecture, tests per the matrix), with each one's normalized verdict (PASS/FAIL) and the final consensus verdict.
 - Each agent's findings in the agent's own output format; each agent writes only its own verdict (single-writer, [GOVERNANCE.md](../../GOVERNANCE.md) §3). The skill aggregates, it does not rewrite the verdicts.
-- The append to `.aidakit/tasks/<change-id>/vereditos.ndjson` (1 record per role per round) as an auditable trail.
+- The append to `.aidakit/tasks/<change-id>/bench.ndjson` (the `__manifest__` record + 1 record per role per round) as an auditable trail — this is what backs the mechanical leash below, not just a log.
 - This skill **does not create or move documents** in the repo — artifact placement follows [DOCS.md](../../DOCS.md) and is the responsibility of whoever authors the change.
 
 ## Gates and guardrails
@@ -99,7 +111,7 @@ Invocation forms:
 - **Do not approve, do not merge, do not ship anything.** A PR merge is always the human's ([GOVERNANCE.md](../../GOVERNANCE.md) §1).
 - **Do not skip a summoned role or the structural validation** (even in `--diff`, the structural runs; it just shrinks the scope). The two base reviewers (`adr-reviewer`, `spec-reviewer`) run always; the rest run when the step 5 matrix summons them.
 - **The structural gates the judgment:** a failed mechanical validation blocks the WHOLE bench of agents ([GOVERNANCE.md](../../GOVERNANCE.md) §3) — do not dispatch any agent before the structural passes.
-- **The whole bench in parallel** (a single turn with one `Agent` call per summoned role). Never sequentially — the parallelism is what preserves the context isolation and the independence of each judgment.
+- **The whole bench in parallel** (a single turn with one `Agent` call per summoned role). Never sequentially — the parallelism is what preserves the context isolation and the independence of each judgment. **This is not just a norm — it is mechanically checked.** In any flow that reaches this skill via `governance/flows/*.yaml`, a `check_review_bench` step (`node governance/validators/check-bench.js`) runs right after and rejects the round if a manifested role never reported, if the reported consensus contradicts the ndjson's own verdicts, or if the dispatch windows don't overlap (i.e., it ran sequentially). A rejected round routes back to re-summon properly — the flow does not advance on trust alone.
 - **An approval verdict with an open blocker is forbidden** or an empty/trivially broad scope ([GOVERNANCE.md](../../GOVERNANCE.md) §3).
 - A finding that contradicts an ADR is not routed around silently: it becomes a proposal for a new ADR and escalates to the human ([GOVERNANCE.md](../../GOVERNANCE.md) §1, escalation 2).
 

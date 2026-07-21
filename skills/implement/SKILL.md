@@ -55,7 +55,14 @@ These rules are **non-negotiable** and travel in the dispatch prompt — the age
 
 ### Multi-surface change (parallel)
 
-When the plan touches 2+ surfaces and the orchestrator routed in parallel mode (PROCESS.md §2, one worktree per surface), dispatch **one `aidakit:implementer` agent per surface, in the same message** (one `Agent` call per worktree in the same turn — never sequential), each pointed to its `feat/<change-id>-<surface>` branch. Aggregate the outcomes: any `failure` fails the step. Merge order and worktree removal follow the plan — but that's ship, outside this skill.
+When the plan touches 2+ surfaces and the orchestrator routed in parallel mode (PROCESS.md §2, one worktree per surface), this is a **bench dispatch** — same pattern [aidakit:review](../review/SKILL.md) uses for its reviewer bench, applied here with one role per surface:
+
+1. **Before dispatching anyone**, write the bench manifest (`recordBenchManifest` in [governance/ledgers/ledger.js](../../governance/ledgers/ledger.js)): `{ bench: "implement", round: N, role: "__manifest__", roles: ["<surface-1>", "<surface-2>", ...] }`, appended to `.aidakit/tasks/<change-id>/bench.ndjson`. Round N is 1 on the first attempt, incremented only if a previous round failed and you're retrying the surfaces that failed.
+2. **Dispatch one `aidakit:implementer` agent per surface, in the same message** (one `Agent` call per worktree in the same turn — never sequential), each pointed to its `feat/<change-id>-<surface>` branch.
+3. **As each surface's agent returns**, record its verdict via `recordBench`: `{ bench: "implement", round: N, role: "<surface>", agent: "aidakit:implementer", verdict_raw: "<its Outcome: line>", verdict: "pass"|"fail", dispatched_at: "<when you fired this surface's call>", returned_at: "<when it returned>" }` (map the agent's `Outcome: success` → `verdict: "pass"`, `Outcome: failure` → `verdict: "fail"`).
+4. **Aggregate the outcomes**: any `failure` fails the step. Merge order and worktree removal follow the plan — but that's ship, outside this skill.
+
+Like the review bench, this dispatch is checked by [check-bench.js](../../governance/validators/check-bench.js) wherever a flow wires it in — a surface silently skipped, a reported outcome that contradicts the ndjson, or a sequential (non-overlapping) dispatch all fail the mechanical gate.
 
 ## Outputs
 

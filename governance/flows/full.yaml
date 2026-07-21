@@ -114,8 +114,25 @@ steps:
     expects:
       - success
       - failure
-    on_success: review_bench
+    on_success: check_implement_bench
     on_failure: aborted
+
+  - id: check_implement_bench
+    type: runs
+    description: |
+      PARALLELISM LEASH, conditional — a single-surface change never writes a
+      bench="implement" record to .aidakit/tasks/${inputs.request}/bench.ndjson
+      (there's nothing to parallelize; the file may still exist for the review
+      bench that runs later), so this step SKIPS the leash when no "implement"
+      record is present (exit 0). When the orchestrator routed a multi-surface
+      change in parallel mode, aidakit:implement wrote the bench manifest +
+      per-surface verdicts under bench="implement", and check-bench.js verifies
+      the same three things as the review bench: every manifested surface
+      reported, the consensus matches what aidakit:implement reported, and the
+      dispatch was genuinely parallel.
+    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
+    on_success: review_bench
+    on_failure: implement
 
   - id: review_bench
     type: invoke
@@ -125,8 +142,31 @@ steps:
       - consensus
       - rejected
     on_result:
-      consensus: hardening
-      rejected: implement
+      consensus: check_review_bench
+      rejected: check_review_bench
+
+  - id: check_review_bench
+    type: runs
+    description: |
+      PARALLELISM LEASH — check-bench mechanically verifies the review bench:
+      every role the __manifest__ record committed to (written BEFORE dispatch)
+      reported exactly once; the mechanical consensus derived from the roles'
+      own verdicts matches what aidakit:review reported; and the roles'
+      dispatch/return windows genuinely overlap (real parallel dispatch, not
+      sequential). exit 0 (gate released) proceeds per the reported outcome;
+      exit≠0 (leash violation) goes back to review_bench to redo the round
+      properly — a bench that skipped a role, invented a consensus, or ran
+      sequentially never reaches hardening.
+    command: "node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review_bench.outcome}"
+    on_success: bench_outcome
+    on_failure: review_bench
+
+  - id: bench_outcome
+    type: runs
+    description: Routes on the bench's own reported outcome now that check_review_bench has verified it mechanically.
+    command: "test \"${context.review_bench.outcome}\" = consensus"
+    on_success: hardening
+    on_failure: implement
 
   - id: hardening
     type: invoke
