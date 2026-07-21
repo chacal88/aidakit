@@ -30,7 +30,7 @@ export function executeInvoke(step, ctx) {
         pause: {
           step_id: step.id,
           step_type: "invoke",
-          invoca: step.invoca,
+          invoke_target: step.invoke_target,
           input: renderedInput2,
           prompt: `Outcome "" invalid for step "". Expected one of: . Run the skill/agent and resume with a valid outcome.`,
           path: ctx.path,
@@ -42,16 +42,16 @@ export function executeInvoke(step, ctx) {
     // reference ${context.<step_id>.outcome}.
     const bag = ctx.state.context[step.id] ?? {};
     bag.outcome = outcome;
-    bag.invoca = step.invoca;
+    bag.invoke_target = step.invoke_target;
     ctx.state.context[step.id] = bag;
-    return { kind: "next", outcome, output: { invoca: step.invoca, outcome } };
+    return { kind: "next", outcome, output: { invoke_target: step.invoke_target, outcome } };
   }
 
   // First entry into the step — pause and ask the parent Claude to dispatch.
   const renderedInput = step.input ? interpolate(step.input, ctx) : {};
   const expects = step.expects ?? ["success", "failure"];
   const prompt = [
-    `Dispatch skill/agent: ${step.invoca}`,
+    `Dispatch skill/agent: ${step.invoke_target}`,
     step.description ? `Purpose: ${step.description}` : null,
     Object.keys(renderedInput).length ? `Input: ${JSON.stringify(renderedInput, null, 2)}` : null,
     `Expected outcomes: ${expects.join(" | ")}`,
@@ -67,14 +67,14 @@ export function executeInvoke(step, ctx) {
       step_id: step.id,
       // Labeled "invoke" (not "human_handoff") so a driver can distinguish a
       // skill/agent dispatch from a genuine human gate and resolve it
-      // automatically. `invoca` + `input` carry what the driver needs.
+      // automatically. `invoke_target` + `input` carry what the driver needs.
       step_type: "invoke",
-      invoca: step.invoca,
+      invoke_target: step.invoke_target,
       input: renderedInput,
       prompt,
       path: ctx.path,
       paused_at: new Date().toISOString(),
     },
-    output: { invoca: step.invoca, input: renderedInput },
+    output: { invoke_target: step.invoke_target, input: renderedInput },
   };
 }

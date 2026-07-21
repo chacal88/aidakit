@@ -1,6 +1,6 @@
 # Executable DNA — turning a recurring lesson into code that runs on its own
 
-> Narrative guide to the kit's **executable DNA** layer: how a learning that keeps coming back stops being *text the AI re-reads* and becomes a *regression test or rule that runs by itself*, promoted through its own dedicated PR. This guide **narrates and exemplifies** — the decision is fixed in [ADR-001](../decisions/ADR-001-executable-dna-crystallization.md), and the behavior lives in [aidakit:learn](../../skills/learn/SKILL.md) and the [completo](../../governance/flows/completo.yaml) flow. **If this guide diverges from the linked ADR/skill/flow, the other wins and this file is corrected.**
+> Narrative guide to the kit's **executable DNA** layer: how a learning that keeps coming back stops being *text the AI re-reads* and becomes a *regression test or rule that runs by itself*, promoted through its own dedicated PR. This guide **narrates and exemplifies** — the decision is fixed in [ADR-001](../decisions/ADR-001-executable-dna-crystallization.md), and the behavior lives in [aidakit:learn](../../skills/learn/SKILL.md) and the [full](../../governance/flows/full.yaml) flow. **If this guide diverges from the linked ADR/skill/flow, the other wins and this file is corrected.**
 
 ## The idea in one line
 
@@ -36,7 +36,7 @@ The provenance is **not optional**. `origin-premise` names the ADR (or `environm
 
 This is the rule that keeps the mechanism honest: **crystallized DNA is promoted through its own PR, on branch `aidakit/dna/<change-id>`, separate from the feature's PR.** Evolving *how we develop* must not be smuggled into *what this change delivers* — reviewers weigh them separately.
 
-In the `completo` flow, after `learn`, a side branch runs and **never blocks the feature**:
+In the `full` flow, after `learn`, a side branch runs and **never blocks the feature**:
 
 | Step | Type | What it does |
 |---|---|---|
@@ -62,7 +62,7 @@ A crystallized test/rule is frozen from a moment in time. When its origin ADR is
 - [ADR-001](../decisions/ADR-001-executable-dna-crystallization.md) — the decision this guide narrates (context, alternatives, consequences).
 - [aidakit:learn](../../skills/learn/SKILL.md) §6 — the crystallization step.
 - [aidakit:ship](../../skills/ship/SKILL.md) — DNA mode (dedicated branch/PR).
-- [completo flow](../../governance/flows/completo.yaml) — the `dna_gate → dna_freshness → dna_pr` branch.
+- [full flow](../../governance/flows/full.yaml) — the `dna_gate → dna_freshness → dna_pr` branch.
 - [flows.md](flows.md) — how the executable-flows layer works in general.
 
 <!-- aidakit v0.4 — executable DNA guide (GENESI concept: crystallize recurring learnings into tests/rules via a dedicated PR) on 2026-07-20 -->

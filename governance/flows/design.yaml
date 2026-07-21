@@ -20,7 +20,7 @@ steps:
       aidakit:docs (init) — deploys the standard docs/ structure if it's a new project;
       reads docs/design/STATE.md on a resume, to know which phase to stop at. The skill
       reads the STATE internally and the correct phase is resumed within the phase itself.
-    invoca: aidakit:docs
+    invoke_target: aidakit:docs
     input:
       project: "${inputs.project}"
     expects:
@@ -36,7 +36,7 @@ steps:
       aidakit:design-business (Phase 1 — Business) — interview: objectives, processes,
       rules, experts, ubiquitous language. Produces docs/design/1-business-vision.md
       and returns "ready" when the exit checklist is complete.
-    invoca: aidakit:design-business
+    invoke_target: aidakit:design-business
     expects:
       - ready
     on_success: gate1
@@ -61,7 +61,7 @@ steps:
       aidakit:design-modeling (Phase 2 — DDD Modeling) — bounded contexts,
       entities, value objects, aggregates and domain events, still without technology.
       Produces docs/design/2-domain-model.md and returns "ready".
-    invoca: aidakit:design-modeling
+    invoke_target: aidakit:design-modeling
     expects:
       - ready
     on_success: gate2
@@ -86,7 +86,7 @@ steps:
       aidakit:design-architecture (Phase 3 — Architecture) — APIs, events, integrations,
       databases, cross-cutting concerns + one ADR per structural decision. Produces
       docs/design/3-architecture.md and ADRs in docs/decisions/; returns "ready".
-    invoca: aidakit:design-architecture
+    invoke_target: aidakit:design-architecture
     expects:
       - ready
     on_success: gate3
@@ -112,7 +112,7 @@ steps:
       context map, stack traced to ADRs, minimal pipeline and a backlog of vertical
       changes ordered by risk+value. Produces docs/design/4-implementation-plan.md
       and returns "ready".
-    invoca: aidakit:design-implementation
+    invoke_target: aidakit:design-implementation
     expects:
       - ready
     on_success: gate4

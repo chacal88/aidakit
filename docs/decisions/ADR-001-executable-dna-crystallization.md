@@ -21,7 +21,7 @@ The open questions were: *what* qualifies a learning for crystallization (so it 
 
 A learning is crystallized into an **executable DNA artifact** — a regression test or a rule — when, and only when, an objective trigger fires: the error class recurred **≥3×** (`deriveCandidates(change-id, { threshold: 3 })` over the error-ledger, grouped by `errorType`+`key`) and the learning's `action` is `regression-gate` or a deterministically-checkable `rule`.
 
-The artifact is written by `writeDna(...)` into **staging** (`.aidakit/dna/<change-id>/`), carrying a mandatory provenance header (`@dna-origin-change`, `@dna-origin-premise`, `@dna-type`, `@dna-created-at`, `@dna-trigger`). Writing to staging is **not** applying — the DNA takes effect only when promoted through its **own dedicated PR** on branch `aidakit/dna/<change-id>`, separate from the feature's PR, reviewed in isolation and merged by a human. In the `completo` flow this is the `dna_gate → dna_freshness → dna_pr` branch after `learn`, which reconverges into `document` and **never blocks the feature**.
+The artifact is written by `writeDna(...)` into **staging** (`.aidakit/dna/<change-id>/`), carrying a mandatory provenance header (`@dna-origin-change`, `@dna-origin-premise`, `@dna-type`, `@dna-created-at`, `@dna-trigger`). Writing to staging is **not** applying — the DNA takes effect only when promoted through its **own dedicated PR** on branch `aidakit/dna/<change-id>`, separate from the feature's PR, reviewed in isolation and merged by a human. In the `full` flow this is the `dna_gate → dna_freshness → dna_pr` branch after `learn`, which reconverges into `document` and **never blocks the feature**.
 
 The provenance is load-bearing: `check-dna-freshness` reads `@dna-origin-premise` and marks a DNA **stale** when its origin ADR becomes superseded/deprecated, connecting each DNA to the supersede graph the kit already maintains. A gate that can never expire would eventually become the bug it once caught.
 
@@ -29,7 +29,7 @@ The provenance is load-bearing: `check-dna-freshness` reads `@dna-origin-premise
 
 - Positive: a recurring, already-understood error stops costing model effort — it becomes a gate that runs on its own; the objective `≥3×` trigger replaces a subjective "is it worth freezing?"; process-evolution and product-delivery stay in separate PRs; the freshness gate gives crystallized DNA a lifecycle (born → valid → stale → revalidated) instead of accreting forever.
 - Negative:
-  - The crystallization branch adds four steps to the `completo` flow — **Accepted** (they are a side branch that no-ops when there is no DNA; the feature path is untouched).
+  - The crystallization branch adds four steps to the `full` flow — **Accepted** (they are a side branch that no-ops when there is no DNA; the feature path is untouched).
   - A DNA can go stale silently if no one runs `check-dna-freshness` — **Mitigated** (it is a gate in the flow and a standalone validator; a stale DNA fails loudly with an exit code, like the other validators).
   - Provenance discipline is now mandatory on every DNA (`origin-premise` required) — **Accepted** (`writeDna` throws without it, so a DNA cannot be created unaccountable in the first place).
 

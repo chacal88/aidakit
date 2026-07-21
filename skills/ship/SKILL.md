@@ -49,7 +49,7 @@ Precedence: if it diverges from [GOVERNANCE.md](../../GOVERNANCE.md) / [PROCESS.
 
 ## DNA mode (`mode: "dna"`)
 
-When invoked with `mode: "dna"` (the `dna_pr` step of the [completo](../../governance/flows/completo.yaml) flow), this skill ships the **crystallized DNA**, not the feature — a **separate PR** so that evolving-the-process never mixes with shipping-the-product:
+When invoked with `mode: "dna"` (the `dna_pr` step of the [full](../../governance/flows/full.yaml) flow), this skill ships the **crystallized DNA**, not the feature — a **separate PR** so that evolving-the-process never mixes with shipping-the-product:
 
 - **Branch:** the `branch` input (`aidakit/dna/<change-id>`), created off the base — **not** the feature branch.
 - **Scope:** stage **only** the artifacts under `.aidakit/dna/<change-id>/` (nominal, file by file — the `pre-bash` hook still bars `git add -A`). Nothing from the feature's diff.
@@ -64,7 +64,7 @@ If there is no DNA in staging, this step is not reached (the flow's `dna_gate` r
 - The official `commit-commands` plugin (`/commit-push-pr`) — the commit/PR mechanism this skill invokes.
 - [aidakit:review](../review/SKILL.md) — the gate that precedes the ship.
 - [aidakit:docs](../docs/SKILL.md) — archives the change after the merge (WORKING→DURABLE).
-- Invoked at the `pr` step of the [rapido](../../governance/flows/rapido.yaml) and [completo](../../governance/flows/completo.yaml) flows.
+- Invoked at the `pr` step of the [fast](../../governance/flows/fast.yaml) and [full](../../governance/flows/full.yaml) flows.
 
 <!-- aidakit v0.3 — thin ship envelope over commit-commands + GOVERNANCE §4 guardrails, 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — DNA mode: ships crystallized DNA on a dedicated branch/PR, separate from the feature (conceito GENESI) on 2026-07-20 -->

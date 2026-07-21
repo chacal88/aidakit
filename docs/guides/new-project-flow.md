@@ -84,9 +84,9 @@ Each structural choice becomes an **ADR** — the phase rule: "no ADR, you didn'
 | ADR-004 | Asynchronous notification via outbox + polling; a broker only with a measurable trigger |
 | ADR-005 | Authentication with roles per barbershop (owner, front desk, professional) |
 
-See the [filled-in ADR-003](../exemplos/ADR-003-appointment-as-aggregate.md): the Context points to R1 and to the Phase 2 aggregate (if you can't point to it, the decision is premature), the negative consequences come marked **Accepted**/**Mitigated**, the review trigger is observable, and the rejected alternatives stay on the table.
+See the [filled-in ADR-003](../examples/ADR-003-appointment-as-aggregate.md): the Context points to R1 and to the Phase 2 aggregate (if you can't point to it, the decision is premature), the negative consequences come marked **Accepted**/**Mitigated**, the review trigger is observable, and the rejected alternatives stay on the table.
 
-Midway through the phase the session ends — and the design updates `STATE.md` with the exact stopping point and the next pending questions. See [STATE-razor.md](../exemplos/STATE-razor.md): it is razor's `STATE.md` at exactly that moment — phases 1–2 approved with a date, Phase 3 in draft, ADR-003/004 already in the index, WhatsApp still in the Parking Lot.
+Midway through the phase the session ends — and the design updates `STATE.md` with the exact stopping point and the next pending questions. See [STATE-razor.md](../examples/STATE-razor.md): it is razor's `STATE.md` at exactly that moment — phases 1–2 approved with a date, Phase 3 in draft, ADR-003/004 already in the index, WhatsApp still in the Parking Lot.
 
 - **Deliverable:** `docs/design/3-architecture.md` (template: [arquitetura.md](../../skills/design-business/templates/architecture.md)) + the ADRs.
 - **Gate:** checklist (contexts → modules, APIs in the ubiquitous language, events with guarantees, a schema per context derived from the aggregates, the minimum set of ADRs — style, database, communication, auth — and cross-cutting ones) + explicit approval. From then on, **an ADR is WORM**: changed your mind, it's a new ADR that supersedes — and superseding escalates to the human ([GOVERNANCE.md §1](../../GOVERNANCE.md), escalation 2).
@@ -124,7 +124,7 @@ The design remains the owner of the state: at the end of each change, `STATE.md`
 
 ## This guide's example artifacts
 
-- [STATE-razor.md](../exemplos/STATE-razor.md) — razor's `STATE.md` mid-Phase 3, in the real template.
-- [ADR-003-appointment-as-aggregate.md](../exemplos/ADR-003-appointment-as-aggregate.md) — a Phase 3 ADR in the doctrine's 5 sections.
+- [STATE-razor.md](../examples/STATE-razor.md) — razor's `STATE.md` mid-Phase 3, in the real template.
+- [ADR-003-appointment-as-aggregate.md](../examples/ADR-003-appointment-as-aggregate.md) — a Phase 3 ADR in the doctrine's 5 sections.
 
 <!-- aidakit v0.3 — narrative guide of the new-project flow (razor example project), created on 2026-07-17 — translated to EN -->

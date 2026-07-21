@@ -46,6 +46,6 @@ These events are exactly what [aidakit:learn](../learn/SKILL.md) reads when cons
 ## Related
 
 - [aidakit:learn](../learn/SKILL.md) — consolidates the events this skill emits.
-- Triggered by phases with `reflect: true` in the [completo](../../governance/flows/completo.yaml) flow.
+- Triggered by phases with `reflect: true` in the [full](../../governance/flows/full.yaml) flow.
 
 <!-- aidakit v0.3 — ported from reflect (codeflow/psim), no cloud — translated to EN -->

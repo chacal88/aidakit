@@ -3,7 +3,7 @@
   Filled-in example of the aidakit:design template (skills/design-business/templates/STATE.md),
   depicting the razor project MID-PHASE 3. In the real project this file lives at
   docs/design/STATE.md — the relative links below reflect the razor repo's layout
-  and do not resolve from aidakit's docs/exemplos/ (hence the check-links: ignore above).
+  and do not resolve from aidakit's docs/examples/ (hence the check-links: ignore above).
   Guide that uses this example: docs/guides/new-project-flow.md.
 -->
 

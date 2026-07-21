@@ -72,7 +72,7 @@ Master index in [docs/INDEX.md](docs/INDEX.md), with a reading order for newcome
 - [Governance in practice](docs/guides/governance-in-practice.md) — the 3 escalations live, the hook, the logged bypass, and FAQ.
 - [Skills reference](docs/reference/skills.md) — the 12 authored skills one by one: purpose, invocation, example, and gates.
 - [Agents reference](docs/reference/agents.md) — the 5 agents: who calls whom, role, and limits.
-- [razor examples](docs/exemplos/README.md) — a filled-in ADR, STATE, and proposal (fictional), derived from the real templates.
+- [razor examples](docs/examples/README.md) — a filled-in ADR, STATE, and proposal (fictional), derived from the real templates.
 
 ## Relationship with aida
 

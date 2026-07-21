@@ -1,4 +1,4 @@
-flow: rapido
+flow: fast
 description: |
   Fast flow, Margi-style: from the chosen change to the PR, with minimal ceremony.
   The orchestrator picks the next change and plans it; readiness gate; implementation
@@ -24,7 +24,7 @@ steps:
       (openspec/changes/archive/ or docs/archive/) and the cited dependencies, and picks
       the first ready change whose plan artifacts validate and whose dependencies have
       already been delivered. If the request already carries a change-id, it confirms it instead of selecting.
-    invoca: aidakit:orchestrator
+    invoke_target: aidakit:orchestrator
     input:
       request: "${inputs.request}"
     expects:
@@ -36,7 +36,7 @@ steps:
   - id: plan
     type: invoke
     description: aidakit:plan — plans the chosen change (implementation plan).
-    invoca: aidakit:plan
+    invoke_target: aidakit:plan
     input:
       request: "${inputs.request}"
     expects:
@@ -48,7 +48,7 @@ steps:
   - id: readiness
     type: invoke
     description: aidakit:readiness — GATE 1, readiness review of the plan before coding.
-    invoca: aidakit:readiness
+    invoke_target: aidakit:readiness
     expects:
       - approved
       - needs-revision
@@ -61,7 +61,7 @@ steps:
   - id: implement
     type: invoke
     description: Implementation with TDD (skill test-driven-development) + aidakit:test.
-    invoca: aidakit:implement
+    invoke_target: aidakit:implement
     expects:
       - success
       - failure
@@ -71,7 +71,7 @@ steps:
   - id: review
     type: invoke
     description: aidakit:review on the diff — conformance with specs/ADRs + bug hunting.
-    invoca: aidakit:review
+    invoke_target: aidakit:review
     expects:
       - pass
       - fail
@@ -86,7 +86,7 @@ steps:
       documents for the change (.aidakit/tasks/${inputs.request}/doc-manifest.json) and
       dispatches the fronts that fill in the missing docs. Decides the rigor (what is
       required, under which condition and kind); the truth remains the disk.
-    invoca: aidakit:doc-planner
+    invoke_target: aidakit:doc-planner
     input:
       request: "${inputs.request}"
     expects:
@@ -108,7 +108,7 @@ steps:
   - id: pr
     type: invoke
     description: commit + PR via commit-commands. Stops at the PR URL — never merges.
-    invoca: aidakit:ship
+    invoke_target: aidakit:ship
     expects:
       - success
       - failure

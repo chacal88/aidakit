@@ -16,7 +16,7 @@
    - [Skills and commands reference](reference/skills.md) — the authored skills one by one: purpose, invocation, example, and gates.
    - [Agents reference](reference/agents.md) — who calls whom, role, and limits of each agent.
    - [Config reference](reference/config.md) — the per-project `aidakit.config.yaml` field by field (optional).
-   - [razor examples](exemplos/README.md) — filled-in fictional artifacts (ADR, STATE, proposal) used by the guides.
+   - [razor examples](examples/README.md) — filled-in fictional artifacts (ADR, STATE, proposal) used by the guides.
 
 ## What's in each folder
 
@@ -24,7 +24,7 @@
 |---|---|
 | [guides/](guides/README.md) | Narrative usage guides (items 1–5 above) — the HOW; the what/why lives in the linked doctrine |
 | [reference/](reference/README.md) | Lookup references: skills/commands and agents |
-| [exemplos/](exemplos/README.md) | Example artifacts of the fictional razor project, derived from the kit's real templates |
+| [examples/](examples/README.md) | Example artifacts of the fictional razor project, derived from the kit's real templates |
 | [decisions/](decisions/README.md) | ADRs of the **aidakit itself** (the kit is software and makes architectural decisions). The one folder here that follows the canonical target-project structure, because it records the kit's own decisions — not example, not usage guide. |
 
 ## Where to look for what
@@ -41,7 +41,7 @@
 | Know what an agent decides on its own and what it doesn't do | [Agents reference](reference/agents.md) |
 | Set the content language, declare domains, or customize the review matrix | [Config reference](reference/config.md) |
 | Browse all the lookup references | [reference/ index](reference/README.md) |
-| See a filled-in ADR / STATE / proposal | [razor examples](exemplos/README.md) |
+| See a filled-in ADR / STATE / proposal | [razor examples](examples/README.md) |
 | Understand a decision the kit itself made (and why) | [decisions/ index](decisions/README.md) |
 | Understand how a recurring lesson becomes an executable test/rule | [Executable DNA](guides/executable-dna.md) |
 | Track the project, plan epics, or organize shared knowledge (no Jira) | [Roadmap and knowledge](guides/roadmap-and-knowledge.md) |
