@@ -4,7 +4,9 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em andamento)_
+### Coleiras mecânicas do flow engine — **in-progress**
+
+- Registro diferido no build (débito) — `add-debit` → in-progress
 
 ## Next (planned)
 
@@ -12,7 +14,7 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Coleiras mecânicas do flow engine — **backlog**
+### Coleiras mecânicas do flow engine — **in-progress**
 
 - Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog

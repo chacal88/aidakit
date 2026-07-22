@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 const tmp = mkdtempSync(join(tmpdir(), "roadmap-"));
 process.env.AIDAKIT_PROJECT_ROOT = tmp;
-const { parseEpic, deriveChangeStatus, aggregateStatus, deriveRoadmap } =
+const { parseEpic, deriveChangeStatus, aggregateStatus, deriveRoadmap, findDeclaredChange } =
   await import("../roadmap/roadmap.js");
 
 let pass = 0, fail = 0;
@@ -63,9 +63,24 @@ const refunds = rm.epics[0].features.find((f) => f.name === "Refunds");
 ok(refunds.status === "done", "Refunds aggregates to done");
 ok(rm.epics[0].status === "in-progress", "epic in-progress (one feature still not done)");
 
+// --- findDeclaredChange (add-debit: the deterministic half of the register leash) ---
+// (a) a declared id returns { epic, feature } matching the seeded epic above.
+eq(findDeclaredChange("feature-cart", tmp), { epic: "EPIC-payments", feature: "Checkout" },
+  "findDeclaredChange: declared id returns {epic, feature}");
+eq(findDeclaredChange("feature-refund", tmp), { epic: "EPIC-payments", feature: "Refunds" },
+  "findDeclaredChange: declared id in a different feature of the same epic");
+// (b) an undeclared id (or a raw free-form sentence) returns null.
+eq(findDeclaredChange("never-declared-anywhere", tmp), null,
+  "findDeclaredChange: undeclared id returns null");
+eq(findDeclaredChange("just remember this for later", tmp), null,
+  "findDeclaredChange: a raw free-form sentence returns null (never matches a declared kebab-case id)");
+
 // empty roadmap → no epics, no crash
 rmSync(join(tmp, "docs/roadmap"), { recursive: true, force: true });
 eq(deriveRoadmap({ root: tmp }).epics, [], "no epics dir → []");
+// (c) missing docs/roadmap/epics/ → findDeclaredChange returns null, no crash.
+eq(findDeclaredChange("feature-cart", tmp), null,
+  "findDeclaredChange: missing docs/roadmap/epics/ returns null, no crash");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });

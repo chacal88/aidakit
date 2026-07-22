@@ -13,8 +13,52 @@ inputs:
     type: string
     required: true
     description: Free-form description of the change to build (or the change-id if a backlog already exists).
+  - name: mode
+    type: enum
+    values:
+      - build
+      - register
+    default: build
+    description: build = the full pipeline; register = park a debit (roadmap entry + paused flow), no plan/implement.
 
 steps:
+  - id: route_mode
+    type: runs
+    description: Routes by mode. register → verify + park; build (default) → the existing pipeline, unchanged.
+    command: "test \"${inputs.mode}\" = register"
+    on_success: check_registered
+    on_failure: select
+
+  - id: check_registered
+    type: runs
+    description: |
+      REGISTRATION LEASH — the flow refuses to park an id the roadmap does not
+      declare. Also structurally rejects a raw free-form sentence leaking into
+      request (a sentence never matches a declared kebab-case change-id), which
+      is what keeps ${inputs.request} paths clean downstream. ${inputs.request}
+      is QUOTED (same idiom as route_mode above): unquoted, a multi-word
+      request word-splits in `bash -lc` and --change only reads its first
+      token, so a request whose FIRST word happens to be a declared id would
+      falsely pass the leash with the rest of the sentence silently dropped.
+    command: "node governance/validators/derive-roadmap-status.js --change \"${inputs.request}\""
+    on_success: parked
+    on_failure: aborted
+
+  - id: parked
+    type: human_gate
+    description: THE PARK — a registered debit. Resumable across sessions; nothing runs until resumed.
+    prompt: |
+      Debit registered: "${inputs.request}" is declared on the roadmap (backlog)
+      and this flow is PARKED. Nothing is planned or implemented until you resume.
+        plan    → continue into planning (select → plan → …)
+        discard → abort this parked flow (the roadmap entry stays declared)
+    options:
+      - plan
+      - discard
+    on_result:
+      plan: select
+      discard: aborted
+
   - id: select
     type: invoke
     description: |

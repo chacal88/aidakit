@@ -121,6 +121,27 @@ export function collectEpics(root = projectRoot()) {
 }
 
 /**
+ * Finds the epic/feature that declares changeId — the deterministic half of the
+ * register-mode leash (add-debit): a request only parks when the roadmap already
+ * names it, which also structurally rejects a raw free-form sentence (never a
+ * declared kebab-case change-id). Reuses collectEpics + parseEpic — no forked
+ * parse grammar; FEATURE_RE remains the single source. Pure read; a missing
+ * docs/roadmap/epics/ degrades to null via collectEpics' own [] fallback, no crash.
+ * @param {string} changeId
+ * @param {string} [root]
+ * @returns {{epic:string, feature:string}|null}
+ */
+export function findDeclaredChange(changeId, root = projectRoot()) {
+  for (const file of collectEpics(root)) {
+    const epic = parseEpic(file);
+    for (const feature of epic.features) {
+      if (feature.changeIds.includes(changeId)) return { epic: epic.id, feature: feature.name };
+    }
+  }
+  return null;
+}
+
+/**
  * Builds the full derived roadmap: every epic with its features, each feature with
  * its changes and derived statuses, aggregated up to the epic. Pure read.
  * @param {{root?:string, prChangeIds?:Set<string>, branchChangeIds?:Set<string>}} [opts]

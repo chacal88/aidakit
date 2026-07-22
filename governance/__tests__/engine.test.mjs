@@ -30,6 +30,19 @@ function seedSatisfiedManifest(request) {
   writeFileSync(p, JSON.stringify({ change_id: request, level: "change", required: [] }));
 }
 
+// Seeds (or appends a feature line to) an epic file declaring changeId, so the
+// register path's `check_registered` leash (derive-roadmap-status.js --change,
+// spawned by the `runs` step with cwd=tmp) finds it declared. Reuses the same
+// FEATURE_RE grammar the roadmap module parses — no forked format here.
+function seedDeclaredChange(changeId, { epicId = "EPIC-register-test", feature = "Register test feature" } = {}) {
+  const epicsDir = join(tmp, "docs", "roadmap", "epics");
+  mkdirSync(epicsDir, { recursive: true });
+  const file = join(epicsDir, `${epicId}.md`);
+  const line = `- **Feature:** ${feature} — changes: ${changeId}\n`;
+  if (existsSync(file)) appendFileSync(file, line);
+  else writeFileSync(file, `# Register test epic\n\n${line}`);
+}
+
 function benchPathFor(request) {
   return join(tmp, ".aidakit", "tasks", request, "bench.ndjson");
 }
@@ -320,6 +333,108 @@ seedSatisfiedManifest("x");
   ok(visited.filter((s) => s === "implement").length >= 2, "parallelism leash: missing implement role re-enters implement (doesn't advance to review_bench)");
   const lastCheck = res.state.step_history.filter((h) => h.step_id === "check_implement_bench").pop();
   ok(lastCheck && lastCheck.result === "failure" && lastCheck.output.stdout.includes("role-missing"), "parallelism leash: check_implement_bench recorded the missing role");
+}
+
+// ── 2e. THE REGISTER PATH: mode=register routes route_mode → check_registered → parked ──
+// Proves the register-mode leash (add-debit): a request whose change-id IS
+// declared on the roadmap parks at a NAMED human_gate ("parked") without ever
+// dispatching select/plan; an undeclared id (or a raw free-form sentence) is
+// refused mechanically by check_registered and the flow terminates aborted,
+// nothing parked. `route_mode` is a `runs` step (never pauses) — the build-mode
+// (default) happy path must remain byte-identical, unaffected by its addition.
+
+// (2e-i) A declared change-id parks at "parked"; step_history carries no
+// select/plan before the park; the state on disk is keyed to the change-id.
+{
+  const declaredId = "register-declared-debit";
+  seedDeclaredChange(declaredId);
+
+  const { flow } = loadFlow("fast");
+  const res = startFlow({
+    flow, inputs: { request: declaredId, mode: "register" }, startedBy: "test",
+    idOpts: { rand: "reg2e1", now: new Date("2026-07-17T00:00:00Z") },
+  });
+  eq(res.state.status, "paused", "register: parks (paused)");
+  ok(res.state.pause && res.state.pause.step_id === "parked", "register: pause.step_id is 'parked'");
+  ok(res.state.pause && res.state.pause.step_type === "human_gate", "register: pause.step_type is 'human_gate'");
+  ok(!res.state.step_history.some((h) => h.step_id === "select" || h.step_id === "plan"),
+    "register: step_history has no select/plan entry before the park");
+  eq(res.state.inputs.request, declaredId, "register: state on disk keyed to the declared change-id");
+
+  // resume with "plan" (reloading state from disk first, like the §7 idiom) →
+  // next pause is `select`, with the change-id preserved into its input.
+  const r2 = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "plan" });
+  ok(r2.state.status === "paused" && r2.state.pause.step_id === "select", "register: resume 'plan' continues into select");
+  eq(r2.state.pause.input.request, declaredId, "register: select's pause.input.request === the change-id");
+}
+
+// (2e-ii) resume with "discard" (a separate flow instance) → terminal aborted.
+{
+  const declaredId = "register-discard-debit";
+  seedDeclaredChange(declaredId);
+  const { flow } = loadFlow("fast");
+  const res = startFlow({
+    flow, inputs: { request: declaredId, mode: "register" }, startedBy: "test",
+    idOpts: { rand: "reg2e2", now: new Date("2026-07-17T00:00:00Z") },
+  });
+  ok(res.state.pause && res.state.pause.step_id === "parked", "register-discard: parks first");
+  const r2 = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "discard" });
+  eq(r2.state.status, "aborted", "register: resume 'discard' terminates aborted");
+}
+
+// (2e-iii) An undeclared id (or a raw free-form sentence) → the leash refuses
+// mechanically: terminal aborted, no `parked` pause ever occurs.
+{
+  const undeclaredId = "totally-undeclared-change";
+  const { flow } = loadFlow("fast");
+  const res = startFlow({
+    flow, inputs: { request: undeclaredId, mode: "register" }, startedBy: "test",
+    idOpts: { rand: "reg2e3", now: new Date("2026-07-17T00:00:00Z") },
+  });
+  eq(res.state.status, "aborted", "register: start … mode=register with an undeclared id → terminal aborted");
+  ok(!res.state.step_history.some((h) => h.step_id === "parked"), "register: no 'parked' pause for an undeclared id (the leash)");
+}
+
+// (2e-iv) Regression guard: the existing §2 happy path (mode defaulting to
+// build) still passes UNMODIFIED — route_mode is a `runs` step and must not
+// appear in `visited` (runs steps never pause).
+{
+  seedSatisfiedManifest("register-regression-build");
+  seedSatisfiedBench("register-regression-build");
+  const { res, visited } = driveDry("fast", { request: "register-regression-build" }, {
+    select: "success", plan: "success", readiness: "approved", implement: "success", review: "pass",
+    document: "success", pr: "success", merge: "merged",
+  });
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"],
+    "register: build-mode (default, mode omitted) happy path unaffected by route_mode's addition");
+  ok(!visited.includes("route_mode"), "register: route_mode (a runs step) never appears in visited");
+  eq(res.state.status, "completed", "register: build-mode still completes");
+}
+
+// (2e-v) REGRESSION (review round 1, reproduced live by the tester): a
+// MULTI-WORD request whose FIRST token is a declared id must NOT falsely
+// park. Before the fix, ${inputs.request} interpolates UNQUOTED into
+// `bash -lc`, so check_registered's command word-splits — `--change
+// <declared-id> plus extra free-form words` — and derive-roadmap-status.js
+// only reads argv right after --change (the first token), silently ignoring
+// the rest. The leash exits 0 as if the polluted sentence were declared, and
+// the flow falsely PARKS with the full sentence sitting in inputs.request on
+// disk — exactly the pollution acceptance criteria #2/#6 (proposal.md) forbid.
+// Driven through the REAL engine/shell seam (no mock): this is what actually
+// runs inside the `runs` step's spawnSync("bash", ["-lc", command]).
+{
+  const declaredId = "register-word-split-debit";
+  seedDeclaredChange(declaredId);
+  const pollutedRequest = `${declaredId} plus extra free-form words`;
+  const { flow } = loadFlow("fast");
+  const res = startFlow({
+    flow, inputs: { request: pollutedRequest, mode: "register" }, startedBy: "test",
+    idOpts: { rand: "reg2e5", now: new Date("2026-07-17T00:00:00Z") },
+  });
+  eq(res.state.status, "aborted",
+    "register: a multi-word request whose first token is a declared id must NOT falsely park (quoting)");
+  ok(!res.state.step_history.some((h) => h.step_id === "parked"),
+    "register: no 'parked' pause when the request word-splits past a declared first token");
 }
 
 // ── 3. Pause/resume with persisted state survives (end of session) ──
