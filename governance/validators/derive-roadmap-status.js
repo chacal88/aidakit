@@ -13,10 +13,18 @@
 // Usage:
 //   node derive-roadmap-status.js [--root <dir>] [--json] [--strict]
 //   --strict makes a declared change-id that exists NOWHERE on disk fail (exit 1).
+//
+// `--change <id>` (add-debit's register-mode leash): short-circuits BEFORE any
+// git/gh spawn — declared-ness is pure epic parsing, no status needed. Prints
+//   { validator, ok, change: { id, declared, epic, feature } }
+// exit 0 declared / 1 not declared / 2 missing value. This is what the fast
+// flow's `check_registered` step calls to refuse parking an id the roadmap
+// does not declare (and structurally rejects a raw free-form sentence, which
+// never matches a declared kebab-case change-id).
 
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
-import { deriveRoadmap, collectEpics, parseEpic, STATUSES } from "../roadmap/roadmap.js";
+import { deriveRoadmap, collectEpics, parseEpic, STATUSES, findDeclaredChange } from "../roadmap/roadmap.js";
 
 /** Best-effort: change-ids that have a local branch (heuristic: branch name ends with the id). */
 function gitBranchChangeIds(root) {
@@ -42,6 +50,28 @@ function main() {
   const strict = argv.includes("--strict");
   const rootIdx = argv.indexOf("--root");
   const root = resolve(rootIdx >= 0 ? argv[rootIdx + 1] : process.env.AIDAKIT_PROJECT_ROOT || process.cwd());
+
+  const changeIdx = argv.indexOf("--change");
+  if (changeIdx >= 0) {
+    const changeId = argv[changeIdx + 1];
+    if (!changeId || changeId.startsWith("--")) {
+      process.stderr.write("derive-roadmap-status — error: --change requires a value\n");
+      process.exit(2);
+    }
+    const declared = findDeclaredChange(changeId, root);
+    const result = {
+      validator: "aidakit.derive-roadmap-status",
+      ok: !!declared,
+      change: {
+        id: changeId,
+        declared: !!declared,
+        epic: declared ? declared.epic : null,
+        feature: declared ? declared.feature : null,
+      },
+    };
+    process.stdout.write(JSON.stringify(result) + "\n");
+    process.exit(declared ? 0 : 1);
+  }
 
   const branchChangeIds = gitBranchChangeIds(root);
   const prChangeIds = ghOpenPrChangeIds(root);
