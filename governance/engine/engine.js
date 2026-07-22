@@ -84,11 +84,16 @@ export function resumeFlow(opts) {
   return drive(state, flow, [frame], resumeValue);
 }
 
-/** Rebuilds loopVars by walking the path and reading the saved loop frames. */
+/** Rebuilds loopVars by walking the path and reading the saved loop frames.
+ * The FULL path is walked — including the last segment: a paused body step's
+ * path ENDS in "iter[N]" (the body step id is not appended to the path; see the
+ * __iterate__ frame in drive()), so stopping at length-1 would skip the
+ * innermost loop and lose its variable on resume. Non-iter segments don't
+ * match the regex and are ignored, so including the last one is always safe. */
 function rebuildLoopVars(state, _flow, path) {
   /** @type {Object.<string,unknown>} */
   const vars = {};
-  for (let i = 0; i < path.length - 1; i++) {
+  for (let i = 0; i < path.length; i++) {
     const seg = path[i];
     if (!seg) continue;
     const m = /^iter\[(\d+)\]$/.exec(seg);
