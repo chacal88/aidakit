@@ -25,8 +25,14 @@ Every step has an `id` and a `type`, and routes to the next via `on_result[outco
 | `human_gate` | Pauses and asks the human to choose among `options`. The resume value must match an option; routes by `on_result[option]`. | Human-authority decisions: the merge, the pre-apply gate. |
 | `human_handoff` | Pauses and hands off a free-text task; the (free) resume value becomes `context.<id>.response` and routes by `on_success`. | Handing the human/Claude a step with no closed menu of options. |
 | `loop` | Iterates the `body` over an array (`over`), with a `max` ceiling and/or an `until` condition (so it never runs forever). Renames the iteration variable via `as`. | Repeating a block per item, or bounded back-edges (review rounds with a ceiling). |
-| `parallel` | Runs the `branches` (a list of lists); **all** must pass for the step to pass. In the engine it's sequential — the parallelism is logical. | Logical ordering of several branches. REAL subagent parallelism = Claude dispatches via the Task tool in one message. |
+| `parallel` | Runs the `branches` (a list of lists) sequentially inside the engine — the parallelism here is logical, not concurrent. **No shipped flow uses it.** | Not the tool for real subagent concurrency — see §3.5 (the "bench" pattern) for that. |
 | `terminal` | Ends the flow with an `outcome` (`completed` or `aborted`) and a `message`. | The flow's final nodes (the `done` and the `aborted`). |
+
+## 3.5. Real subagent parallelism: the "bench" pattern
+
+The engine is single-threaded by design — pause/resume against state persisted to disk, which is what lets a flow survive a crash or a session ending. It has no mechanism to run subagents concurrently itself, which is exactly why `parallel` above is unused: real concurrency happens **inside a skill**, when Claude fires several `Agent` tool calls in the *same message*. Two skills already do this: `aidakit:review`'s reviewer bench and `aidakit:implement`'s per-surface fan-out (see their `SKILL.md`s).
+
+Dispatching N agents "in the same message" used to be prose-only — nothing mechanically confirmed it happened, that every agent reported, or that the outcome the skill relayed to the flow matched what the agents actually said. That gap is closed by a **bench**: a named group of independent subagents, tracked in `.aidakit/tasks/<change-id>/bench.ndjson` ([`governance/ledgers/ledger.js`](../../governance/ledgers/ledger.js)) and mechanically checked by [`governance/validators/check-bench.js`](../../governance/validators/check-bench.js) — see [governance/README.md](../../governance/README.md#real-parallelism-the-bench-pattern) for the full manifest → dispatch → verdict → check shape. In a flow, this shows up as a `runs` step right after the `invoke` (`check_review_bench`, `check_implement_bench`) that rejects the round — routing back to redo it — if a role was skipped, the reported consensus doesn't match the ndjson, or the dispatch wasn't genuinely parallel.
 
 ## 3. The expression trap
 
