@@ -500,6 +500,157 @@ steps:
   ok(rLegInvoca.flow.steps[0].invoke_target === "aidakit:review" && rLegInvoca.flow.steps[0].invoca === undefined, "6c: invoca→invoke_target field");
 }
 
+// ── 7. Regression: loop variable survives pause/resume inside a loop body ──
+// Bug: rebuildLoopVars iterated `i < path.length - 1`, excluding the path's LAST
+// segment. A paused body step's path ends in "iter[N]" (the body step id is not
+// appended — see the __iterate__ frame in drive()), so the innermost loop's
+// variable was never rebuilt on resume: ${feature} leaked literally into the
+// next pause's input and into `runs` commands. Seen in production (psim-kernel,
+// flow new-device-driver, run new-device-driver-260722-8598f2, engine v0.2.0).
+// Nested loops only lost the INNERMOST var (intermediate iter[N] segments were
+// already examined) — both shapes are pinned here.
+
+// Drives a flow answering every invoke pause with "success", snapshotting
+// {step_id, input} at each pause so the interpolated loop var is asserted
+// exactly as the operator Claude would see it.
+function driveLoopFlow(flowName) {
+  const { flow, errors } = loadFlow(flowName);
+  eq(errors, [], `${flowName}: parses without error`);
+  let res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: `${flowName}1`, now: new Date("2026-07-17T00:00:00Z") } });
+  const pauses = [];
+  let guard = 0;
+  while (res.state.status === "paused" && guard++ < 20) {
+    pauses.push({ step_id: res.state.pause.step_id, input: res.state.pause.input });
+    // Reload from disk: resume must rebuild loopVars from the persisted state,
+    // exactly like a fresh `cli.js resume` session.
+    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "success" });
+  }
+  return { res, pauses };
+}
+
+// (7a) Simple loop: invoke pauses → resume → the next runs command and the next
+// invoke pause still see ${feature}.
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  mkdirSync(flowsUser, { recursive: true });
+  writeFileSync(join(flowsUser, "looppause.yaml"), `flow: looppause
+description: pause/resume inside a loop body keeps the loop variable
+version: 1
+inputs:
+  - name: features
+    type: array<string>
+    default:
+      - alpha
+      - beta
+steps:
+  - id: feats
+    type: loop
+    over: inputs.features
+    as: feature
+    body:
+      - id: work
+        type: invoke
+        invoke_target: aidakit:implement
+        input:
+          feature: "\${feature}"
+        expects:
+          - success
+        on_success: build
+      - id: build
+        type: runs
+        command: "echo building \${feature}"
+        on_success: report
+      - id: report
+        type: invoke
+        invoke_target: aidakit:ship
+        input:
+          feature: "\${feature}"
+        expects:
+          - success
+        on_success: ""
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+    message: "done"
+`);
+  const { res, pauses } = driveLoopFlow("looppause");
+  eq(pauses, [
+    { step_id: "work", input: { feature: "alpha" } },   // first entry: var built inline (already worked)
+    { step_id: "report", input: { feature: "alpha" } }, // AFTER resume: var must be rebuilt from the path
+    { step_id: "work", input: { feature: "beta" } },    // next iteration advances the var
+    { step_id: "report", input: { feature: "beta" } },
+  ], "7a: loop var resolves in every pause input across resumes");
+  // The `runs` command between the two pauses runs AFTER a resume — the loop
+  // var must interpolate into the command, not leak as a literal \${feature}.
+  const buildCmds = res.state.step_history.filter((h) => h.step_id === "build").map((h) => h.output.command);
+  eq(buildCmds, ["echo building alpha", "echo building beta"], "7a: runs command interpolates the loop var after resume");
+  eq(res.state.status, "completed", "7a: flow completes");
+}
+
+// (7b) Nested loops: the OUTER var already survived (its iter[N] is an
+// intermediate path segment) — the INNERMOST was the one lost. Pin both.
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  writeFileSync(join(flowsUser, "loopnested.yaml"), `flow: loopnested
+description: nested loops keep every level's variable across pause/resume
+version: 1
+inputs:
+  - name: groups
+    type: array<string>
+    default:
+      - g1
+  - name: feats
+    type: array<string>
+    default:
+      - f1
+      - f2
+steps:
+  - id: outer
+    type: loop
+    over: inputs.groups
+    as: group
+    body:
+      - id: inner
+        type: loop
+        over: inputs.feats
+        as: feature
+        body:
+          - id: w1
+            type: invoke
+            invoke_target: aidakit:implement
+            input:
+              group: "\${group}"
+              feature: "\${feature}"
+            expects:
+              - success
+            on_success: w2
+          - id: w2
+            type: invoke
+            invoke_target: aidakit:ship
+            input:
+              group: "\${group}"
+              feature: "\${feature}"
+            expects:
+              - success
+            on_success: ""
+        on_success: ""
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+    message: "done"
+`);
+  const { res, pauses } = driveLoopFlow("loopnested");
+  eq(pauses, [
+    { step_id: "w1", input: { group: "g1", feature: "f1" } },
+    { step_id: "w2", input: { group: "g1", feature: "f1" } }, // after resume: BOTH levels rebuilt
+    { step_id: "w1", input: { group: "g1", feature: "f2" } },
+    { step_id: "w2", input: { group: "g1", feature: "f2" } },
+  ], "7b: nested loops rebuild every level's var on resume (innermost included)");
+  eq(res.state.status, "completed", "7b: flow completes");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

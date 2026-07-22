@@ -25,7 +25,8 @@
 | [guides/](guides/README.md) | Narrative usage guides (items 1–5 above) — the HOW; the what/why lives in the linked doctrine |
 | [reference/](reference/README.md) | Lookup references: skills/commands and agents |
 | [examples/](examples/README.md) | Example artifacts of the fictional razor project, derived from the kit's real templates |
-| [decisions/](decisions/README.md) | ADRs of the **aidakit itself** (the kit is software and makes architectural decisions). The one folder here that follows the canonical target-project structure, because it records the kit's own decisions — not example, not usage guide. |
+| [decisions/](decisions/README.md) | ADRs of the **aidakit itself** (the kit is software and makes architectural decisions). Follows the canonical target-project structure, because it records the kit's own decisions — not example, not usage guide. |
+| [features/](features/) | Change packages of the **aidakit itself** (proposal/design/tasks/evidence per change-id), dogfooding the kit's own flow. Like `decisions/`, follows the canonical target-project structure. |
 
 ## Where to look for what
 
