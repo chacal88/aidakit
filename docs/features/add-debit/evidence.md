@@ -149,4 +149,7 @@ One recorded, non-scope-widening: `governance/flows/fast.yaml`'s `mode` enum's `
 
 ## Ship
 
-_(PR URL + branch + flow trail — the merge is the human's; not performed by this implementation step)_
+- **PR:** https://github.com/chacal88/aidakit/pull/7 — opened 2026-07-22, stopped at the URL (GOVERNANCE.md §1 — the merge is the human's).
+- **Branch:** `claude/add-debit-8e7af2` (change-id as the single key, §2.7; suffix echoes the flow id). Commit `6d71af8`, 14 files, nominal staging.
+- **Flow trail:** `fast-260722-8e7af2` — registered as a debit (the manual dry-run this change productizes) → parked at `select` → resumed → `plan` → `readiness` APPROVED → `implement` (TDD RED-first) → `review` bench round 1 **fail** (4 roles; quality + tester caught the unquoted-interpolation false park — see Corrections) → correction → round 2 **pass** (2/2) → `check_review_bench` mechanical OK → doc-leash 100% (`check-doc-manifest` exit 0) → `pr` → paused at the `merge` human_gate.
+- **Bench ledger:** `.aidakit/tasks/add-debit/bench.ndjson` (gitignored) — manifest-first both rounds, verified by `check-bench.js` (parallel dispatch confirmed).
