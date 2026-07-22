@@ -69,4 +69,5 @@ None. Scope, tests, and validation match the proposal and tasks.md exactly.
 
 ## Ship
 
-<!-- PR URL -->
+- PR: https://github.com/chacal88/aidakit/pull/5 (branch `claude/loop-var-resume-bug-e0a1ce`, commit `e52b817`)
+- Flow: `fast-260722-e3aaf2` — readiness APPROVED · review bench round 1: 3/3 pass (check-bench cleared) · doc-leash 5/5 resolved (check-doc-manifest exit 0)
