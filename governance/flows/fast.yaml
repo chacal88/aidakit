@@ -40,7 +40,7 @@ steps:
       request word-splits in `bash -lc` and --change only reads its first
       token, so a request whose FIRST word happens to be a declared id would
       falsely pass the leash with the rest of the sentence silently dropped.
-    command: "node governance/validators/derive-roadmap-status.js --change \"${inputs.request}\""
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/derive-roadmap-status.js\" --change \"${inputs.request}\""
     on_success: parked
     on_failure: aborted
 
@@ -125,7 +125,7 @@ steps:
       the same three things as the review bench: every manifested surface
       reported, the consensus matches what aidakit:implement reported, and the
       dispatch was genuinely parallel.
-    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
+    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
     on_success: review
     on_failure: implement
 
@@ -152,7 +152,7 @@ steps:
       exit≠0 (leash violation) goes back to review to redo the round properly —
       a bench that skipped a role, invented a consensus, or ran sequentially
       never reaches document.
-    command: "node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review.outcome}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review.outcome}"
     on_success: review_outcome
     on_failure: review
 
@@ -185,7 +185,7 @@ steps:
       LEASH GATE — check-doc-manifest verifies item by item and LOCKS the flow
       until the list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0
       (incomplete) goes back to document until the list is complete.
-    command: "node governance/validators/check-doc-manifest.js .aidakit/tasks/${inputs.request}/doc-manifest.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/tasks/${inputs.request}/doc-manifest.json"
     on_success: pr
     on_failure: document
 

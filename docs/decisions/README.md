@@ -18,10 +18,12 @@
 | [ADR-001](ADR-001-executable-dna-crystallization.md) | Crystallize recurring learnings into executable DNA, promoted via a dedicated PR | accepted | 2026-07-20 |
 | [ADR-002](ADR-002-roadmap-status-derived-from-disk.md) | The in-repo roadmap derives every status from the disk, with no external tool | accepted | 2026-07-20 |
 | [ADR-003](ADR-003-shared-knowledge-in-docs.md) | Durable shared knowledge lives in docs/knowledge/, promoted from the operational memory by PR | accepted | 2026-07-20 |
+| [ADR-004](ADR-004-aidakit-governance-env-contract.md) | `AIDAKIT_GOVERNANCE` — the env var flows use to call kit validators independent of cwd | accepted | 2026-07-23 |
 
 ## Thematic grouping
 
 - **Learning & memory:** [ADR-001](ADR-001-executable-dna-crystallization.md) — executable DNA crystallization; [ADR-003](ADR-003-shared-knowledge-in-docs.md) — durable knowledge in docs/knowledge/.
 - **Planning & tracking:** [ADR-002](ADR-002-roadmap-status-derived-from-disk.md) — roadmap with status derived from disk.
+- **Flow engine:** [ADR-004](ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract for validator resolution independent of cwd.
 
 <!-- The DISCOVERY index (DECISION_INDEX.md, with decision trees and tours by role) is created once this repo reaches ≥15 ADRs (DOCS.md §1). -->

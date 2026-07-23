@@ -56,6 +56,8 @@ This is the reusable "team" primitive of the kit: any skill that fans out to N i
 
 Lives in `.aidakit/flows/{state,logs}/` in the target project (ephemeral — gitignore recommended). `state/<flow_id>.json` is the resumable state; `logs/<flow_id>.log` is the JSON-lines event log. Base overridable via the `AIDAKIT_PROJECT_ROOT` env var.
 
+`runs` steps also receive `AIDAKIT_GOVERNANCE` in their child env, computed by `runs.js` from its own `import.meta.url` and pointing at the kit's own `governance/` directory — not the target project's. This lets a flow command call a kit validator as `node "$AIDAKIT_GOVERNANCE/validators/…"` and resolve it regardless of `cwd` (which is `AIDAKIT_PROJECT_ROOT`/the consumer repo, not the kit). See [docs/guides/flows.md](../docs/guides/flows.md) §3 (the `${...}` vs `$FOO` grammar distinction) and §6 (calling a kit validator from a flow of your own), and [ADR-004](../docs/decisions/ADR-004-aidakit-governance-env-contract.md) for the decision.
+
 ## Ported from recruit, coupling cut
 
 Brought over: the type contract, the loop with IoC, pause/resume, the `max`/`until` loop, interpolation. Cut: ajv (light manual validation), tsx (pure Node), recruit's paths (`.aidakit/` in their place), `/rc:*` (the `aidakit:*` namespace), the `yaml` dep (own mini-parser in `engine/yaml-min.js`), and the whole OpenSpec/cloud mode as mandatory.

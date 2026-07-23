@@ -63,7 +63,7 @@ steps:
       It is the diff between what exists (inventory) and what should (manifest). success
       (100%, nothing missing) → propose anyway, so the mapping confirms everything is
       in the right place; failure (docs missing) → propose the migration that creates/moves them.
-    command: "node governance/validators/check-doc-manifest.js .aidakit/doc-manifest-project.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/doc-manifest-project.json"
     on_success: propose
     on_failure: propose
 
@@ -125,7 +125,7 @@ steps:
       LOCKS. Re-checks the disk: is the list 100%? success → done (the documentation was
       rescued, nothing was lost). failure → back to apply, the back-edge that closes the
       items still missing. The flow does NOT end until the list is complete.
-    command: "node governance/validators/check-doc-manifest.js .aidakit/doc-manifest-project.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/doc-manifest-project.json"
     on_success: done
     on_failure: apply
 

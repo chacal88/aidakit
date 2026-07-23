@@ -2,22 +2,19 @@
 // Proves: parse+validation of the real flows, execution order, pause/resume with
 // persisted state, routing via on_result, and loop with max/until.
 
-import { mkdtempSync, rmSync, existsSync, symlinkSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
 // State goes into an isolated temporary project.
 const tmp = mkdtempSync(join(tmpdir(), "aidakit-engine-"));
 process.env.AIDAKIT_PROJECT_ROOT = tmp;
 
 // THE DOC-LEASH: the flows' `check_docs` step is a `runs` that fires
-//   node governance/validators/check-doc-manifest.js .aidakit/tasks/<request>/doc-manifest.json
-// with cwd = project root (the isolated tmp). For the gate to actually run in the
-// test, the validator must be reachable from tmp and the change's manifest must
-// exist. We link the real governance into tmp and expose a helper that seeds
-// (or removes) the manifest per change.
-const govReal = resolve(new URL(".", import.meta.url).pathname, "..");
-symlinkSync(govReal, join(tmp, "governance"), "dir");
+//   node "$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js" .aidakit/tasks/<request>/doc-manifest.json
+// with cwd = project root (the isolated tmp). The validator is reached via the absolute
+// $AIDAKIT_GOVERNANCE that runs.js injects, so cwd = tmp (no governance/ folder) faithfully
+// mirrors a consumer repo — no symlink fabrication needed.
 
 function manifestPathFor(request) {
   return join(tmp, ".aidakit", "tasks", request, "doc-manifest.json");
@@ -28,6 +25,18 @@ function seedSatisfiedManifest(request) {
   const p = manifestPathFor(request);
   mkdirSync(join(p, ".."), { recursive: true });
   writeFileSync(p, JSON.stringify({ change_id: request, level: "change", required: [] }));
+}
+
+// docs-onboarding's `diff`/`check` steps gate on a PROJECT-level manifest at a
+// FIXED path (not per-change, unlike manifestPathFor above): .aidakit/doc-manifest-project.json.
+function projectManifestPath() {
+  return join(tmp, ".aidakit", "doc-manifest-project.json");
+}
+// Seeds a SATISFIED project manifest (empty required ⇒ 0/0 resolved ⇒ exit 0).
+function seedSatisfiedProjectManifest() {
+  const p = projectManifestPath();
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, JSON.stringify({ change_id: "PROJECT", level: "project", required: [] }));
 }
 
 // Seeds (or appends a feature line to) an epic file declaring changeId, so the
@@ -76,8 +85,8 @@ function eq(a, b, name) { const r = JSON.stringify(a) === JSON.stringify(b); if 
 const here = new URL(".", import.meta.url).pathname;
 const flowsDir = join(here, "..", "flows");
 
-// ── 1. Both real flows parse and validate ──────────────────
-for (const name of ["fast", "full"]) {
+// ── 1. All real flows parse and validate ──────────────────
+for (const name of ["fast", "full", "docs-onboarding"]) {
   const res = parseFlowFile(join(flowsDir, `${name}.yaml`));
   eq(res.errors, [], `flow ${name} with no parse/validation errors`);
   ok(res.flow && res.flow.flow === name, `flow ${name} loaded with correct name`);
@@ -764,6 +773,46 @@ steps:
     { step_id: "w2", input: { group: "g1", feature: "f2" } },
   ], "7b: nested loops rebuild every level's var on resume (innermost included)");
   eq(res.state.status, "completed", "7b: flow completes");
+}
+
+// ── 8. THE DOCS-ONBOARDING FLOW: parsed (§1) AND actually driven ──
+// Before this section, `docs-onboarding.yaml` was dark: §1 only parsed
+// "fast"/"full", and nothing drove its steps end to end — a live mutation of
+// either of its two check-doc-manifest.js call sites (`diff`/`check`, the
+// flow's own lines 66/128) left the whole 12-file suite green (tester finding,
+// review round 1). This closes the gap: drive the flow through its full happy
+// path AND inspect the two `runs` steps' actual output — not just their
+// routing — so a broken validator path (module-not-found) is caught even when
+// routing alone would mask it (see the mutation proof below `diff`'s asserts:
+// `diff`'s on_success/on_failure BOTH route to "propose", so a broken `diff`
+// validator call would still let the flow complete if only the final status
+// were checked).
+{
+  seedSatisfiedProjectManifest();
+  const { res, visited } = driveDry("docs-onboarding", { project: "razor-example" }, {
+    inventory: "issues",
+    manifest: "success",
+    propose: "success",
+    gate_migration: "approve",
+    apply: "success",
+  });
+  eq(visited, ["inventory", "manifest", "propose", "gate_migration", "apply"],
+    "docs-onboarding: pause order (diff/check are runs steps, never pause)");
+  eq(res.state.status, "completed", "docs-onboarding: satisfied project manifest → flow completes");
+  eq(res.state.outcome, "completed", "docs-onboarding: outcome completed");
+
+  // The two `runs` steps must have ACTUALLY invoked check-doc-manifest.js — not
+  // merely routed to the expected next step. This is exactly what a broken
+  // $AIDAKIT_GOVERNANCE/relative-path regression breaks silently if only
+  // routing/final-status were asserted (see the mutation proof in evidence.md).
+  const diffRun = res.state.step_history.filter((h) => h.step_id === "diff").pop();
+  const checkRun = res.state.step_history.filter((h) => h.step_id === "check").pop();
+  ok(diffRun && diffRun.output.exit_code === 0, "docs-onboarding: diff step (runs) exited 0");
+  ok(diffRun && !diffRun.output.stderr.includes("Cannot find module") && !diffRun.output.stderr.includes("MODULE_NOT_FOUND"),
+    "docs-onboarding: diff step actually resolved the validator (no MODULE_NOT_FOUND in stderr)");
+  ok(checkRun && checkRun.output.exit_code === 0, "docs-onboarding: check step (runs) exited 0");
+  ok(checkRun && !checkRun.output.stderr.includes("Cannot find module") && !checkRun.output.stderr.includes("MODULE_NOT_FOUND"),
+    "docs-onboarding: check step actually resolved the validator (no MODULE_NOT_FOUND in stderr)");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
