@@ -17,8 +17,8 @@
 | [executable-dna.md](executable-dna.md) | The HOW of executable DNA: how a recurring lesson is crystallized into a regression test/rule, promoted via a dedicated PR, and invalidated when its origin ADR is superseded | Understanding what the `learn` step crystallizes and why the DNA PR is separate |
 | [roadmap-and-knowledge.md](roadmap-and-knowledge.md) | The HOW of in-repo tracking: the roadmap (epics → features → changes, status derived from disk) and shared knowledge (`docs/knowledge/`, promoted from the learn memory) — no Jira/Confluence | Tracking the project, planning epics, or organizing shared knowledge without an external tool |
 
-The 1→5 order above is also the recommended reading order for newcomers. `flows.md` and `executable-dna.md` are deep dives outside that sequence — read them when you're going to automate the process with the flows layer, or to understand the crystallization of learnings. The lookup references ([skills](../reference/README.md) and agents) are also not sequential reading.
+The 1→5 order above is also the recommended reading order for newcomers. `flows.md`, `executable-dna.md`, and `roadmap-and-knowledge.md` are deep dives outside that sequence — read them when you're going to automate the process with the flows layer, to understand the crystallization of learnings, or to track the project in-repo. The lookup references ([skills](../reference/README.md) and agents) are also not sequential reading.
 
 Back to the [master index](../INDEX.md).
 
-<!-- aidakit v0.3 — index of the guides/ subfolder, created on 2026-07-17 — translated to EN -->
+<!-- aidakit v0.4 — reading-order sentence names all 3 deep dives (flows, executable-dna, roadmap-and-knowledge), 2026-07-23 -->
