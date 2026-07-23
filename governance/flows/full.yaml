@@ -130,7 +130,7 @@ steps:
       the same three things as the review bench: every manifested surface
       reported, the consensus matches what aidakit:implement reported, and the
       dispatch was genuinely parallel.
-    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
+    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
     on_success: review_bench
     on_failure: implement
 
@@ -157,7 +157,7 @@ steps:
       exit≠0 (leash violation) goes back to review_bench to redo the round
       properly — a bench that skipped a role, invented a consensus, or ran
       sequentially never reaches hardening.
-    command: "node governance/validators/check-bench.js .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review_bench.outcome}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review_bench.outcome}"
     on_success: bench_outcome
     on_failure: review_bench
 
@@ -212,7 +212,7 @@ steps:
       Invalidation GATE — check-dna-freshness confirms that no crystallized DNA was
       born obsolete (origin premise/ADR already superseded) or malformed. exit 0
       releases the DNA PR; exit≠0 goes back to learn to revalidate/regenerate the DNA.
-    command: "node governance/validators/check-dna-freshness.js .aidakit/dna/${inputs.request}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-dna-freshness.js\" .aidakit/dna/${inputs.request}"
     on_success: dna_pr
     on_failure: learn
 
@@ -255,7 +255,7 @@ steps:
       LEASH GATE — check-doc-manifest checks item by item and LOCKS the flow until the
       list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0 (incomplete) goes
       back to document until the list closes.
-    command: "node governance/validators/check-doc-manifest.js .aidakit/tasks/${inputs.request}/doc-manifest.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/tasks/${inputs.request}/doc-manifest.json"
     on_success: pr
     on_failure: document
 

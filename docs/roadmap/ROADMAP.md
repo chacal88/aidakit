@@ -19,6 +19,8 @@ _(nada planejado)_
 - Retry com memória — `retry-memory` → backlog
 - Bench paralelo estrutural — `flow-parallel-bench` → backlog
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → backlog
+- `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → backlog
+- Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → backlog
 
 ## Done
 

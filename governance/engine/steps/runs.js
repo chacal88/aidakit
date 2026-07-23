@@ -6,8 +6,14 @@
 // `agent` step. Default cwd = root of the target project.
 
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { interpolateString } from "../interpolate.js";
 import { projectRoot } from "../persistence.js";
+
+// governance/engine/steps/runs.js → up two levels lands ON governance/ (the kit's
+// governance dir), so $AIDAKIT_GOVERNANCE/validators/x resolves regardless of cwd.
+const AIDAKIT_GOVERNANCE = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
  * @param {import('../types.js').RunsStep} step
@@ -17,7 +23,7 @@ import { projectRoot } from "../persistence.js";
 export function executeRuns(step, ctx) {
   const command = interpolateString(step.command, ctx);
   const cwd = step.cwd ? interpolateString(step.cwd, ctx) : projectRoot();
-  const env = { ...process.env };
+  const env = { ...process.env, AIDAKIT_GOVERNANCE };
   if (step.env) {
     for (const [k, v] of Object.entries(step.env)) {
       env[k] = interpolateString(String(v), ctx);

@@ -62,6 +62,8 @@ There are **two grammars** for referencing state in the engine, and they **do no
 
 Expressions available in both grammars: `inputs.<name>`, `context.<step>.<field>`, `flow_id`, and `item`/`<as>` inside a loop. (Detail in [governance/engine/interpolate.js](../../governance/engine/interpolate.js).)
 
+**A third, unrelated `$`-form: bare `$FOO` is shell expansion, not engine interpolation.** A `runs` step's `command` is a shell string executed via `bash -lc`, so bash's own environment-variable expansion also applies there — e.g. `$AIDAKIT_GOVERNANCE` (injected by `runs.js` into every `runs` child env; see §6). The engine's `interpolateString` only substitutes `${...}` (dollar-brace) tokens, so a bare `$AIDAKIT_GOVERNANCE` passes through the engine **untouched** and is expanded by bash instead. The two grammars coexist in the same command string without conflict: `command: "node \"$AIDAKIT_GOVERNANCE/validators/x.js\" ${inputs.request}"` — `${inputs.request}` resolves at the engine layer, `$AIDAKIT_GOVERNANCE` resolves at the shell layer, one substitution each.
+
 ## 4. Inversion of control
 
 The engine **never dispatches a subagent** — that's Claude's job. When the engine reaches an `invoke` step, it **pauses** with `pause.step_type: "invoke"`, records the skill and the rendered `input` in the state, and returns control. Then:
@@ -157,7 +159,7 @@ Options: plan | discard
 Two `runs` steps (never pausing, so they never appear as a dispatch) route it there:
 
 - **`route_mode`** — the first step in `fast.yaml`'s list (the flow declares no `entry`, so the first step IS the entry). `test "${inputs.mode}" = register`: exit 0 routes into the register path; exit 1 (the default, `build`) falls through to `select` — the pipeline above, byte-identical.
-- **`check_registered`** — THE LEASH: `node governance/validators/derive-roadmap-status.js --change ${inputs.request}`. It refuses to park an id the roadmap doesn't already declare — which also structurally rejects a raw free-form sentence leaking into `request` (a sentence never matches a declared kebab-case change-id, keeping every downstream `${inputs.request}` path clean). Exit 1 routes to the `aborted` terminal, nothing parked; the request must be registered on the roadmap first (`aidakit:roadmap` register mode mints the id and writes the feature line — `skills/roadmap/SKILL.md`).
+- **`check_registered`** — THE LEASH: `node "$AIDAKIT_GOVERNANCE/validators/derive-roadmap-status.js" --change "${inputs.request}"`. It refuses to park an id the roadmap doesn't already declare — which also structurally rejects a raw free-form sentence leaking into `request` (a sentence never matches a declared kebab-case change-id, keeping every downstream `${inputs.request}` path clean). Exit 1 routes to the `aborted` terminal, nothing parked; the request must be registered on the roadmap first (`aidakit:roadmap` register mode mints the id and writes the feature line — `skills/roadmap/SKILL.md`).
 
 Resuming continues right into planning with no re-explanation needed — the change-id carries into `select`'s input, and the roadmap's feature line + acceptance sub-bullet is the durable context the planner reads:
 
@@ -177,6 +179,8 @@ Input: { "request": "add-a-date-filter" }
 Put the file in `.aidakit/flows/<name>.yaml` **in the target project**. The loader looks there **first**; only if it doesn't find it does it fall back to the default flows embedded in the plugin (`governance/flows/`). That is, a project flow with the same name **overrides** the default — and `list` shows the union of the two directories. The file name must match the internal `flow:` field (the parser rejects a divergence). Source: [governance/engine/parser.js](../../governance/engine/parser.js).
 
 Minimal structure: a top-level map with `flow` (string), `description` (string), `inputs` (a list), and `steps` (a non-empty list). The parser validates the shape on `load` (unique ids, existing routing targets, mandatory fields per type) — a typographically broken flow fails at `start`, not after human gates and wasted work.
+
+**Calling a kit validator from a flow of your own:** `governance/validators/*.js` ships **inside the plugin**, not the target project, so a relative `node governance/validators/x.js` only resolves when the flow happens to run inside the kit repo itself — every consumer project's own `.aidakit/flows/*.yaml` needs the absolute path instead. `runs.js` injects `AIDAKIT_GOVERNANCE` (pointing at the kit's own `governance/` directory) into every `runs` step's child env; call a kit validator as `node "$AIDAKIT_GOVERNANCE/validators/x.js"` — double-quoted, since the plugin cache path may contain spaces. Leave your own project's argument paths (e.g. `.aidakit/…`) relative, unaffected by this — see §3 for why the bare `$AIDAKIT_GOVERNANCE` passes untouched through the engine's own `${...}` interpolation.
 
 ### The two default flows
 
@@ -199,3 +203,4 @@ Back to the [guides index](README.md) or the [master index](../INDEX.md).
 
 <!-- aidakit v0.3 — guide to the executable flows layer, created on 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 register-mode subsection: route_mode → check_registered → parked (add-debit), 2026-07-22 -->
+<!-- aidakit v0.5 — AIDAKIT_GOVERNANCE for consumer flows calling kit validators (§3, §5, §6), 2026-07-23 -->
