@@ -267,4 +267,36 @@ Everything else lives in the repo's own artifacts — no hidden state (GOVERNANC
 
 The `aidakit:orchestrator` reads this state to pick the next change and updates it when a change is shipped. Sessions are disposable; the state is not — you can close a session and resume weeks later from `STATE.md`.
 
+---
+
+## 5. Releasing the kit
+
+This section is about shipping **aidakit itself**, not about a change in a target repo.
+
+The kit carries two independent numberings, and only one of them is load-bearing:
+
+| Numbering | Where | Who reads it |
+|---|---|---|
+| Doctrine version | the `<!-- aidakit vX.Y — ... -->` footer at the end of each doc, skill, agent, and command | humans, for provenance |
+| Manifest version | `version` in `.claude-plugin/plugin.json` | **`claude plugin update`** |
+
+**`claude plugin update` compares nothing but the manifest version.** If it did not go up, the update answers *"already at the latest"* and copies **nothing** — however many commits landed. The user keeps running old skills and commands against a new `governance/`, and the only way out is `claude plugin uninstall` + `install`. This is not hypothetical: on 2026-07-23 the manifest sat at `0.2.1` — last bumped before the `roteiro→design` / `flow→build` rename — while the footers already declared `v0.4` for the register mode, and the owner was forced into uninstall + install twice.
+
+So the release step is:
+
+1. Bump `version` in `.claude-plugin/plugin.json` to at least the highest doctrine footer in the tree.
+2. Run the leash:
+
+   ```
+   node governance/validators/check-plugin-version.js .
+   ```
+
+   Exit 0 = the manifest covers every footer. Exit 1 = the manifest is behind, and the report names the footers that are ahead plus the version to bump to.
+3. Commit as `chore(release): bump plugin to X.Y.Z`.
+
+The rule is one-directional: the manifest may be **ahead** of the footers (not every file changes in a release), never **behind**.
+
+> **Why this validator is not a step in `fast.yaml`/`full.yaml`:** those flows run inside *target* repos, which have no `.claude-plugin/plugin.json` — the validator would exit 2 (usage) on every change. It is a release-time check for this repository, not a per-change gate.
+
 <!-- aidakit v0.3 — reorg 11 agentes + 8 comandos; skills brainstorm/implement/review finas; renome roteiro→design, flow→build, next absorvido pelo build, 2026-07-17 — translated to EN -->
+<!-- aidakit v0.4 — §5 release: manifest-vs-footer numbering + check-plugin-version leash, 2026-07-23 -->
