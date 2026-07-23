@@ -18,6 +18,7 @@ _(nada planejado)_
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
 - Bench paralelo estrutural — `flow-parallel-bench` → backlog
+- Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → backlog
 
 ## Done
 
