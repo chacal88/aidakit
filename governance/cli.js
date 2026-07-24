@@ -21,14 +21,16 @@ import { startFlow, resumeFlow } from "./engine/engine.js";
 import { loadFlow, listFlowNames } from "./engine/parser.js";
 import { loadState, saveState } from "./engine/persistence.js";
 import { parseResumeOutput } from "./engine/resume-output.js";
+import { renderProgressTable } from "./engine/progress-table.js";
 
 function fail(msg) {
   process.stderr.write(`aidakit — error: ${msg}\n`);
   process.exit(2);
 }
 
-function printPauseOrEnd(res) {
+function printPauseOrEnd(res, flow) {
   const s = res.state;
+  process.stdout.write(renderProgressTable(flow.steps, s));
   if (s.status === "paused" && s.pause) {
     const p = s.pause;
     process.stdout.write(`\n[${s.flow_id}] PAUSED at "${p.step_id}" (${p.step_type})\n\n`);
@@ -59,7 +61,7 @@ function cmdStart(argv) {
   } catch (err) {
     fail(err.message);
   }
-  printPauseOrEnd(res);
+  printPauseOrEnd(res, flow);
 }
 
 function cmdResume(argv) {
@@ -84,7 +86,7 @@ function cmdResume(argv) {
   } catch (err) {
     fail(err.message);
   }
-  printPauseOrEnd(res);
+  printPauseOrEnd(res, flow);
 }
 
 function cmdStatus(argv) {
@@ -95,6 +97,9 @@ function cmdStatus(argv) {
   process.stdout.write(`current step: ${state.current_step ?? "—"}\n`);
   process.stdout.write(`steps executed: ${state.step_history.length}\n`);
   if (state.pause) process.stdout.write(`paused at: ${state.pause.step_id} (${state.pause.step_type})\n`);
+  // Best-effort: the table is additive, never a new failure mode for `status`.
+  const { flow, errors } = loadFlow(state.flow_name);
+  if (!errors.length) process.stdout.write(`\n${renderProgressTable(flow.steps, state)}`);
 }
 
 function cmdAbort(argv) {
