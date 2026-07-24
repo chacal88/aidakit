@@ -24,7 +24,7 @@ _(nada planejado)_
 
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
-- Bench paralelo estrutural — `flow-parallel-bench` → backlog
+- Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
 - `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → backlog
 - Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → backlog
 
