@@ -38,3 +38,4 @@ _(nada planejado)_
 
 - Registro diferido no build (débito) — `add-debit` → done (2026-07-22)
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
+- Status derivado do git compartilhado (single-valued entre worktrees) — `roadmap-status-from-shared-git` → done (2026-07-24)
