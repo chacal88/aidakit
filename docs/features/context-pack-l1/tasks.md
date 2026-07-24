@@ -146,17 +146,17 @@
 
 ### 8a. RED
 
-- [ ] N8a-i. Test §learn-rollup-written: given a synthetic telemetry JSONL with three dispatches, `aidakit:learn` writes a `## Context-pack telemetry rollup` section into `evidence.md` containing total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent table. (AC #10)
-- [ ] N8a-ii. Test §learn-rollup-idempotent: running `learn` twice replaces the section rather than duplicating it. (AC #10)
+- [x] N8a-i. Test §learn-rollup-written: given a synthetic telemetry JSONL with three dispatches, `aidakit:learn` writes a `## Context-pack telemetry rollup` section into `evidence.md` containing total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent table. (AC #10)
+- [x] N8a-ii. Test §learn-rollup-idempotent: running `learn` twice replaces the section rather than duplicating it. (AC #10)
 
 ### 8b. GREEN
 
-- [ ] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #10)
+- [x] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #10)
   - When `.telemetry.jsonl` is absent OR empty (zero lines), the rollup section written into `evidence.md` says exactly `No telemetry captured for this run.` instead of crashing on a missing file or zero-division on empty aggregates. The section header itself is still written (so the idempotent replacement in N8a-ii keeps working on the next run when telemetry does arrive).
 
 ### 8c. REFACTOR
 
-- [ ] N8c. Re-run §learn-* → green.
+- [x] N8c. Re-run §learn-* → green.
 
 ## 9. ADR-010 + index update
 

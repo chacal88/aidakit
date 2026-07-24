@@ -587,6 +587,72 @@ function telemetryFileFor(root, changeId) {
     "§engine-test-still-green: governance/__tests__/engine.test.mjs still green after the additive extension");
 }
 
+// ── §8 aidakit:learn rollup into evidence.md ──────────────────────────────
+
+const rollupJs = join(GOV, "telemetry", "rollup.js");
+
+function makeLearnProject(changeId = "learn-rollup-change") {
+  const root = mkdtempSync(join(tmpdir(), "learn-rollup-"));
+  mkdirSync(join(root, "docs", "features", changeId), { recursive: true });
+  mkdirSync(join(root, ".aidakit", "tasks", changeId), { recursive: true });
+  writeFileSync(join(root, "docs", "features", changeId, "evidence.md"),
+    "# Evidence\n\n## Validation Outputs\n\n<!-- stub -->\n\n## Context-pack telemetry rollup\n\n<!-- Written by aidakit:learn at end-of-run. -->\n\n## Coverage report\n\n<!-- stub -->\n");
+  return { root, changeId };
+}
+
+function writeSyntheticTelemetry(root, changeId, entries) {
+  const p = join(root, ".aidakit", "tasks", changeId, ".telemetry.jsonl");
+  writeFileSync(p, entries.map((e) => JSON.stringify(e)).join("\n") + "\n");
+  return p;
+}
+
+function runRollupCli(args) {
+  const out = execFileSync("node", [rollupJs, ...args], { encoding: "utf8" });
+  return out;
+}
+
+// N8a-i: rollup written with totals, mean pack_size, sums, rebuild count, per-subagent table.
+{
+  const { root, changeId } = makeLearnProject();
+  writeSyntheticTelemetry(root, changeId, [
+    { ts: "2026-07-25T10:00:00Z", subagent: "aidakit:reviewer-quality", cache_creation: 100, cache_read: 1000, pack_size: 200, duration_ms: 500, pack_rebuilt: false },
+    { ts: "2026-07-25T10:05:00Z", subagent: "aidakit:reviewer-security", cache_creation: 50, cache_read: 500, pack_size: 400, duration_ms: 300, pack_rebuilt: true },
+    { ts: "2026-07-25T10:10:00Z", subagent: "aidakit:reviewer-quality", cache_creation: 150, cache_read: 1500, pack_size: 300, duration_ms: 600, pack_rebuilt: false },
+  ]);
+  runRollupCli(["--change-id", changeId, "--root", root]);
+  const evidence = readFileSync(join(root, "docs", "features", changeId, "evidence.md"), "utf8");
+  ok(/## Context-pack telemetry rollup/.test(evidence), "§learn-rollup-written: section header present");
+  ok(/Total dispatches:\s*3/.test(evidence), "§learn-rollup-written: total dispatches = 3");
+  ok(/Sum cache_read:\s*3000/.test(evidence), "§learn-rollup-written: sum cache_read = 3000");
+  ok(/Sum cache_creation:\s*300/.test(evidence), "§learn-rollup-written: sum cache_creation = 300");
+  ok(/Pack rebuilds:\s*1/.test(evidence), "§learn-rollup-written: pack rebuilds = 1");
+  ok(/aidakit:reviewer-quality/.test(evidence) && /aidakit:reviewer-security/.test(evidence), "§learn-rollup-written: per-subagent table lists both subagents");
+}
+
+// N8a-ii: running learn's rollup twice REPLACES the section, never duplicates it.
+{
+  const { root, changeId } = makeLearnProject("learn-rollup-idempotent");
+  writeSyntheticTelemetry(root, changeId, [
+    { ts: "2026-07-25T10:00:00Z", subagent: "aidakit:tester", cache_creation: 10, cache_read: 20, pack_size: 30, duration_ms: 40, pack_rebuilt: false },
+  ]);
+  runRollupCli(["--change-id", changeId, "--root", root]);
+  runRollupCli(["--change-id", changeId, "--root", root]);
+  const evidence = readFileSync(join(root, "docs", "features", changeId, "evidence.md"), "utf8");
+  const occurrences = (evidence.match(/## Context-pack telemetry rollup/g) || []).length;
+  ok(occurrences === 1, "§learn-rollup-idempotent: running twice → exactly one section header, not duplicated");
+  ok(/## Coverage report/.test(evidence), "§learn-rollup-idempotent: the following section (Coverage report) survives the replace");
+}
+
+// N8b-i: absent/empty telemetry → the literal "No telemetry captured for this run." with the header retained.
+{
+  const { root, changeId } = makeLearnProject("learn-rollup-empty");
+  // No .telemetry.jsonl file at all.
+  runRollupCli(["--change-id", changeId, "--root", root]);
+  const evidence = readFileSync(join(root, "docs", "features", changeId, "evidence.md"), "utf8");
+  ok(/## Context-pack telemetry rollup/.test(evidence), "§learn-rollup-empty-or-absent: section header retained even with no telemetry");
+  ok(/No telemetry captured for this run\./.test(evidence), "§learn-rollup-empty-or-absent: exact literal message when telemetry is absent");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
