@@ -17,8 +17,8 @@ A flow is a sequence of **steps** of 7 types. Each step routes to the next via `
 
 | Type | What it does |
 |---|---|
-| `invoke` | Dispatches a **skill OR an agent** — the `invoke_target:` field names which one (e.g., `invoke_target: aidakit:readiness` is a skill; `invoke_target: aidakit:orchestrator` is an agent). **Does not execute** — it pauses and asks Claude to run it (inversion of control) and to resume with the outcome. |
-| `runs` | Runs a deterministic shell command; routes by exit code (0 = success). The cheap "command" half. |
+| `invoke` | Dispatches a **skill OR an agent** — the `invoke_target:` field names which one (e.g., `invoke_target: aidakit:readiness` is a skill; `invoke_target: aidakit:orchestrator` is an agent). **Does not execute** — it pauses and asks Claude to run it (inversion of control) and to resume with the outcome. May declare `outputs: {<outcome>: [key, ...]}`: resuming with that outcome then REQUIRES `key=value` tokens (safe single tokens), persisted into `context[step.id]` for `${context.<step>.<key>}` — how `select` carries the change-id ([ADR-005](../docs/decisions/ADR-005-flow-values-as-data.md)). |
+| `runs` | Runs a deterministic shell command; routes by exit code (0 = success). The cheap "command" half. `${...}` values are passed to bash as environment **data** (`$AIDAKIT_VAR_n`), never spliced as shell text — a multiline/metacharacter value can't break or inject the command ([ADR-005](../docs/decisions/ADR-005-flow-values-as-data.md)). |
 | `human_gate` | Pauses and asks the human to choose among `options`. |
 | `human_handoff` | Pauses and hands a free-text task to the human/Claude. |
 | `loop` | Iterates the `body` over an array, with a `max` ceiling and/or an `until` condition (so it never runs forever). |
@@ -36,9 +36,11 @@ Two grammars for referencing state, **do not mix them**:
 
 Available expressions: `${inputs.x}`, `${context.<step>.<field>}`, `${flow_id}`, `${item}`/`${as}` (inside a loop).
 
+In a `runs` **command**, each resolvable `${...}` renders as a bash env-var reference (`$AIDAKIT_VAR_n`) whose value travels through the child environment — data, not shell text ([ADR-005](../docs/decisions/ADR-005-flow-values-as-data.md)). Interpolation sites in commands must therefore be bare or double-quoted, never inside single quotes (a single-quoted `'${x}'` stops expanding).
+
 ## Inversion of control (the central point)
 
-The engine **never dispatches a skill/subagent** — that is Claude's job. An `invoke` step pauses with `step_type: "invoke"` (carrying `invoke_target:` = the skill/agent to run), Claude runs the skill/agent and calls `resume <flow_id> <outcome>`. This way the engine is the deterministic spine (order, gates, state that survives the session) and Claude is the intelligence engine. Each one resolves what the other does poorly.
+The engine **never dispatches a skill/subagent** — that is Claude's job. An `invoke` step pauses with `step_type: "invoke"` (carrying `invoke_target:` = the skill/agent to run), Claude runs the skill/agent and calls `resume <flow_id> <outcome> [key=value ...]` — the `key=value` tokens carry the step's declared structured outputs (e.g. `change_id=<id>` on `select`; the engine re-pauses, fail-closed, until every declared key arrives as a safe single token). This way the engine is the deterministic spine (order, gates, state that survives the session) and Claude is the intelligence engine. Each one resolves what the other does poorly.
 
 ## Real parallelism: the "bench" pattern
 
@@ -63,3 +65,4 @@ Lives in `.aidakit/flows/{state,logs}/` in the target project (ephemeral — git
 Brought over: the type contract, the loop with IoC, pause/resume, the `max`/`until` loop, interpolation. Cut: ajv (light manual validation), tsx (pure Node), recruit's paths (`.aidakit/` in their place), `/rc:*` (the `aidakit:*` namespace), the `yaml` dep (own mini-parser in `engine/yaml-min.js`), and the whole OpenSpec/cloud mode as mandatory.
 
 <!-- aidakit v0.3 — flow engine, Milestone 1, 2026-07-17 — translated to EN -->
+<!-- aidakit v0.6 — ADR-005: structured invoke outputs (change_id) + runs values passed as env data, 2026-07-24 -->

@@ -65,11 +65,11 @@ export function startFlow(opts) {
 }
 
 /**
- * @param {{state:import('./types.js').FlowState, flow:import('./types.js').Flow, resumeValue:string}} opts
+ * @param {{state:import('./types.js').FlowState, flow:import('./types.js').Flow, resumeValue:string, resumeOutput?:Object.<string,string>}} opts
  * @returns {{status:string, state:import('./types.js').FlowState}}
  */
 export function resumeFlow(opts) {
-  const { state, flow, resumeValue } = opts;
+  const { state, flow, resumeValue, resumeOutput } = opts;
   if (state.status !== "paused") throw new Error(`cannot resume flow ${state.flow_id}: status is ${state.status}`);
   if (!state.pause) throw new Error(`cannot resume flow ${state.flow_id}: no pause record`);
   const frame = {
@@ -80,8 +80,8 @@ export function resumeFlow(opts) {
   state.status = "running";
   state.pause = undefined;
   saveState(state);
-  logEvent(state.flow_id, { event: "flow_resume", step: frame.stepId, value: resumeValue });
-  return drive(state, flow, [frame], resumeValue);
+  logEvent(state.flow_id, { event: "flow_resume", step: frame.stepId, value: resumeValue, output: resumeOutput });
+  return drive(state, flow, [frame], resumeValue, resumeOutput);
 }
 
 /** Rebuilds loopVars by walking the path and reading the saved loop frames.
@@ -107,8 +107,9 @@ function rebuildLoopVars(state, _flow, path) {
   return vars;
 }
 
-function drive(state, flow, queue, initialResumeValue) {
+function drive(state, flow, queue, initialResumeValue, initialResumeOutput) {
   let resumeValue = initialResumeValue;
+  let resumeOutput = initialResumeOutput;
 
   while (queue.length > 0) {
     const frame = queue.shift();
@@ -123,7 +124,7 @@ function drive(state, flow, queue, initialResumeValue) {
     }
 
     state.current_step = step.id;
-    const ctx = { state, flow, resumeValue, loopVars: frame.loopVars, path: frame.path };
+    const ctx = { state, flow, resumeValue, resumeOutput, loopVars: frame.loopVars, path: frame.path };
 
     const startedAt = new Date().toISOString();
     logEvent(state.flow_id, { event: "step_start", step_id: step.id, type: step.type, path: frame.path });
@@ -134,8 +135,9 @@ function drive(state, flow, queue, initialResumeValue) {
     } catch (err) {
       outcome = { kind: "fail", error: err && err.message ? err.message : String(err) };
     }
-    // Single-shot: only consume resumeValue on the first step we dequeue.
+    // Single-shot: only consume resumeValue/resumeOutput on the first step we dequeue.
     resumeValue = undefined;
+    resumeOutput = undefined;
 
     const history = {
       step_id: step.id,

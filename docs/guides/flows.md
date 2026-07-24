@@ -58,6 +58,8 @@ There are **two grammars** for referencing state in the engine, and they **do no
 
   Here, the bare path (`command: validate inputs.change_id`) comes out **literal** — nothing is substituted.
 
+  **In a `runs` command, the value travels as data, not shell text** ([ADR-005](../decisions/ADR-005-flow-values-as-data.md)): each resolvable `${expr}` renders as a bash variable reference (`$AIDAKIT_VAR_n`) whose value is injected into the child env — bash expands it after parsing, so a multiline or metacharacter-laden value (a free-form `${inputs.request}`, say) can never break the command structure or inject commands. Two consequences: quote the interpolation site with **double** quotes (`".aidakit/tasks/${context.select.change_id}/…"`) to also prevent word-splitting, and never put an interpolation inside **single** quotes — `'${x}'` stops expanding and renders the literal text `$AIDAKIT_VAR_n`.
+
 **Rule of thumb:** `over`/`until` = the whole value is the expression → bare. `command`/`prompt`/`input` = the expression is **embedded** in a string → `${...}`.
 
 Expressions available in both grammars: `inputs.<name>`, `context.<step>.<field>`, `flow_id`, and `item`/`<as>` inside a loop. (Detail in [governance/engine/interpolate.js](../../governance/engine/interpolate.js).)
@@ -68,11 +70,13 @@ Expressions available in both grammars: `inputs.<name>`, `context.<step>.<field>
 
 The engine **never dispatches a subagent** — that's Claude's job. When the engine reaches an `invoke` step, it **pauses** with `pause.step_type: "invoke"`, records the skill and the rendered `input` in the state, and returns control. Then:
 
-1. The CLI prints the dispatch (which skill, which input, which expected outcomes).
+1. The CLI prints the dispatch (which skill, which input, which expected outcomes — and, when the step declares `outputs`, which `key=value` tokens the resume must carry).
 2. The **operator-Claude** runs the skill/subagent.
-3. Claude calls `resume <flow_id> <outcome>`, and the engine advances.
+3. Claude calls `resume <flow_id> <outcome> [key=value ...]`, and the engine advances.
 
-This way the engine is the **deterministic spine** (order, gates, state that survives the session) and Claude is the **intelligence engine**. Each does what the other does poorly. If the outcome isn't in `expects`, the engine **re-pauses** instead of killing the run — an invalid outcome does not destroy work already done. Source: [governance/engine/steps/invoke.js](../../governance/engine/steps/invoke.js).
+The `key=value` tokens are the step's **structured outputs** ([ADR-005](../decisions/ADR-005-flow-values-as-data.md)): an invoke step may declare `outputs: {<outcome>: [key, ...]}`, and resuming with that outcome then *requires* those keys as safe single tokens (`[A-Za-z0-9._:@/-]+` — ids, branches, URLs; never prose). They persist into `context.<step_id>.<key>` for downstream interpolation — this is how `select` reports the resolved change-id (`resume … success change_id=<id>`) and every task path keys on `${context.select.change_id}` instead of the free-form request.
+
+This way the engine is the **deterministic spine** (order, gates, state that survives the session) and Claude is the **intelligence engine**. Each does what the other does poorly. If the outcome isn't in `expects` — or a declared output is missing or unsafe — the engine **re-pauses** instead of killing the run — an invalid resume does not destroy work already done. Source: [governance/engine/steps/invoke.js](../../governance/engine/steps/invoke.js).
 
 ## 5. The CLI commands
 
@@ -81,7 +85,7 @@ This way the engine is the **deterministic spine** (order, gates, state that sur
 | Command | Does |
 |---|---|
 | `start <flow> [key=value …]` | Starts a flow, passing the `inputs` via `key=value`. |
-| `resume <flow_id> <outcome>` | Resumes a paused flow with the outcome (the value of an `invoke`, the option of a `human_gate`, the free text of a `human_handoff`). |
+| `resume <flow_id> <outcome> [key=value …]` | Resumes a paused flow with the outcome (the value of an `invoke`, the option of a `human_gate`, the free text of a `human_handoff`). The `key=value` tokens carry an invoke step's declared structured outputs (e.g. `change_id=<id>` on `select`). |
 | `status <flow_id>` | Shows the state, the current step, and where it's paused. |
 | `abort <flow_id> [reason]` | Aborts a flow in flight. |
 | `list` | Lists the available flows (project + the plugin default). |
@@ -100,10 +104,10 @@ When done, run:
   node governance/cli.js resume fast-260717-8f2a <outcome>
 ```
 
-Claude runs the `aidakit:orchestrator` agent, which picks the change, and resumes — the flow advances to the `plan` step:
+Claude runs the `aidakit:orchestrator` agent, which picks the change, and resumes reporting the resolved change-id (the `select` step declares `outputs: {success: [change_id]}`, so a `success` without it re-pauses) — the flow advances to the `plan` step:
 
 ```console
-$ node governance/cli.js resume fast-260717-8f2a success
+$ node governance/cli.js resume fast-260717-8f2a success change_id=listing-date-filter
 
 [fast-260717-8f2a] PAUSED at "plan" (invoke)
 Dispatch skill/agent: aidakit:plan
@@ -204,3 +208,4 @@ Back to the [guides index](README.md) or the [master index](../INDEX.md).
 <!-- aidakit v0.3 — guide to the executable flows layer, created on 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 register-mode subsection: route_mode → check_registered → parked (add-debit), 2026-07-22 -->
 <!-- aidakit v0.5 — AIDAKIT_GOVERNANCE for consumer flows calling kit validators (§3, §5, §6), 2026-07-23 -->
+<!-- aidakit v0.6 — ADR-005: runs values as env data (§3) + structured resume outputs / change_id (§4, §5), 2026-07-24 -->

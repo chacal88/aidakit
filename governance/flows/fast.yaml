@@ -67,13 +67,20 @@ steps:
       the active changes, runs git log for the repo state, checks the archive
       (openspec/changes/archive/ or docs/archive/) and the cited dependencies, and picks
       the first ready change whose plan artifacts validate and whose dependencies have
-      already been delivered. If the request already carries a change-id, it confirms it instead of selecting.
+      already been delivered. If the request already carries a change-id, it confirms it
+      instead of selecting. Reports the resolved change-id back as the change_id
+      output (resume ... success change_id=<kebab-case-id>): every downstream
+      .aidakit/tasks/... path keys on ${context.select.change_id}, never on the
+      free-form ${inputs.request}.
     invoke_target: aidakit:orchestrator
     input:
       request: "${inputs.request}"
     expects:
       - success
       - failure
+    outputs:
+      success:
+        - change_id
     on_success: plan
     on_failure: aborted
 
@@ -83,6 +90,7 @@ steps:
     invoke_target: aidakit:plan
     input:
       request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
     expects:
       - success
       - failure
@@ -116,7 +124,7 @@ steps:
     type: runs
     description: |
       PARALLELISM LEASH, conditional — a single-surface change never writes a
-      bench="implement" record to .aidakit/tasks/${inputs.request}/bench.ndjson
+      bench="implement" record to .aidakit/tasks/<change-id>/bench.ndjson
       (there's nothing to parallelize; the file may still exist for the review
       bench that runs later), so this step SKIPS the leash when no "implement"
       record is present (exit 0). When the orchestrator routed a multi-surface
@@ -124,8 +132,10 @@ steps:
       per-surface verdicts under bench="implement", and check-bench.js verifies
       the same three things as the review bench: every manifested surface
       reported, the consensus matches what aidakit:implement reported, and the
-      dispatch was genuinely parallel.
-    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
+      dispatch was genuinely parallel. The path keys on
+      ${context.select.change_id} — the id select reported — never on the
+      free-form request.
+    command: "test ! -f \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || ! grep -q '\"bench\":\"implement\"' \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" --bench implement --outcome success"
     on_success: review
     on_failure: implement
 
@@ -152,7 +162,7 @@ steps:
       exit≠0 (leash violation) goes back to review to redo the round properly —
       a bench that skipped a role, invented a consensus, or ran sequentially
       never reaches document.
-    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review.outcome}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" --bench review --outcome \"${context.review.outcome}\""
     on_success: review_outcome
     on_failure: review
 
@@ -167,12 +177,13 @@ steps:
     type: invoke
     description: |
       aidakit:doc-planner — DOC-LEASH. Builds/updates the manifest of required
-      documents for the change (.aidakit/tasks/${inputs.request}/doc-manifest.json) and
-      dispatches the fronts that fill in the missing docs. Decides the rigor (what is
+      documents for the change (.aidakit/tasks/${context.select.change_id}/doc-manifest.json)
+      and dispatches the fronts that fill in the missing docs. Decides the rigor (what is
       required, under which condition and kind); the truth remains the disk.
     invoke_target: aidakit:doc-planner
     input:
       request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
     expects:
       - success
       - failure
@@ -185,7 +196,7 @@ steps:
       LEASH GATE — check-doc-manifest verifies item by item and LOCKS the flow
       until the list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0
       (incomplete) goes back to document until the list is complete.
-    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/tasks/${inputs.request}/doc-manifest.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" \".aidakit/tasks/${context.select.change_id}/doc-manifest.json\""
     on_success: pr
     on_failure: document
 

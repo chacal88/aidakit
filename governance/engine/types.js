@@ -35,7 +35,7 @@
  * @property {Object.<string,string>} [on_result]
  */
 
-/** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[]}} InvokeStep — dispatches the skill/agent named in `invoke_target`. */
+/** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[], outputs?:Object.<string,string[]>}} InvokeStep — dispatches the skill/agent named in `invoke_target`. `outputs` maps an outcome to the structured output keys a resume with that outcome MUST supply (safe single tokens, persisted into context[step.id] — ADR-005). */
 /** @typedef {BaseStep & {type:"runs", command:string, cwd?:string, env?:Object.<string,string>}} RunsStep */
 /** @typedef {BaseStep & {type:"human_handoff", prompt:string}} HumanHandoffStep */
 /** @typedef {BaseStep & {type:"human_gate", prompt:string, options:string[]}} HumanGateStep */
@@ -80,6 +80,7 @@
  * @property {string[]} [options]
  * @property {string} [invoke_target]  name of the skill/agent to dispatch (on an "invoke" pause)
  * @property {Object.<string,unknown>} [input]
+ * @property {Object.<string,string[]>} [outputs]  outcome → required structured-output keys (on an "invoke" pause)
  * @property {string[]} path
  * @property {string} paused_at
  */
@@ -118,6 +119,7 @@
  * @property {FlowState} state
  * @property {Flow} flow
  * @property {string} [resumeValue]   resume value; consumed by a single step (single-shot)
+ * @property {Object.<string,string>} [resumeOutput]   structured resume output (key=value tokens after the outcome); single-shot like resumeValue
  * @property {Object.<string,unknown>} loopVars
  * @property {string[]} path
  */

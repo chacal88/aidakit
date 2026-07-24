@@ -96,8 +96,15 @@ ok(listFlowNames().includes("fast") && listFlowNames().includes("full"), "listFl
 
 // ── 2. Run the "fast" flow dry, resolving each pause ───────
 // Driver: while paused, injects the expected outcome and resumes. `answers` maps
-// step_id → outcome, OR step_id → list of outcomes (consumed in order, for
-// steps revisited in a correction loop).
+// step_id → answer, OR step_id → list of answers (consumed in order, for
+// steps revisited in a correction loop). An answer is a plain outcome string,
+// or {outcome, output} when the step declares structured outputs (e.g. select
+// reporting change_id).
+function resumeWith(state, flow, answer) {
+  const resumeValue = typeof answer === "string" ? answer : answer.outcome;
+  const resumeOutput = typeof answer === "string" ? undefined : answer.output;
+  return resumeFlow({ state, flow, resumeValue, resumeOutput });
+}
 function driveDry(flowName, inputs, answers) {
   const { flow } = loadFlow(flowName);
   let res = startFlow({ flow, inputs, startedBy: "test", idOpts: { rand: "test01", now: new Date("2026-07-17T00:00:00Z") } });
@@ -114,9 +121,14 @@ function driveDry(flowName, inputs, answers) {
       answer = answer[Math.min(idx, answer.length - 1)];
     }
     if (answer === undefined) throw new Error(`no answer for pause "${p.step_id}"`);
-    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: answer });
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
   }
   return { res, visited };
+}
+// select's success now requires the change_id structured output (the
+// request-vs-change-id leash) — shorthand for the common test answer.
+function selectAnswer(changeId) {
+  return { outcome: "success", output: { change_id: changeId } };
 }
 
 // Happy path of fast: select→plan→readiness(approved)→implement→review(pass)
@@ -130,7 +142,7 @@ function driveDry(flowName, inputs, answers) {
   seedSatisfiedManifest("cancel-appointment");
   seedSatisfiedBench("cancel-appointment");
   const { res, visited } = driveDry("fast", { request: "cancel-appointment" }, {
-    select: "success",
+    select: selectAnswer("cancel-appointment"),
     plan: "success",
     readiness: "approved",
     implement: "success",
@@ -164,11 +176,11 @@ seedSatisfiedManifest("x");
     inputs: { request: "x-round1" },
     startedBy: "test",
   });
-  const answers1 = { select: "success", plan: "success", readiness: "approved", implement: "success", review: "fail" };
+  const answers1 = { select: selectAnswer("x-round1"), plan: "success", readiness: "approved", implement: "success", review: "fail" };
   let visited1 = [];
   for (let i = 0; i < 10 && res1.state.status === "paused"; i++) {
     visited1.push(res1.state.pause.step_id);
-    res1 = resumeFlow({ state: loadState(res1.state.flow_id), flow: loadFlow("fast").flow, resumeValue: answers1[res1.state.pause.step_id] });
+    res1 = resumeWith(loadState(res1.state.flow_id), loadFlow("fast").flow, answers1[res1.state.pause.step_id]);
   }
   const idxReview1 = visited1.indexOf("review");
   eq(visited1[idxReview1 + 1], "implement", "fast: review fail re-enters implement");
@@ -176,7 +188,7 @@ seedSatisfiedManifest("x");
   seedSatisfiedManifest("x-round2");
   seedSatisfiedBench("x-round2", { round: 1, pass: true });
   const { res, visited } = driveDry("fast", { request: "x-round2" }, {
-    select: "success", plan: "success", readiness: "approved", implement: "success", review: "pass",
+    select: selectAnswer("x-round2"), plan: "success", readiness: "approved", implement: "success", review: "pass",
     document: "success", pr: "success", merge: "merged",
   });
   eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"], "fast: recovers and completes on the corrected round");
@@ -188,7 +200,7 @@ seedSatisfiedManifest("x");
   seedSatisfiedManifest("x-discard");
   seedSatisfiedBench("x-discard");
   const { res } = driveDry("fast", { request: "x-discard" }, {
-    select: "success", plan: "success", readiness: "approved", implement: "success", review: "pass",
+    select: selectAnswer("x-discard"), plan: "success", readiness: "approved", implement: "success", review: "pass",
     document: "success", pr: "success",
     merge: "discard",
   });
@@ -198,7 +210,7 @@ seedSatisfiedManifest("x");
 // readiness=blocked → aborts early
 {
   const { res, visited } = driveDry("fast", { request: "x-blocked" }, {
-    select: "success", plan: "success", readiness: "blocked",
+    select: selectAnswer("x-blocked"), plan: "success", readiness: "blocked",
   });
   eq(visited, ["select", "plan", "readiness"], "fast: stops at readiness when blocked");
   eq(res.state.status, "aborted", "fast: blocked aborts");
@@ -223,7 +235,8 @@ seedSatisfiedManifest("x");
     visited.push(p.step_id);
     let answer;
     switch (p.step_id) {
-      case "select": case "plan": case "implement": answer = "success"; break;
+      case "select": answer = selectAnswer(request); break;
+      case "plan": case "implement": answer = "success"; break;
       case "readiness": answer = "approved"; break;
       case "review": answer = "pass"; break;
       case "document":
@@ -238,7 +251,7 @@ seedSatisfiedManifest("x");
       case "merge": answer = "merged"; break;
       default: throw new Error(`unexpected pause "${p.step_id}"`);
     }
-    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: answer });
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
   }
   // While the list was incomplete, the flow re-entered `document` (the locked
   // gate handed control back) — exactly 3 visits before it closed.
@@ -256,7 +269,7 @@ seedSatisfiedManifest("x");
   seedSatisfiedManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("full", { request }, {
-    select: "success",
+    select: selectAnswer(request),
     classify: "success",
     brainstorm: "done",
     specify: "success",
@@ -299,7 +312,7 @@ seedSatisfiedManifest("x");
 
   const { flow } = loadFlow("full");
   let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "leashb1", now: new Date("2026-07-17T00:00:00Z") } });
-  const answers = { select: "success", classify: "success", brainstorm: "done", specify: "success", critic: "ok", pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus" };
+  const answers = { select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok", pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus" };
   const visited = [];
   // Bounded loop: the mismatched bench.ndjson never resolves on its own (this
   // test writes it once, statically), so review_bench re-pauses forever — cap
@@ -307,7 +320,7 @@ seedSatisfiedManifest("x");
   for (let i = 0; i < 12 && res.state.status === "paused"; i++) {
     const p = res.state.pause;
     visited.push(p.step_id);
-    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: answers[p.step_id] });
+    res = resumeWith(loadState(res.state.flow_id), flow, answers[p.step_id]);
   }
   ok(visited.filter((s) => s === "review_bench").length >= 2, "parallelism leash: mismatched bench.ndjson re-enters review_bench (doesn't trust the reported outcome)");
   const lastCheck = res.state.step_history.filter((h) => h.step_id === "check_review_bench").pop();
@@ -329,7 +342,7 @@ seedSatisfiedManifest("x");
 
   const { flow } = loadFlow("full");
   let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "leashb2", now: new Date("2026-07-17T00:00:00Z") } });
-  const answers = { select: "success", classify: "success", brainstorm: "done", specify: "success", critic: "ok", pre_apply: "yes", readiness: "approved", implement: "success" };
+  const answers = { select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok", pre_apply: "yes", readiness: "approved", implement: "success" };
   const visited = [];
   // Bounded loop: the incomplete bench.ndjson never resolves on its own (this
   // test writes it once, statically), so implement re-pauses forever — cap
@@ -337,7 +350,7 @@ seedSatisfiedManifest("x");
   for (let i = 0; i < 12 && res.state.status === "paused"; i++) {
     const p = res.state.pause;
     visited.push(p.step_id);
-    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: answers[p.step_id] });
+    res = resumeWith(loadState(res.state.flow_id), flow, answers[p.step_id]);
   }
   ok(visited.filter((s) => s === "implement").length >= 2, "parallelism leash: missing implement role re-enters implement (doesn't advance to review_bench)");
   const lastCheck = res.state.step_history.filter((h) => h.step_id === "check_implement_bench").pop();
@@ -411,7 +424,7 @@ seedSatisfiedManifest("x");
   seedSatisfiedManifest("register-regression-build");
   seedSatisfiedBench("register-regression-build");
   const { res, visited } = driveDry("fast", { request: "register-regression-build" }, {
-    select: "success", plan: "success", readiness: "approved", implement: "success", review: "pass",
+    select: selectAnswer("register-regression-build"), plan: "success", readiness: "approved", implement: "success", review: "pass",
     document: "success", pr: "success", merge: "merged",
   });
   eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"],
@@ -456,7 +469,7 @@ seedSatisfiedManifest("x");
   // Simulates a new session: reloads from disk and resumes.
   const reloaded = loadState(fid);
   eq(reloaded.flow_id, fid, "persist: reloads the same flow_id");
-  const r2 = resumeFlow({ state: reloaded, flow, resumeValue: "success" });
+  const r2 = resumeWith(reloaded, flow, selectAnswer("persist"));
   eq(r2.state.pause.step_id, "plan", "persist: resume advances to plan");
   eq(r2.state.step_history.length >= 2, true, "persist: history accumulates across sessions");
 }
@@ -518,8 +531,8 @@ steps:
   let res = startFlow({ flow, inputs: { request: "regression" }, startedBy: "test", idOpts: { rand: "reg5a", now: new Date("2026-07-17T00:00:00Z") } });
   // Advances to the merge gate. Pauses up to there: select, plan, readiness, implement,
   // review, document, pr (check_docs is `runs`, runs inline without pausing).
-  for (const v of ["success", "success", "approved", "success", "pass", "success", "success"]) {
-    res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: v });
+  for (const v of [selectAnswer("regression"), "success", "approved", "success", "pass", "success", "success"]) {
+    res = resumeWith(loadState(res.state.flow_id), flow, v);
   }
   eq(res.state.pause && res.state.pause.step_id, "merge", "5a: reached the merge gate");
   // Typo: "merge" instead of "merged" — should RE-PAUSE, not fail.
@@ -706,9 +719,13 @@ steps:
     { step_id: "report", input: { feature: "beta" } },
   ], "7a: loop var resolves in every pause input across resumes");
   // The `runs` command between the two pauses runs AFTER a resume — the loop
-  // var must interpolate into the command, not leak as a literal \${feature}.
-  const buildCmds = res.state.step_history.filter((h) => h.step_id === "build").map((h) => h.output.command);
-  eq(buildCmds, ["echo building alpha", "echo building beta"], "7a: runs command interpolates the loop var after resume");
+  // var must reach the shell, not leak as a literal \${feature}. Since ADR-005
+  // the value travels as env DATA ($AIDAKIT_VAR_n), so assert what bash saw:
+  // the executed stdout and the recorded vars.
+  const buildRuns = res.state.step_history.filter((h) => h.step_id === "build");
+  eq(buildRuns.map((h) => h.output.stdout.trim()), ["building alpha", "building beta"], "7a: runs command receives the loop var after resume (as data)");
+  ok(buildRuns.every((h) => !h.output.command.includes("${feature}")), "7a: no literal ${feature} leaks into the executed command");
+  eq(buildRuns.map((h) => Object.values(h.output.vars)[0]), ["alpha", "beta"], "7a: the loop var value is recorded in output.vars");
   eq(res.state.status, "completed", "7a: flow completes");
 }
 
@@ -813,6 +830,191 @@ steps:
   ok(checkRun && checkRun.output.exit_code === 0, "docs-onboarding: check step (runs) exited 0");
   ok(checkRun && !checkRun.output.stderr.includes("Cannot find module") && !checkRun.output.stderr.includes("MODULE_NOT_FOUND"),
     "docs-onboarding: check step actually resolved the validator (no MODULE_NOT_FOUND in stderr)");
+}
+
+// ── 9. REQUEST vs CHANGE-ID: a free-form multiline request must never reach
+// a shell command (regression for flow-request-vs-change-id; live capture
+// full-260724-ca264a — exit 127, "test: too many arguments", infinite
+// implement↔check loop). The `select` step now REPORTS the resolved change-id
+// as a structured output (change_id), every task path keys on
+// ${context.select.change_id}, and `runs` interpolation passes values to bash
+// as env DATA ($AIDAKIT_VAR_n), never as spliced shell text (ADR-005).
+
+// (9a) A hostile multiline request drives the FULL flow to completion, keyed
+// to the change-id select reported — no shell breakage in any runs step.
+{
+  const changeId = "multiline-request-change";
+  const request = [
+    "estou tendo dificuldades no uso da lib.",
+    "ao utilizar comandos -- nao tem \"exemplos\" de facil uso; $(echo injected) `backticks`",
+    "",
+    "test: too many arguments && exit 127",
+  ].join("\n");
+  seedSatisfiedManifest(changeId);
+  seedSatisfiedBench(changeId);
+  const { res, visited } = driveDry("full", { request }, {
+    select: selectAnswer(changeId),
+    classify: "success",
+    brainstorm: "done",
+    specify: "success",
+    critic: "ok",
+    pre_apply: "yes",
+    readiness: "approved",
+    implement: "success",
+    review_bench: "consensus",
+    hardening: "success",
+    learn: "success",
+    document: "success",
+    pr: "success",
+    merge: "merged",
+  });
+  eq(res.state.status, "completed", "9a: multiline free-form request completes the full flow");
+  eq(res.state.context.select.change_id, changeId, "9a: context.select.change_id carries the id select reported");
+  eq(visited,
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "merge"],
+    "9a: pause order identical to the slug-request happy path");
+  const runsSteps = res.state.step_history.filter((h) => h.step_type === "runs");
+  ok(runsSteps.length >= 4, "9a: the runs gates actually executed");
+  ok(runsSteps.every((h) => h.output.exit_code !== 127), "9a: no runs step exits 127 (command-not-found)");
+  ok(runsSteps.every((h) => !h.output.stderr.includes("command not found") && !h.output.stderr.includes("too many arguments")),
+    "9a: no shell breakage in any runs stderr");
+  ok(runsSteps.every((h) => !h.output.command.includes("estou tendo")),
+    "9a: the raw request is never spliced into a command");
+  for (const gate of ["check_implement_bench", "check_review_bench", "bench_outcome", "check_docs"]) {
+    const h = res.state.step_history.filter((x) => x.step_id === gate).pop();
+    ok(h && h.output.exit_code === 0, `9a: ${gate} gate released (exit 0) against the change-id path`);
+  }
+  const checkReview = res.state.step_history.filter((x) => x.step_id === "check_review_bench").pop();
+  ok(checkReview && Object.values(checkReview.output.vars).includes(changeId),
+    "9a: check_review_bench received the change-id as env data");
+}
+
+// (9b) The outputs leash is fail-closed: select success WITHOUT change_id (or
+// with an unsafe value) RE-PAUSES at select — the flow can never advance into
+// the task-path steps with ${context.select.change_id} unresolved.
+{
+  const { flow } = loadFlow("full");
+  let res = startFlow({ flow, inputs: { request: "free-form multiline\nrequest" }, startedBy: "test", idOpts: { rand: "leash9b", now: new Date("2026-07-17T00:00:00Z") } });
+  eq(res.state.pause.step_id, "select", "9b: pauses at select");
+  ok(res.state.pause.prompt.includes("change_id"), "9b: dispatch prompt names the required change_id output");
+  eq(res.state.pause.outputs, { success: ["change_id"] }, "9b: pause record carries the declared outputs");
+
+  res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "success" });
+  eq(res.state.status, "paused", "9b: success without change_id re-pauses (fail-closed)");
+  eq(res.state.pause.step_id, "select", "9b: stays at select");
+  ok(res.state.pause.prompt.includes('missing required output "change_id"'), "9b: re-pause prompt names the missing key");
+
+  res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "success", resumeOutput: { change_id: "two words" } });
+  eq(res.state.pause && res.state.pause.step_id, "select", "9b: an unsafe change_id (spaces) re-pauses");
+
+  res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "success", resumeOutput: { change_id: "good-id" } });
+  eq(res.state.pause.step_id, "classify", "9b: a valid change_id advances");
+  eq(res.state.context.select.change_id, "good-id", "9b: change_id persisted into context.select");
+}
+
+// (9b-ii) An outcome with NO declared outputs (select failure) needs none.
+{
+  const { flow } = loadFlow("full");
+  let res = startFlow({ flow, inputs: { request: "whatever" }, startedBy: "test", idOpts: { rand: "leash9b2", now: new Date("2026-07-17T00:00:00Z") } });
+  res = resumeFlow({ state: loadState(res.state.flow_id), flow, resumeValue: "failure" });
+  eq(res.state.status, "aborted", "9b-ii: select failure needs no outputs and aborts normally");
+}
+
+// (9c) parseResumeOutput: the CLI-boundary grammar for key=value tokens.
+{
+  const { parseResumeOutput } = await import("../engine/resume-output.js");
+  eq(parseResumeOutput(["change_id=my-change", "pr_url=https://github.com/x/y/pull/1"]),
+    { change_id: "my-change", pr_url: "https://github.com/x/y/pull/1" },
+    "9c: parses key=value tokens (ids and URLs)");
+  const rejects = (tokens, name) => {
+    let threw = false;
+    try { parseResumeOutput(tokens); } catch { threw = true; }
+    ok(threw, name);
+  };
+  rejects(["nokv"], "9c: token without = rejected");
+  rejects(["=v"], "9c: empty key rejected");
+  rejects(["outcome=x"], "9c: reserved key 'outcome' rejected");
+  rejects(["__proto__=x"], "9c: __proto__ rejected");
+  rejects(["k=two words"], "9c: value with spaces rejected");
+  rejects(["k=a\nb"], "9c: multiline value rejected");
+  rejects(["k=$(pwn)"], "9c: shell metacharacters rejected");
+}
+
+// (9d) runs data-passing: a metacharacter/multiline value interpolated into a
+// command reaches the child EXACTLY as data — nothing inside it is executed.
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  mkdirSync(flowsUser, { recursive: true });
+  writeFileSync(join(flowsUser, "shellsafe.yaml"), `flow: shellsafe
+description: interpolated values are env data, not shell text
+version: 1
+inputs:
+  - name: payload
+    type: string
+    required: true
+steps:
+  - id: emit
+    type: runs
+    command: "printf %s \\"\${inputs.payload}\\""
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+    message: "ok"
+`);
+  const payload = "line one\nline \"two\" $(echo pwned) `backticks` ; exit 127 -- test: too many arguments";
+  const { flow, errors } = loadFlow("shellsafe");
+  eq(errors, [], "9d: shellsafe flow parses");
+  const res = startFlow({ flow, inputs: { payload }, startedBy: "test", idOpts: { rand: "safe9d", now: new Date("2026-07-17T00:00:00Z") } });
+  eq(res.state.status, "completed", "9d: flow completes despite the hostile payload");
+  const emit = res.state.step_history.find((h) => h.step_id === "emit");
+  eq(emit.output.exit_code, 0, "9d: command exits 0");
+  eq(emit.output.stdout, payload, "9d: the payload reaches the child byte-identical ($(…) NOT executed)");
+  ok(!emit.output.command.includes("pwned"), "9d: the payload is not spliced into the command text");
+  ok(emit.output.command.includes("$AIDAKIT_VAR_0"), "9d: the command references the env var instead");
+}
+
+// (9e) Parser rejects a malformed `outputs` declaration at LOAD.
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  mkdirSync(flowsUser, { recursive: true });
+  writeFileSync(join(flowsUser, "badoutputs.yaml"), `flow: badoutputs
+description: outputs referencing an undeclared outcome
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    expects:
+      - success
+    outputs:
+      nonexistent:
+        - change_id
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const { errors } = loadFlow("badoutputs");
+  ok(errors.length > 0, "9e: outputs with an outcome outside expects is REJECTED at load");
+  ok(errors.some((e) => e.message.includes("nonexistent")), "9e: error names the invalid outcome");
+
+  writeFileSync(join(flowsUser, "badoutputkey.yaml"), `flow: badoutputkey
+description: outputs with a reserved key
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    outputs:
+      success:
+        - outcome
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const rBadKey = loadFlow("badoutputkey");
+  ok(rBadKey.errors.length > 0 && rBadKey.errors.some((e) => e.message.includes('"outcome"')),
+    "9e: outputs declaring the reserved key 'outcome' is REJECTED at load");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

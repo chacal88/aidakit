@@ -24,13 +24,19 @@ steps:
       (openspec/changes/archive/ or docs/archive/) and the cited dependencies, and picks
       the first ready change whose plan artifacts validate and whose dependencies have
       already been delivered. If the request already carries a change-id, it confirms it
-      instead of selecting.
+      instead of selecting. Reports the resolved change-id back as the change_id
+      output (resume ... success change_id=<kebab-case-id>): every downstream
+      .aidakit/tasks/... and .aidakit/dna/... path keys on
+      ${context.select.change_id}, never on the free-form ${inputs.request}.
     invoke_target: aidakit:orchestrator
     input:
       request: "${inputs.request}"
     expects:
       - success
       - failure
+    outputs:
+      success:
+        - change_id
     on_success: classify
     on_failure: aborted
 
@@ -121,7 +127,7 @@ steps:
     type: runs
     description: |
       PARALLELISM LEASH, conditional — a single-surface change never writes a
-      bench="implement" record to .aidakit/tasks/${inputs.request}/bench.ndjson
+      bench="implement" record to .aidakit/tasks/<change-id>/bench.ndjson
       (there's nothing to parallelize; the file may still exist for the review
       bench that runs later), so this step SKIPS the leash when no "implement"
       record is present (exit 0). When the orchestrator routed a multi-surface
@@ -129,8 +135,10 @@ steps:
       per-surface verdicts under bench="implement", and check-bench.js verifies
       the same three things as the review bench: every manifested surface
       reported, the consensus matches what aidakit:implement reported, and the
-      dispatch was genuinely parallel.
-    command: "test ! -f .aidakit/tasks/${inputs.request}/bench.ndjson || ! grep -q '\"bench\":\"implement\"' .aidakit/tasks/${inputs.request}/bench.ndjson || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench implement --outcome success"
+      dispatch was genuinely parallel. The path keys on
+      ${context.select.change_id} — the id select reported — never on the
+      free-form request.
+    command: "test ! -f \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || ! grep -q '\"bench\":\"implement\"' \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" --bench implement --outcome success"
     on_success: review_bench
     on_failure: implement
 
@@ -157,7 +165,7 @@ steps:
       exit≠0 (leash violation) goes back to review_bench to redo the round
       properly — a bench that skipped a role, invented a consensus, or ran
       sequentially never reaches hardening.
-    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" .aidakit/tasks/${inputs.request}/bench.ndjson --bench review --outcome ${context.review_bench.outcome}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" --bench review --outcome \"${context.review_bench.outcome}\""
     on_success: bench_outcome
     on_failure: review_bench
 
@@ -184,10 +192,11 @@ steps:
       aidakit:learn — consolidates learnings (PROPOSES updates), records ledgers; does
       not block. High-confidence learnings (an error recurring ≥3x via
       deriveCandidates) are CRYSTALLIZED into executable DNA (test/rule) in staging
-      .aidakit/dna/${inputs.request}/ — promoted by a DEDICATED PR, not the feature's.
+      .aidakit/dna/${context.select.change_id}/ — promoted by a DEDICATED PR, not the feature's.
     invoke_target: aidakit:learn
     input:
       request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
     expects:
       - success
       - failure
@@ -202,7 +211,7 @@ steps:
       Is there crystallized DNA in staging for this change? Routes the side branch.
       exit 0 = there is DNA (proceeds to dna_freshness) · exit 1 = nothing to promote
       (skips straight to document, the feature flow stays untouched).
-    command: "test -d .aidakit/dna/${inputs.request} && [ -n \"$(ls -A .aidakit/dna/${inputs.request} 2>/dev/null)\" ]"
+    command: "test -d \".aidakit/dna/${context.select.change_id}\" && [ -n \"$(ls -A \".aidakit/dna/${context.select.change_id}\" 2>/dev/null)\" ]"
     on_success: dna_freshness
     on_failure: document
 
@@ -212,21 +221,22 @@ steps:
       Invalidation GATE — check-dna-freshness confirms that no crystallized DNA was
       born obsolete (origin premise/ADR already superseded) or malformed. exit 0
       releases the DNA PR; exit≠0 goes back to learn to revalidate/regenerate the DNA.
-    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-dna-freshness.js\" .aidakit/dna/${inputs.request}"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-dna-freshness.js\" \".aidakit/dna/${context.select.change_id}\""
     on_success: dna_pr
     on_failure: learn
 
   - id: dna_pr
     type: invoke
     description: |
-      aidakit:ship in DNA MODE — commits the artifacts from .aidakit/dna/${inputs.request}/
-      on a DEDICATED branch (aidakit/dna/${inputs.request}) and its OWN PR, separate from the
+      aidakit:ship in DNA MODE — commits the artifacts from .aidakit/dna/${context.select.change_id}/
+      on a DEDICATED branch (aidakit/dna/${context.select.change_id}) and its OWN PR, separate from the
       feature's PR (don't mix evolving-the-process with delivering-the-product). Stops at the URL.
     invoke_target: aidakit:ship
     input:
       request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
       mode: "dna"
-      branch: "aidakit/dna/${inputs.request}"
+      branch: "aidakit/dna/${context.select.change_id}"
     expects:
       - success
       - failure
@@ -237,12 +247,13 @@ steps:
     type: invoke
     description: |
       aidakit:doc-planner — DOC-LEASH. Assembles/updates the change's mandatory-documents
-      manifest (.aidakit/tasks/${inputs.request}/doc-manifest.json) and dispatches the fronts
-      that fill the missing docs. Decides the rigor (what is mandatory, with what condition
-      and kind — in the full flow, architecture REQUIRES an ADR); the truth remains the disk.
+      manifest (.aidakit/tasks/${context.select.change_id}/doc-manifest.json) and dispatches
+      the fronts that fill the missing docs. Decides the rigor (what is mandatory, with what
+      condition and kind — in the full flow, architecture REQUIRES an ADR); the truth remains the disk.
     invoke_target: aidakit:doc-planner
     input:
       request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
     expects:
       - success
       - failure
@@ -255,7 +266,7 @@ steps:
       LEASH GATE — check-doc-manifest checks item by item and LOCKS the flow until the
       list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0 (incomplete) goes
       back to document until the list closes.
-    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/tasks/${inputs.request}/doc-manifest.json"
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" \".aidakit/tasks/${context.select.change_id}/doc-manifest.json\""
     on_success: pr
     on_failure: document
 

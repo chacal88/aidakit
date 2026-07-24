@@ -5,12 +5,12 @@ description: Builds a change from plan to PR via the aidakit flow engine — sta
 Human interface to build **one change** — from plan to PR — on top of the executable flow engine (the engine in `governance/`, which does NOT get renamed). Translate the user's request into the engine's CLI and run it via Bash:
 
 - `start <flow> [key=value ...]` → `node governance/cli.js start <flow> ...` (starts; e.g. `build start fast request="..."`)
-- `resume <flow_id> <outcome>` → `node governance/cli.js resume <flow_id> <outcome>` (resumes a paused flow)
+- `resume <flow_id> <outcome> [key=value ...]` → `node governance/cli.js resume <flow_id> <outcome> [key=value ...]` (resumes a paused flow; the `key=value` tokens carry the step's declared structured outputs — e.g. the `select` step requires `change_id=<kebab-case-id>` on `success`, and re-pauses until it arrives)
 - `status <flow_id>` → `node governance/cli.js status <flow_id>`
 - `abort <flow_id>` → `node governance/cli.js abort <flow_id>`
 - `list` → `node governance/cli.js list` (available flows: the plugin defaults + those in the repo's `.aidakit/flows/`)
 
-**The 1st step picks the change:** the first step of the flows (`governance/flows/fast.yaml` and `full.yaml`) runs the `aidakit:orchestrator` agent to pick the next ready change from the plan (logic previously exposed as a separate command, now absorbed). You don't have to point at the change by hand — the flow selects it at startup; if the user names an explicit change in the request, pass it through as a parameter.
+**The 1st step picks the change:** the first step of the flows (`governance/flows/fast.yaml` and `full.yaml`) runs the `aidakit:orchestrator` agent to pick the next ready change from the plan (logic previously exposed as a separate command, now absorbed). You don't have to point at the change by hand — the flow selects it at startup; if the user names an explicit change in the request, pass it through as a parameter. **Report the resolved change-id back**: resume `select` with `success change_id=<kebab-case-id>` — every downstream task path keys on that id, never on the free-form request ([ADR-005](../docs/decisions/ADR-005-flow-values-as-data.md)).
 
 **Inversion of control:** when the flow pauses on an `agent` step, the CLI prints the dispatch (which skill/subagent to run). Run it (via the named `aidakit:*` skill/agent), obtain the outcome, and resume with `resume`. When it pauses on a `human_gate`/`human_handoff`, present the prompt to the user and wait for their answer before resuming. Never invent an outcome — an invalid outcome re-pauses the gate.
 
@@ -31,3 +31,4 @@ User request: $ARGUMENTS
 
 <!-- aidakit v0.3 — /aidakit:build: builds a change (flow engine in governance/); 1st step absorbs the change selection, 2026-07-17 -->
 <!-- aidakit v0.4 — `register` verb: defer a request as a debit (roadmap register mode → start fast mode=register → park), no plan/implement until resumed, 2026-07-22 -->
+<!-- aidakit v0.6 — resume carries structured outputs (select reports change_id; ADR-005), 2026-07-24 -->

@@ -7,6 +7,7 @@ import { resolve, basename, join } from "node:path";
 import { parse as parseYaml } from "./yaml-min.js";
 import { projectRoot } from "./persistence.js";
 import { STEP_TYPES } from "./types.js";
+import { RESUME_OUTPUT_KEY_RE, RESERVED_OUTPUT_KEYS } from "./resume-output.js";
 
 /**
  * Flow directories. Priority: target-project flows (.aidakit/flows/),
@@ -142,6 +143,23 @@ function validateSteps(steps, where, errs) {
     if (!STEP_TYPES.includes(s.type)) errs.push(`${at}: invalid 'type' "${s.type}" (expected ${STEP_TYPES.join("|")})`);
     // Per-type validation of the required fields.
     if (s.type === "invoke" && typeof s.invoke_target !== "string") errs.push(`${at}: invoke step requires 'invoke_target' (string — the skill/agent to dispatch)`);
+    // Optional structured outputs: map of outcome → non-empty list of safe key names.
+    if (s.type === "invoke" && s.outputs !== undefined) {
+      if (s.outputs === null || typeof s.outputs !== "object" || Array.isArray(s.outputs)) {
+        errs.push(`${at}: 'outputs' must be a map of outcome → list of output keys`);
+      } else {
+        const allowedOutcomes = Array.isArray(s.expects) ? s.expects : ["success", "failure"];
+        for (const [outcome, keys] of Object.entries(s.outputs)) {
+          if (!allowedOutcomes.includes(outcome)) errs.push(`${at}: outputs declares outcome "${outcome}" not present in expects`);
+          if (!Array.isArray(keys) || keys.length === 0) { errs.push(`${at}: outputs.${outcome} must be a non-empty list of key names`); continue; }
+          for (const k of keys) {
+            if (typeof k !== "string" || !RESUME_OUTPUT_KEY_RE.test(k) || RESERVED_OUTPUT_KEYS.has(k)) {
+              errs.push(`${at}: outputs.${outcome} has an invalid key "${k}" (identifier, not reserved)`);
+            }
+          }
+        }
+      }
+    }
     if (s.type === "runs" && typeof s.command !== "string") errs.push(`${at}: runs step requires 'command' (string)`);
     if ((s.type === "human_handoff" || s.type === "human_gate") && typeof s.prompt !== "string") errs.push(`${at}: step ${s.type} requires 'prompt' (string)`);
     if (s.type === "human_gate" && !Array.isArray(s.options)) errs.push(`${at}: human_gate step requires 'options' (list)`);

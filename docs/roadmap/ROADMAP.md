@@ -7,6 +7,7 @@
 ### Coleiras mecânicas do flow engine — **in-progress**
 
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → in-progress
+- Request livre vs change-id nos flows — `flow-request-vs-change-id` → in-progress
 
 ## Next (planned)
 
