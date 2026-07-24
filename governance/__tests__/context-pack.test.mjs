@@ -289,6 +289,35 @@ function makeFreshnessProject() {
     "§freshness-symlink-to-inside-repo-rejected: symlinked source pointing inside root is still rejected (no symlinks in sources[] policy)");
 }
 
+// ── Round-3 bench fix: symlinked ANCESTOR DIRECTORY bypasses the round-2
+// lstat-reject (Security veto, round 3) — round-2's fix only inspected the
+// LEAF path component with lstat; POSIX path resolution follows symlinks for
+// every path segment except the final one, so a symlinked INTERMEDIATE
+// directory silently redirects the whole subtree outside root while the
+// leaf itself is an ordinary file (lstat(leaf).isSymbolicLink() === false).
+// Policy: reject any symlink ANYWHERE in the path chain, leaf or ancestor,
+// via realpathSync-compare — never read/hash through it.
+
+// FixC-i: sources[].path traverses through a symlinked ANCESTOR DIRECTORY to
+// reach a regular (non-symlink) file OUTSIDE the repo root → exit 1
+// source-entry-invalid, and the validator must NEVER read/hash the real
+// target (no source-diverged) — this is the exact round-3 PoC.
+{
+  const { root } = makeFreshnessProject();
+  const outsideDir = mkdtempSync(join(tmpdir(), "context-pack-freshness-outsidedir-"));
+  const outsideFile = join(outsideDir, "secret.txt");
+  writeFileSync(outsideFile, "attacker-controlled content via ancestor symlink\n");
+  const assetsLink = join(root, "docs", "features", "fixture-change", "assets");
+  symlinkSync(outsideDir, assetsLink); // symlinked DIR, not a symlinked leaf
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack([{ path: "docs/features/fixture-change/assets/secret.txt", sha256: "deadbeef" }]));
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-entry-invalid" && e.path === "docs/features/fixture-change/assets/secret.txt"),
+    "§freshness-symlink-in-ancestor-dir-rejected: source path through a symlinked ancestor dir → exit 1 source-entry-invalid");
+  ok(r.json && !r.json.errors.some((e) => e.rule === "source-diverged"),
+    "§freshness-symlink-in-ancestor-dir-rejected: never reads/hashes the target through the symlinked ancestor (no source-diverged leak)");
+}
+
 // ── Round-1 bench fix B: change_id sanitization at FS-write sinks
 //    (Security veto #2) — direct unit tests of each of the three sinks in
 //    isolation (defense-in-depth alongside the resume-boundary tightening

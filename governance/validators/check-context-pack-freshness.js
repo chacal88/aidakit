@@ -13,7 +13,7 @@
 //
 // Usage: node check-context-pack-freshness.js <path-to-.context-pack.md>
 
-import { existsSync, readFileSync, statSync, lstatSync } from "node:fs";
+import { existsSync, readFileSync, statSync, lstatSync, realpathSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, dirname, isAbsolute, relative } from "node:path";
 import { parse as parseYaml } from "../engine/yaml-min.js";
@@ -45,6 +45,14 @@ function main() {
   // quality-important: single shared owner via resolveProjectRoot, see
   // governance/engine/project-root.js).
   const root = resolveProjectRoot(undefined, dirname(resolve(packPath)));
+  // The root itself may sit behind a symlink hop that has nothing to do with
+  // sources[] (e.g. macOS's /tmp -> /private/tmp, or /var -> /private/var).
+  // Resolve it ONCE here so the per-source realpath compare below only ever
+  // flags a symlink INSIDE the declared relative path, not host/OS plumbing
+  // that a legitimate checkout can sit on.
+  let realRoot;
+  try { realRoot = realpathSync(root); }
+  catch { realRoot = root; } // root itself unresolvable — fall through, later checks will fail closed anyway
 
   const errors = [];
   for (const src of sources) {
@@ -67,28 +75,64 @@ function main() {
       errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: path escapes the project root: ${src.path}` });
       continue;
     }
-    // SECURITY (round-2 bench, Security veto): Fix A above only validates the
-    // STRING shape of sources[N].path — it never checked whether the path,
-    // once resolved, is a symlink. A relative path that IS a committed
-    // symlink (e.g. docs/features/<change>/evil-link -> /etc/hosts) passes
-    // both string checks (it's relative, doesn't escape root as a string)
-    // and would make statSync/readFileSync silently follow the link, read
-    // the real target, and echo its sha256 in the source-diverged message —
-    // the same file-oracle primitive as round-1, just indirected through a
-    // symlink. Policy: NO symlinks allowed in sources[] at all — a context
-    // pack is a documentation artifact; symlinked doc files are not a normal
-    // repo pattern (verified: no symlinks under docs/ anywhere in this
-    // repo). Use lstat (which does NOT follow the link) FIRST, before
-    // existsSync/statSync/readFileSync ever get a chance to follow it, so
-    // the real target is never touched — regardless of whether the target
-    // exists, and regardless of whether it lives inside or outside root.
-    let lst;
-    try { lst = lstatSync(abs); }
-    catch { lst = null; } // entry does not exist at all (not even as a dangling symlink)
-    if (lst && lst.isSymbolicLink()) {
+    // SECURITY (round-2 bench, Security veto; superseded round-3): the
+    // round-2 fix rejected a symlinked LEAF via lstat — but POSIX path
+    // resolution follows symlinks for every path segment EXCEPT the final
+    // one, and lstat does not change that for ancestors. A symlinked
+    // INTERMEDIATE directory (e.g. docs/features/<change>/assets ->
+    // /outside/dir, with sources[].path = ".../assets/secret.txt" where
+    // secret.txt is an ordinary file, not a symlink) silently redirects the
+    // whole subtree outside root while lstat(leaf).isSymbolicLink() is
+    // false — the leaf-only check missed it entirely (round-3 finding).
+    // Policy: NO symlink anywhere in the path chain, leaf OR ancestor.
+    // realpathSync resolves ALL symlinks in the path per POSIX; if the
+    // result differs from the expected fully-resolved path (root's own
+    // realpath + the string-resolved relative path — see expectedReal
+    // below), the chain contained at least one symlink hop → reject before
+    // ever reading the real target, regardless of whether that target
+    // exists or lives inside or outside root. This subsumes (and replaces)
+    // the leaf-only lstat-reject from round 2.
+    // Expected fully-resolved path IF no symlink appears anywhere inside the
+    // declared relative path: root's own realpath (already resolved above)
+    // plus the same relative path, string-resolved (no filesystem access).
+    const expectedReal = resolve(realRoot, rel);
+    let real;
+    try {
+      real = realpathSync(abs);
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        // Distinguish "the source path never existed" from "the source is
+        // a broken symlink (or a symlink chain with a missing final
+        // target)": if lstat succeeds on the leaf, something IS there
+        // (just not resolvable) — that is a symlink-shaped problem, not a
+        // plain missing file.
+        let lst = null;
+        try { lst = lstatSync(abs); } catch { /* leaf itself is missing too */ }
+        if (lst) {
+          errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: symlinks are not allowed in sources[]: ${src.path}` });
+          continue;
+        }
+        errors.push({ rule: "source-missing", path: src.path, message: `source-missing: ${src.path}` });
+        continue;
+      }
+      errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: could not resolve path: ${src.path}` });
+      continue;
+    }
+    if (real !== expectedReal) {
       errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: symlinks are not allowed in sources[]: ${src.path}` });
       continue;
     }
+    // Belt-and-suspenders: re-check root containment against the REAL path,
+    // in case realpath ever resolved to something that matches `expectedReal`
+    // textually but escaped root via a traversal we didn't anticipate.
+    const relReal = relative(realRoot, real);
+    if (relReal.startsWith("..") || isAbsolute(relReal)) {
+      errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: path escapes the project root: ${src.path}` });
+      continue;
+    }
+    let lst;
+    try { lst = lstatSync(abs); }
+    catch { lst = null; } // entry does not exist at all
     if (!lst || !lst.isFile()) {
       errors.push({ rule: "source-missing", path: src.path, message: `source-missing: ${src.path}` });
       continue;
