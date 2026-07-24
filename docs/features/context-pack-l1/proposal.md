@@ -61,6 +61,8 @@ The premise is unambiguous: **L1 wins by shrinking the per-dispatch prefix, not 
 9. `aidakit:learn` writes a rollup section into `docs/features/<change-id>/evidence.md` before the worktree is cleaned.
 10. [ADR-010](../../decisions/ADR-010-context-pack-per-change.md) is authored and registered in `docs/decisions/README.md`.
 11. Full governance test suite → green with the new tests added; no regression.
+12. Freshness check (`check-context-pack-freshness.js`) is a validator SEPARATE from `check-doc-manifest.js`. A stale pack MUST NOT block the doc-leash (doc-manifest validator is untouched).
+13. ADR-010 exists at `docs/decisions/ADR-010-context-pack-per-change.md`, follows the ADR format (validated by `check-adr-format.js`), is indexed in `docs/decisions/README.md`, and registers the context pack as a first-class artifact.
 
 ## References
 

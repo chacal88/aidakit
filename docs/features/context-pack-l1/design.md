@@ -126,7 +126,30 @@ Fields:
 | `duration_ms` | integer | wall-clock dispatch duration |
 | `pack_rebuilt` | boolean | true when this dispatch triggered a lazy rebuild |
 
-The file is gitignored (extension of `.aidakit/` in `.gitignore` covers it — the whole `.aidakit/` dir is already ignored). It is written by the dispatcher wrapper, not by the agent itself.
+The file is gitignored (extension of `.aidakit/` in `.gitignore` covers it — the whole `.aidakit/` dir is already ignored). It is written by the engine at resume time (see the next sub-section), not by the agent itself and not by any "dispatcher wrapper" (there is no such wrapper — `governance/engine/steps/invoke.js` is IoC: it pauses, asks the parent Claude to dispatch, and resumes on `node governance/cli.js resume …`, so the engine itself never observes the SDK response).
+
+#### Live write-site — engine extension
+
+Because the invoke step is IoC, the engine never sees the SDK response of the dispatched agent — it only sees whatever the *parent* Claude passes back on `resume`. Therefore the sanctioned live write-site for `.telemetry.jsonl` is **the `resume` handler itself**, extended additively to accept the usage fields from the parent as optional key=value arguments after the outcome:
+
+```
+node governance/cli.js resume <flow_id> <outcome> \
+  [change_id=<id>] \
+  [--tokens-cache-read=N] \
+  [--tokens-cache-creation=N] \
+  [--tokens-output=N] \
+  [--duration-ms=N] \
+  [--pack-rebuilt=true|false]
+```
+
+Contract:
+
+- The **parent dispatcher** (the Claude session running the flow) reads its own SDK response after each dispatch, extracts `usage.cache_read`, `usage.cache_creation`, `usage.output_tokens`, wall-clock duration, and whether the previous `context_pack` phase rebuilt the pack, and appends the corresponding kwargs to the `resume` invocation. The parent supplies the data.
+- The **engine** is the mechanical writer. `governance/cli.js` parses the new optional telemetry kwargs; `governance/engine/steps/invoke.js`'s resume handler forwards them to a `governance/telemetry/append.js` helper (co-located with `governance/context-pack/build.js`) which appends one JSONL line under `.aidakit/tasks/<change-id>/.telemetry.jsonl`. The `change_id` used to build the path is either the explicit `change_id=<id>` structured output already declared by `select`, or the value already persisted in `state.context.select.change_id`.
+- When any/all telemetry kwargs are ABSENT (the backward-compatible path — every existing `resume` callsite, all existing tests, all older flows), no telemetry line is written and the flow proceeds unaffected. Zero regression risk for callers that don't opt in.
+- The kwargs are appended to the value-token whitelist of `governance/engine/resume-output.js` under the same "safe single token" rule — an integer for the counters, a bool for `pack-rebuilt`, so no unsafe string ever reaches the JSONL. A malformed kwarg is a usage error before any state is touched, mirroring the existing `parseResumeOutput` contract.
+
+Rationale — this is the ONLY place in the engine that runs after the dispatched agent has actually completed and where the parent Claude is authoritatively holding the SDK response. Any earlier write-site would either fabricate the numbers (wrong) or violate the ADR-004 env contract (a hypothetical write from inside an agent's Bash session, which has no `$AIDAKIT_GOVERNANCE` and no reliable path to the change dir). The extension is additive: the existing `resume` signature (`<flow_id> <outcome> [key=value ...]`) is preserved, and the new kwargs sit alongside the existing structured outputs.
 
 ### `aidakit:learn` rollup
 
@@ -156,6 +179,7 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 - `governance/validators/check-context-pack-freshness.js` — hash-invalidation validator scoped to the pack's own `sources[]`; separate from `check-doc-manifest.js`.
 - `governance/__tests__/context-pack.test.mjs` — parser-style tests: byte-stability (rebuild produces identical bytes), fuzz-with-system-time (produces identical bytes even when the wall-clock advances), freshness pass/fail cases, separation from doc-manifest (a stale pack does not trip doc-manifest), telemetry-line JSON validity, `aidakit:learn` rollup writing, contract test per dispatcher/reviewer.
 - `docs/decisions/ADR-010-context-pack-per-change.md` — the ADR; format mirrors ADR-009.
+- `governance/telemetry/append.js` — the JSONL-append helper. Zero-dep, opens the file in append mode, resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via `findProjectRoot`/`AIDAKIT_PROJECT_ROOT` (same convention as `check-doc-manifest.js`), writes one JSON object per invocation, never rewrites prior lines. Called from `governance/engine/steps/invoke.js`'s resume handler when telemetry kwargs are present.
 - `docs/features/context-pack-l1/.context-pack.md` — the dogfood pack for this change itself (built by the new skill during implementation).
 
 **MODIFY**
@@ -165,6 +189,8 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 - `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md` — extend the Protocol with a "Step 0.5 — Load the context pack" clause: read `docs/features/<change_id>/.context-pack.md` when the file exists; treat it as authoritative for durable context; open cited files only on demand; fall back to raw docs (`proposal.md`/`design.md`/`tasks.md`/cited ADRs) when the pack is absent. Agents do NOT run `check-context-pack-freshness.js` — freshness is guaranteed upstream by the `context_pack` flow phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2 (agent Bash sessions do not receive `$AIDAKIT_GOVERNANCE`; the `agent-validator-paths` gap in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) remains out of scope for this change).
 - `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — same read-if-present clause added to the Prerequisites section so the agents dispatched under these skills receive the pack via their invocation prompt. No freshness invocation from these skills either — same ADR-004 reasoning.
 - `skills/learn/SKILL.md` — extend §4 (Record the scoped memory) or add a §4.5 that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl` and writes a rollup into `evidence.md`.
+- `governance/cli.js` — extend the `resume` command handler to parse the new optional telemetry kwargs (`--tokens-cache-read=N`, `--tokens-cache-creation=N`, `--tokens-output=N`, `--duration-ms=N`, `--pack-rebuilt=bool`) after the outcome and the existing structured outputs. Preserve the existing `<flow_id> <outcome> [key=value ...]` signature; the new kwargs are additive and default to absent (backward compatible).
+- `governance/engine/steps/invoke.js` — extend the resume-side handler (the branch entered when `ctx.resumeValue !== undefined`) to forward the parsed telemetry kwargs to the telemetry-append helper. When the kwargs are all absent, do nothing (no line written). Freshness/routing logic is unchanged; the extension is additive.
 - `docs/decisions/README.md` — add the ADR-010 index row and, if the thematic grouping applies, cite it under a "Context caching" bucket (or extend an existing bucket).
 
 **DELETE**

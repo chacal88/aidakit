@@ -105,7 +105,7 @@
 
 - [ ] N6c. Re-run §dispatcher-* → green.
 
-## 7. Telemetry file `.aidakit/tasks/<id>/.telemetry.jsonl`
+## 7. Telemetry: JSONL file + engine write-site extension
 
 ### 7a. RED
 
@@ -115,12 +115,32 @@
 
 ### 7b. GREEN
 
-- [ ] N7b-i. Add a telemetry-writer helper (co-located with `governance/context-pack/build.js` or in a `governance/telemetry/` file) that dispatchers call after each SDK response with the six fields. The helper opens the file in append mode; it never rewrites prior content. (AC #9)
+- [ ] N7b-i. Create `governance/telemetry/append.js` — the JSONL-append helper. Zero-dep node, resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via `findProjectRoot`/`AIDAKIT_PROJECT_ROOT` (same convention as `check-doc-manifest.js`), opens the file in append mode, writes one JSON object per invocation, never rewrites prior content. (AC #9)
 - [ ] N7b-ii. Confirm [`.gitignore`](../../../.gitignore) already covers `.aidakit/` (line 1) — no edit required; document in `evidence.md`. (AC #9)
 
 ### 7c. REFACTOR
 
 - [ ] N7c. Re-run §telemetry-* → green.
+
+### 7d. RED — engine extension for the live write-site
+
+> Context (see [design.md](design.md) §"Live write-site — engine extension" and [ADR-010](../../decisions/ADR-010-context-pack-per-change.md) Consequences): [`governance/engine/steps/invoke.js`](../../../governance/engine/steps/invoke.js) is IoC — it pauses, asks the parent Claude to dispatch, resumes on `node governance/cli.js resume …`. The engine itself never observes the SDK response, so the only sanctioned live write-site for `.telemetry.jsonl` is the resume handler, extended additively to accept usage kwargs from the parent.
+
+- [ ] N7d-i. Test §resume-parses-telemetry-kwargs: `node governance/cli.js resume <flow_id> <outcome> change_id=<id> --tokens-cache-read=18320 --tokens-cache-creation=1240 --tokens-output=512 --duration-ms=11530 --pack-rebuilt=false` parses without error; the existing `<flow_id> <outcome> [key=value ...]` signature keeps working; the new kwargs are validated as safe single tokens under the same rule as `resume-output.js` (integers for the counters, `true|false` for `pack-rebuilt`); a malformed kwarg errors out BEFORE any state is touched. (AC #9)
+- [ ] N7d-ii. Test §invoke-forwards-kwargs-to-helper: when the resume handler receives the telemetry kwargs, it forwards them to `governance/telemetry/append.js` with `subagent` derived from `step.invoke_target`, `pack_size` computed from the on-disk pack (0 if absent), and `ts` set to the current UTC ISO-8601 timestamp; one JSONL line is appended to `.aidakit/tasks/<change_id>/.telemetry.jsonl` with the six declared fields plus `ts`. (AC #9)
+- [ ] N7d-iii. Test §resume-without-kwargs-writes-nothing: `node governance/cli.js resume <flow_id> <outcome>` (no telemetry kwargs) proceeds normally and appends NO line to `.telemetry.jsonl`; the flow state advances exactly as it did before this extension. Backward-compatibility guard for every existing `resume` callsite (all current flows, all current tests, every third-party driver). (AC #9)
+- [ ] N7d-iv. Test §engine-test-still-green: `node governance/__tests__/engine.test.mjs` (which drives `invoke.js` through many `resume` paths) → 127/0 with no code change to the test file itself. Any regression here indicates the extension was NOT additive.
+
+### 7e. GREEN — engine extension
+
+- [ ] N7e-i. Extend [`governance/cli.js`](../../../governance/cli.js) `cmdResume`: after `parseResumeOutput` handles the existing `key=value` structured outputs, parse the additional `--tokens-cache-read=N`, `--tokens-cache-creation=N`, `--tokens-output=N`, `--duration-ms=N`, `--pack-rebuilt=true|false` kwargs (leading `--`, integer or boolean values only, single safe tokens). Group them into a `telemetry` object and pass it through to `resumeFlow`; when none of the kwargs are supplied, `telemetry` is `undefined`. (AC #9)
+- [ ] N7e-ii. Extend [`governance/engine/steps/invoke.js`](../../../governance/engine/steps/invoke.js) `executeInvoke` (resume branch, entered when `ctx.resumeValue !== undefined`): after the existing outputs-persistence step, when `ctx.telemetry` is present, call `governance/telemetry/append.js`'s helper with `{subagent: step.invoke_target, cache_read, cache_creation, output_tokens, duration_ms, pack_rebuilt, pack_size, ts}`. When `ctx.telemetry` is absent, do nothing (no line written, no error). Freshness/routing/existing behavior is unchanged. (AC #9)
+- [ ] N7e-iii. Thread `telemetry` through `resumeFlow` (in `governance/engine/engine.js`) into `ctx.telemetry` so `invoke.js` can read it. No change to routing, no change to outcomes, no new fields on `state`. Pure additive plumbing.
+
+### 7f. REFACTOR — engine extension
+
+- [ ] N7f-i. Re-run §resume-parses-telemetry-kwargs, §invoke-forwards-kwargs-to-helper, §resume-without-kwargs-writes-nothing → green.
+- [ ] N7f-ii. Cross-check every existing `resume` callsite continues to work: grep the repo for `cli.js resume ` and `resumeFlow(` — every match must operate unchanged (no telemetry required). Confirm all `governance/flows/*.yaml` invoke steps' resume prompts still print the exact same instruction line (the extension is invisible to callers that don't opt in).
 
 ## 8. `aidakit:learn` rollup into `evidence.md`
 
@@ -132,6 +152,7 @@
 ### 8b. GREEN
 
 - [ ] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #10)
+  - When `.telemetry.jsonl` is absent OR empty (zero lines), the rollup section written into `evidence.md` says exactly `No telemetry captured for this run.` instead of crashing on a missing file or zero-division on empty aggregates. The section header itself is still written (so the idempotent replacement in N8a-ii keeps working on the next run when telemetry does arrive).
 
 ### 8c. REFACTOR
 
