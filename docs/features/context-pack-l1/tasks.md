@@ -33,19 +33,19 @@
 
 ### 3a. RED
 
-- [ ] N3a-i. Test §freshness-all-sources-match: given a pack whose every `sources[N].sha256` matches the file on disk, exit 0.
-- [ ] N3a-ii. Test §freshness-one-source-diverges: mutate one source file after pack build; validator exits 1 naming the divergent path. (AC #2, #6)
-- [ ] N3a-iii. Test §freshness-source-missing: delete one source file; validator exits 1 with `source-missing` naming the path. (AC #2)
-- [ ] N3a-iv. Test §freshness-scope-only-declared-sources: mutate a file that is NOT in `sources[]`; validator exits 0 (invalidation MUST NOT be repo-wide). (AC #6)
-- [ ] N3a-v. Test §freshness-separation-from-doc-manifest: run both validators on the same change dir where the pack is stale but the doc-manifest is complete; freshness exits 1 while doc-manifest exits 0 (the two failure modes stay independent). (AC #12)
+- [x] N3a-i. Test §freshness-all-sources-match: given a pack whose every `sources[N].sha256` matches the file on disk, exit 0.
+- [x] N3a-ii. Test §freshness-one-source-diverges: mutate one source file after pack build; validator exits 1 naming the divergent path. (AC #2, #6)
+- [x] N3a-iii. Test §freshness-source-missing: delete one source file; validator exits 1 with `source-missing` naming the path. (AC #2)
+- [x] N3a-iv. Test §freshness-scope-only-declared-sources: mutate a file that is NOT in `sources[]`; validator exits 0 (invalidation MUST NOT be repo-wide). (AC #6)
+- [x] N3a-v. Test §freshness-separation-from-doc-manifest: run both validators on the same change dir where the pack is stale but the doc-manifest is complete; freshness exits 1 while doc-manifest exits 0 (the two failure modes stay independent). (AC #12)
 
 ### 3b. GREEN
 
-- [ ] N3b-i. Create `governance/validators/check-context-pack-freshness.js` — reads the pack frontmatter, walks `sources[]`, recomputes sha256, exits 0 iff all match. Never globs the repo; only reads the paths declared in `sources[]`. Uses `findProjectRoot` / `AIDAKIT_PROJECT_ROOT` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md). (AC #6, #11, #12)
+- [x] N3b-i. Create `governance/validators/check-context-pack-freshness.js` — reads the pack frontmatter, walks `sources[]`, recomputes sha256, exits 0 iff all match. Never globs the repo; only reads the paths declared in `sources[]`. Uses `findProjectRoot` / `AIDAKIT_PROJECT_ROOT` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md). (AC #6, #11, #12)
 
 ### 3c. REFACTOR
 
-- [ ] N3c. Re-run §freshness-* → green; full governance suite → no regression.
+- [x] N3c. Re-run §freshness-* → green; full governance suite → no regression.
 
 ## 4. `aidakit:context-pack` skill (build / verify / rebuild)
 

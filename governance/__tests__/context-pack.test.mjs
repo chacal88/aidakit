@@ -138,6 +138,76 @@ function writePack(name, content) {
     "§pack-schema-excerpt-forbidden: fenced code block in code-map-pointers → exit 1 pointers-only rule violated");
 }
 
+// ── §3 check-context-pack-freshness.js (hash-invalidation) ───────────────
+
+// Builds a project skeleton under a fresh tmp root with two source files and a
+// pack that cites both, plus an unrelated third file NOT cited by the pack.
+function makeFreshnessProject() {
+  const root = mkdtempSync(join(tmpdir(), "context-pack-freshness-"));
+  mkdirSync(join(root, "docs", "features", "fixture-change"), { recursive: true });
+  const proposalPath = join(root, "docs", "features", "fixture-change", "proposal.md");
+  const designPath = join(root, "docs", "features", "fixture-change", "design.md");
+  const unrelatedPath = join(root, "docs", "features", "fixture-change", "unrelated.md");
+  writeFileSync(proposalPath, "# proposal\ncontent A\n");
+  writeFileSync(designPath, "# design\ncontent B\n");
+  writeFileSync(unrelatedPath, "# unrelated\nnot cited by the pack\n");
+  const sources = [
+    { path: "docs/features/fixture-change/design.md", sha256: sha256(readFileSync(designPath, "utf8")) },
+    { path: "docs/features/fixture-change/proposal.md", sha256: sha256(readFileSync(proposalPath, "utf8")) },
+  ];
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack(sources));
+  mkdirSync(join(root, ".aidakit"), { recursive: true }); // marks the project root for findProjectRoot
+  return { root, packPath, proposalPath, designPath, unrelatedPath };
+}
+
+// N3a-i: every sources[N].sha256 matches the file on disk → exit 0.
+{
+  const { root, packPath } = makeFreshnessProject();
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 0 && r.json && r.json.ok, "§freshness-all-sources-match: all sources match → exit 0");
+}
+
+// N3a-ii: mutate one source file → exit 1 naming the divergent path.
+{
+  const { root, packPath, designPath } = makeFreshnessProject();
+  writeFileSync(designPath, "# design\ncontent B — MUTATED\n");
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-diverged" && e.path === "docs/features/fixture-change/design.md"),
+    "§freshness-one-source-diverges: mutated source → exit 1 naming the divergent path");
+}
+
+// N3a-iii: delete one source file → exit 1 with source-missing naming the path.
+{
+  const { root, packPath, proposalPath } = makeFreshnessProject();
+  rmSync(proposalPath);
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-missing" && e.path === "docs/features/fixture-change/proposal.md"),
+    "§freshness-source-missing: deleted source → exit 1 source-missing naming the path");
+}
+
+// N3a-iv: mutate a file NOT declared in sources[] → exit 0 (invalidation must never be repo-wide).
+{
+  const { root, packPath, unrelatedPath } = makeFreshnessProject();
+  writeFileSync(unrelatedPath, "# unrelated\nMUTATED but not a declared source\n");
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 0 && r.json && r.json.ok, "§freshness-scope-only-declared-sources: mutating an undeclared file → still exit 0");
+}
+
+// N3a-v: pack is stale, doc-manifest is complete → freshness fails, doc-manifest passes independently.
+{
+  const { root, packPath, designPath } = makeFreshnessProject();
+  writeFileSync(designPath, "# design\ncontent B — MUTATED\n");
+  const freshResult = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+
+  const manifestPath = join(root, ".aidakit", "doc-manifest.json");
+  writeFileSync(manifestPath, JSON.stringify({ change_id: "fixture-change", level: "change", required: [] }));
+  const docResult = run(docManifestVal, [manifestPath], { AIDAKIT_PROJECT_ROOT: root });
+
+  ok(freshResult.code === 1 && docResult.code === 0 && docResult.json.ok,
+    "§freshness-separation-from-doc-manifest: stale pack fails freshness but doc-manifest (unrelated) stays green");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
