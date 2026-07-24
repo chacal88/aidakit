@@ -152,8 +152,9 @@ The deliverable is **the `doc-manifest.json`(s) written to disk**, plus a short 
 
 3. A count line: `N mandatory (pendente), M waived (n/a)`.
 4. Escalations encountered (if none: omit the section).
-5. The next-step instruction: "Run `node governance/validators/check-doc-manifest.js .aidakit/tasks/<change-id>/doc-manifest.json` to lock the gate; the flow advances when the list is 100%. The docs are filled in by `aidakit:planner`/`aidakit:implementer`."
+5. The next-step instruction: "Run `: \"${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}\"; node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" .aidakit/tasks/<change-id>/doc-manifest.json` to lock the gate; the flow advances when the list is 100%. The docs are filled in by `aidakit:planner`/`aidakit:implementer`."
 
 No process narration. The JSON is the product; the summary only exposes what the machine will enforce.
 
 <!-- aidakit v0.3 — DOC-LEASH: planner of the required-docs manifest, input to check-doc-manifest.js, written on 2026-07-17 — translated to EN -->
+<!-- aidakit v0.4 — agent-validator-paths session-wide AIDAKIT_GOVERNANCE, 2026-07-24 -->
