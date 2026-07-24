@@ -47,3 +47,7 @@ If `agent-validator-paths` (the follow-up debit) lands with a *different* variab
 | Resolve the kit root **inside each validator** (self-locate via its own `import.meta.url`) | No engine change | The breakage is in how the *flow* spells the command, not inside the validators; every validator would need the same boilerplate; does nothing for a consumer flow spelling a fresh `node governance/validators/…` command | medium |
 | Keep the test symlink and only fix the flows | Smaller diff | The symlink is precisely what masked the bug in the first place; leaving it means the regression can silently return | low |
 | `process.chdir` to the kit root before spawning | One less env var | `runs` steps legitimately need `cwd = projectRoot()` so `.aidakit/…` argument paths and validator **data** resolve against the consumer repo; changing cwd would break those | high |
+
+## Amendments
+
+- [ADR-012](ADR-012-aidakit-governance-session-wide.md) (2026-07-24) — amends the injection surface of `AIDAKIT_GOVERNANCE` from `runs`-child-only to **session-wide** via a `SessionStart` hook. The variable name, value semantics, and precedence rule are preserved; the hook is additive to the `runs.js` injection, so every Bash tool call (engine-spawned `runs` children and direct-invocation call sites from agents/skills/commands) now sees the same value. Closes the `Mitigated` bullet of §Consequences.

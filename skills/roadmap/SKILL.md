@@ -61,7 +61,8 @@ Identify the mode from the request:
 ### `status` mode (default) — show the derived roadmap
 Run the deriver and present the Now/Next/Later view:
 ```
-node governance/validators/derive-roadmap-status.js --root <project-root>
+: "${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}"
+node "$AIDAKIT_GOVERNANCE/validators/derive-roadmap-status.js" --root <project-root>
 ```
 - stdout is the JSON (`epics[]` with derived statuses, `orphans[]`); stderr is the human view.
 - Present: **Now** (in-progress/in-review), **Next** (planned), **Later** (backlog), **Done** (done). Flag `orphans` — declared change-ids with nothing on disk yet (pure intent).
@@ -133,3 +134,4 @@ Run the deriver and write its view into `docs/roadmap/ROADMAP.md`, with a header
 <!-- aidakit v0.4 — roadmap in-repo (epics→features→changes) with status derived from disk, no external tool on 2026-07-20 -->
 <!-- aidakit v0.4 — `from` mode: describe → interview (identify-domain + brainstorm) → decompose → generate the epic; hand-authoring demoted to escape hatch on 2026-07-20 -->
 <!-- aidakit v0.4 — `register` mode: defer a single change as a debit (mint id, collision refusal, feature line via add-feature, regen), feeds fast.yaml's register path (add-debit) on 2026-07-22 -->
+<!-- aidakit v0.5 — agent-validator-paths session-wide AIDAKIT_GOVERNANCE, 2026-07-24 -->

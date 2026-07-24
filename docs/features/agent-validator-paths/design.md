@@ -49,7 +49,7 @@ The hook script — new file [`hooks/session-start.js`](../../../hooks/session-s
 #!/usr/bin/env node
 // hooks/session-start.js — exports AIDAKIT_GOVERNANCE session-wide.
 // Companion to runs.js: runs.js covers `runs`-step children; this hook covers
-// every direct Bash tool call an agent/skill/command instructs. ADR-010
+// every direct Bash tool call an agent/skill/command instructs. ADR-012
 // (amends ADR-004) locks the contract.
 const root = process.env.CLAUDE_PLUGIN_ROOT;
 if (!root) {
@@ -107,7 +107,7 @@ Result of `grep -rE 'node +governance/(validators|cli|engine)' agents/ skills/ c
 
 The predecessor pinned the boundary in [`validator-path-resolution/design.md` §Out of scope](../../archive/2026-07-23-validator-path-resolution/design.md) ("flow calls are fixed; source links, release-time in-kit commands, WORM and archive content are left intact"). This change extends the same rule:
 
-- **Descriptive prose that names `governance/` as a file location** (e.g. `[roadmap.js](../../governance/roadmap/roadmap.js)` in [`skills/roadmap/SKILL.md:92,130`](../../../skills/roadmap/SKILL.md), [`skills/catalog/INDEX.md:48`](../../../skills/catalog/INDEX.md), [`skills/review/SKILL.md:114`](../../../skills/review/SKILL.md), any ADR mention). These are relative links from a source doc INSIDE the kit to a source file INSIDE the kit — they render correctly on GitHub and are not commands. Leave.
+- **Descriptive prose that names `governance/` as a file location** (e.g. `roadmap.js` linked as [`../../governance/roadmap/roadmap.js`](../../../governance/roadmap/roadmap.js) in [`skills/roadmap/SKILL.md:92,130`](../../../skills/roadmap/SKILL.md), [`skills/catalog/INDEX.md:48`](../../../skills/catalog/INDEX.md), [`skills/review/SKILL.md:114`](../../../skills/review/SKILL.md), any ADR mention). These are relative links from a source doc INSIDE the kit to a source file INSIDE the kit — they render correctly on GitHub and are not commands. Leave.
 - **`PROCESS.md:291`** (`node governance/validators/check-plugin-version.js .`) — release-time command that runs INSIDE the kit repo by maintainers; the relative path is correct there. Leave (same as the predecessor's decision).
 - **Archive content** ([`docs/archive/`](../../archive/)) — WORM. Never edited.
 - **`hooks/pre-bash.js`** — invoked by the `PreToolUse/Bash` hook, unrelated to validator paths. Untouched (though the `hooks.json` manifest itself gains a `SessionStart` block).
@@ -123,20 +123,20 @@ The rule applied: **executed commands are rewritten; source-file links, release-
 - **Interpolate `${CLAUDE_PLUGIN_ROOT}` in each markdown call site.** Rejected: the token is only expanded inside `hooks.json`; it is not a session env var (empirically verified — see §Problem shape). A rendered markdown instruction that says `node ${CLAUDE_PLUGIN_ROOT}/governance/cli.js …` would literally execute with `${CLAUDE_PLUGIN_ROOT}` unset and fail identically to the current bug.
 - **Rely on `pre-bash.js` to rewrite matching commands in-flight** (a `PreToolUse/Bash` hook that patterns `node governance/…` → absolute). Rejected: `PreToolUse` hooks may modify but should not silently rewrite the command Claude was told to execute; this hides the fact that the instructions are wrong (the instructions must be corrected once, not patched every call), and it makes the pre-bash guard itself carry a load unrelated to its execution-governance job (documented at [`hooks/pre-bash.js:3-43`](../../../hooks/pre-bash.js)).
 
-## ADR-004 amendment shape — a new ADR-010
+## ADR-004 amendment shape — a new ADR-012
 
-**Why a new ADR, not an in-place edit of ADR-004.** [DOCS.md](../../../DOCS.md) rule 2 (WORM) explicitly: "An ADR is WORM: never edit a past decision. Changed your mind → a new ADR that supersedes or amends this one." The repo's own established pattern is [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md), whose Status header reads `accepted (amends [ADR-002](ADR-002-roadmap-status-derived-from-disk.md))` — the amended ADR (ADR-002) is not edited; the new one carries the header and the pointer. ADR-004's own Review trigger anticipated this exact shape: "amend this ADR to point at the unified mechanism instead of two divergent ones."
+**Why a new ADR, not an in-place edit of ADR-004.** [DOCS.md](../../../DOCS.md) rule 2 (WORM) explicitly: "An ADR is WORM: never edit a past decision. Changed your mind → a new ADR that supersedes or amends this one." The repo's own established pattern is [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md), whose Status header reads `accepted (amends [ADR-002](../../decisions/ADR-002-roadmap-status-derived-from-disk.md))` — the amended ADR (ADR-002) is not edited; the new one carries the header and the pointer. ADR-004's own Review trigger anticipated this exact shape: "amend this ADR to point at the unified mechanism instead of two divergent ones."
 
-**Shape of the new record — [ADR-010](../../decisions/ADR-010-aidakit-governance-session-wide.md).**
+**Shape of the new record — [ADR-012](../../decisions/ADR-012-aidakit-governance-session-wide.md).**
 
-- Filename: `docs/decisions/ADR-010-aidakit-governance-session-wide.md`.
+- Filename: `docs/decisions/ADR-012-aidakit-governance-session-wide.md`.
 - WORM header comment (copy from ADR-004/007).
-- **Status:** `accepted (amends [ADR-004](ADR-004-aidakit-governance-env-contract.md))`.
+- **Status:** `accepted (amends [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md))`.
 - **Date:** `2026-07-24`.
 - **Context:** cite ADR-004's `Mitigated` consequence (§Consequences bullet 2) and its Review trigger; cite this change's roadmap declaration and the [predecessor's non-goal 2](../../archive/2026-07-23-validator-path-resolution/proposal.md).
 - **Decision:** `AIDAKIT_GOVERNANCE` remains the same name with the same value semantics (points AT `governance/`), broadened from "injected into `runs`-step children only" to "additionally exported into the Claude session env by a `SessionStart` hook, so every Bash tool call — `runs`-child or direct-invocation — resolves the kit's `governance/` path identically". `runs.js` injection is preserved unchanged; the session injection is additive. The kit's rewritten call sites in `agents/`, `skills/`, `commands/` guard with the POSIX `?word` expansion, so a missing hook fails loud.
 - **Consequences:** positive (all direct-invocation vectors resolved; a lint of `node governance/` in `agents|skills|commands` becomes a valid CI check; the `Mitigated` bullet of ADR-004 is now `Accepted` because the coverage is complete). Negative (a `SessionStart` hook is a new plugin obligation — Accepted; if Claude Code deprecates/renames the hook capability, both `runs.js` injection and this hook coordinate and a follow-up ADR is needed — Mitigated by keeping both mechanisms co-owned in one contract).
-- **Review trigger:** if a future kit surface introduces yet another vector (e.g. a background daemon spawned outside `runs` and outside the Claude session), amend ADR-010 with the third injection point.
+- **Review trigger:** if a future kit surface introduces yet another vector (e.g. a background daemon spawned outside `runs` and outside the Claude session), amend ADR-012 with the third injection point.
 - **Alternatives considered:** lift the 4-row table from this design's §Alternatives.
 - **Registered** in [`docs/decisions/README.md`](../../decisions/README.md) with an index row and (if the file has thematic groupings) placed in the "Flow engine" group next to ADR-004.
 
@@ -145,7 +145,7 @@ The rule applied: **executed commands are rewritten; source-file links, release-
 ```md
 ## Amendments
 
-- [ADR-010](ADR-010-aidakit-governance-session-wide.md) (2026-07-24) — amends the injection surface of `AIDAKIT_GOVERNANCE` from `runs`-child-only to **session-wide** via a `SessionStart` hook. The variable name, value semantics, and precedence rule are preserved; the hook is additive to the `runs.js` injection, so every Bash tool call (engine-spawned `runs` children and direct-invocation call sites from agents/skills/commands) now sees the same value. Closes the `Mitigated` bullet of §Consequences.
+- [ADR-012](ADR-012-aidakit-governance-session-wide.md) (2026-07-24) — amends the injection surface of `AIDAKIT_GOVERNANCE` from `runs`-child-only to **session-wide** via a `SessionStart` hook. The variable name, value semantics, and precedence rule are preserved; the hook is additive to the `runs.js` injection, so every Bash tool call (engine-spawned `runs` children and direct-invocation call sites from agents/skills/commands) now sees the same value. Closes the `Mitigated` bullet of §Consequences.
 ```
 
 WORM is preserved: `## Context`, `## Decision`, `## Consequences`, `### Review trigger`, and `## Alternatives considered` are not edited. The append is a metadata-only surface for the bidirectional link — exactly the shape ADR-002 uses.
@@ -154,10 +154,10 @@ WORM is preserved: `## Context`, `## Decision`, `## Consequences`, `### Review t
 
 The three prose surfaces that currently describe `AIDAKIT_GOVERNANCE` as `runs`-only get an update — small, targeted, keep the doctrinal tone of the source:
 
-- **[`docs/guides/flows.md`](../../guides/flows.md) §3** (line ~67, the `${...}` vs `$FOO` explainer): the current sentence "`$AIDAKIT_GOVERNANCE` (injected by `runs.js` into every `runs` child env; see §6)" broadens to name both injection points and cross-links ADR-010.
+- **[`docs/guides/flows.md`](../../guides/flows.md) §3** (line ~67, the `${...}` vs `$FOO` explainer): the current sentence "`$AIDAKIT_GOVERNANCE` (injected by `runs.js` into every `runs` child env; see §6)" broadens to name both injection points and cross-links ADR-012.
 - **[`docs/guides/flows.md`](../../guides/flows.md) §5** — inspect for any wording that scopes the var to `runs` only and adjust.
-- **[`docs/guides/flows.md`](../../guides/flows.md) §6** (line ~187, "Calling a kit validator from a flow of your own"): the current "`runs.js` injects `AIDAKIT_GOVERNANCE` … into every `runs` step's child env" broadens to "`runs.js` and a `SessionStart` hook together inject `AIDAKIT_GOVERNANCE` … so every Bash execution surface — engine-spawned `runs` steps and direct-invocation call sites from agents/skills/commands — resolves the kit's `governance/` path identically". Cross-link ADR-010.
-- **[`governance/README.md`](../../../governance/README.md)** line 61: the sentence "`runs` steps also receive `AIDAKIT_GOVERNANCE` in their child env" broadens to "Every Bash session under the plugin — `runs`-step children (via `runs.js`) and direct Bash tool calls (via the `SessionStart` hook) — receives `AIDAKIT_GOVERNANCE`". Cross-link ADR-010.
+- **[`docs/guides/flows.md`](../../guides/flows.md) §6** (line ~187, "Calling a kit validator from a flow of your own"): the current "`runs.js` injects `AIDAKIT_GOVERNANCE` … into every `runs` step's child env" broadens to "`runs.js` and a `SessionStart` hook together inject `AIDAKIT_GOVERNANCE` … so every Bash execution surface — engine-spawned `runs` steps and direct-invocation call sites from agents/skills/commands — resolves the kit's `governance/` path identically". Cross-link ADR-012.
+- **[`governance/README.md`](../../../governance/README.md)** line 61: the sentence "`runs` steps also receive `AIDAKIT_GOVERNANCE` in their child env" broadens to "Every Bash session under the plugin — `runs`-step children (via `runs.js`) and direct Bash tool calls (via the `SessionStart` hook) — receives `AIDAKIT_GOVERNANCE`". Cross-link ADR-012.
 - Bump the doctrine footer of `docs/guides/flows.md` per repo convention.
 
 ## Regression test — AC5
@@ -177,24 +177,24 @@ Assumption 2 (`SessionStart` hook can export env vars into the Bash tool session
 
 - **Fallback A — hook-side rewriting.** Move the injection to `hooks/pre-bash.js` (an existing `PreToolUse/Bash` handler): detect a leading `node governance/(validators|cli|engine)/` in the command being about to execute and rewrite it in-flight to the absolute path. Cheap to implement, but adds an execution-governance-adjacent behavior to `pre-bash.js` that its own header explicitly says is not its job ([`hooks/pre-bash.js:3-43`](../../../hooks/pre-bash.js)) — requires re-negotiating that boundary.
 - **Fallback B — installer-time absolute paths.** A plugin install step rewrites `governance/…` to the absolute plugin cache path in the shipped agent/skill/command files. Rejected upstream because Claude Code plugins do not run install scripts; would need a new install mechanism.
-- **Fallback C — every markdown call site self-locates.** Ship a small [`hooks/kit-locator.sh`](../../../hooks/kit-locator.sh) that, when sourced, computes `AIDAKIT_GOVERNANCE`, and every rewritten instruction says `source "$(command -v aidakit-locator 2>/dev/null || echo <fixed-relative-shot>)"` first. Also brittle and doesn't fully close the resolve problem.
+- **Fallback C — every markdown call site self-locates.** Ship a small `hooks/kit-locator.sh` (hypothetical — never created; this fallback was not chosen) that, when sourced, computes `AIDAKIT_GOVERNANCE`, and every rewritten instruction says `source "$(command -v aidakit-locator 2>/dev/null || echo <fixed-relative-shot>)"` first. Also brittle and doesn't fully close the resolve problem.
 
 The critic step of the flow decides between the primary design and a fallback based on step-1 evidence.
 
 ## Constraining ADRs
 
-- [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) — this change amends it via [ADR-010](../../decisions/ADR-010-aidakit-governance-session-wide.md); the amendment is precisely what ADR-004's Review trigger authorized.
-- [ADR-003](../../decisions/ADR-003-shared-knowledge-in-docs.md) placement boundary — "a decision with alternatives → ADR" — drives writing ADR-010 rather than hiding the broadening as a design-only footnote.
+- [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) — this change amends it via [ADR-012](../../decisions/ADR-012-aidakit-governance-session-wide.md); the amendment is precisely what ADR-004's Review trigger authorized.
+- [ADR-003](../../decisions/ADR-003-shared-knowledge-in-docs.md) placement boundary — "a decision with alternatives → ADR" — drives writing ADR-012 rather than hiding the broadening as a design-only footnote.
 - [DOCS.md](../../../DOCS.md) rule 2 (WORM) — drives the "new ADR, no in-place edit of ADR-004" shape.
 
 ## Rollback
 
-Revert the single commit that lands this change: `hooks/hooks.json` loses the `SessionStart` block, `hooks/session-start.js` is deleted, the 18 in-scope call sites revert to relative paths, the test file is removed, ADR-010 is deleted, ADR-004's appended `## Amendments` section is removed, `docs/decisions/README.md` loses its ADR-010 row, `governance/README.md`/`flows.md` revert, and `docs/roadmap/epics/EPIC-flow-engine-leashes.md` line 25-26 reverts to its pre-change Aceite wording. The behavior returns to the pre-change reality (relative paths that only resolve inside the kit repo). Then Fallback A/B/C are open.
+Revert the single commit that lands this change: `hooks/hooks.json` loses the `SessionStart` block, `hooks/session-start.js` is deleted, the 18 in-scope call sites revert to relative paths, the test file is removed, ADR-012 is deleted, ADR-004's appended `## Amendments` section is removed, `docs/decisions/README.md` loses its ADR-012 row, `governance/README.md`/`flows.md` revert, and `docs/roadmap/epics/EPIC-flow-engine-leashes.md` line 25-26 reverts to its pre-change Aceite wording. The behavior returns to the pre-change reality (relative paths that only resolve inside the kit repo). Then Fallback A/B/C are open.
 
 ## Conventions and evidence location
 
 - Every rewritten command uses double quotes around `"$AIDAKIT_GOVERNANCE/…"` — the plugin cache path may contain spaces (`~/.claude/plugins/cache/aidakit/aidakit/<version>/governance`). Same convention as the predecessor.
 - Markdown edits keep the file's existing tone (agents/skills/commands are terse operational docs; the rewrite is one line at a time, no reflow).
-- New ADR-010 follows the ADR-001–009 format exactly (5 sections, WORM header, Alternatives table).
+- New ADR-012 follows the ADR-001–009 format exactly (5 sections, WORM header, Alternatives table).
 - Test discipline: mutation proof captured, not just assertion counts (same pattern the predecessor established in its `docs-onboarding` test-gap fix).
 - Evidence is recorded at the fixed location [`docs/features/agent-validator-paths/evidence.md`](evidence.md).

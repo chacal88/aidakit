@@ -117,7 +117,7 @@ The deliverable is **the `acceptance-manifest.json` written to disk**, plus a sh
 
 3. A count line: `N mandatory (pending/resolved), M waived (n/a)`.
 4. Escalations encountered (if none: omit the section).
-5. The next-step instruction: "Run `node governance/validators/check-acceptance.js .aidakit/tasks/<change-id>/acceptance-manifest.json` to lock the gate; the flow advances when the list is 100%."
+5. The next-step instruction: "Run `: \"${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}\"; node \"$AIDAKIT_GOVERNANCE/validators/check-acceptance.js\" .aidakit/tasks/<change-id>/acceptance-manifest.json` to lock the gate; the flow advances when the list is 100%."
 
 No process narration. The JSON is the product; the summary only exposes what the machine will enforce.
 
