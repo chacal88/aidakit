@@ -53,26 +53,7 @@ The design in [design.md](design.md) rests on those three bullets and no other e
 
 ## Context-pack telemetry rollup
 
-<!-- Written by `aidakit:learn` (skills/learn/SKILL.md §4.5) at end-of-run. Idempotent — reruns replace this section. Expected shape:
-
-## Context-pack telemetry rollup
-
-- Total dispatches: N
-- Mean pack_size: X bytes
-- Sum cache_read: Y tokens
-- Sum cache_creation: Z tokens
-- Pack rebuilds: R
-
-| subagent | dispatches | mean cache_read | mean pack_size |
-|---|---|---|---|
-| aidakit:reviewer-quality | ... | ... | ... |
-| aidakit:reviewer-security | ... | ... | ... |
-| aidakit:reviewer-architecture | ... | ... | ... |
-| aidakit:tester | ... | ... | ... |
-| aidakit:adr-reviewer | ... | ... | ... |
-| aidakit:spec-reviewer | ... | ... | ... |
-| aidakit:implementer | ... | ... | ... |
--->
+No telemetry captured for this run — the engine extension (`resume` kwargs → `governance/telemetry/append.js`) shipped in this change; per-dispatch telemetry starts landing on the NEXT change that runs the flow with reviewer dispatches supplying `cache_read`/`cache_creation`/`pack_size` kwargs. Once populated, the section is rewritten idempotently by `governance/telemetry/rollup.js` from `.aidakit/tasks/context-pack-l1/.telemetry.jsonl`.
 
 ## Coverage report
 
