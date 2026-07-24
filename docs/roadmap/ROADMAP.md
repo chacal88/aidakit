@@ -15,6 +15,7 @@
 ### Coleiras mecânicas do flow engine — **in-progress**
 
 - Request livre vs change-id nos flows — `flow-request-vs-change-id` → in-progress
+- Cap mecânico de retries — `engine-max-visits` → in-progress
 
 ## Next (planned)
 
@@ -28,7 +29,6 @@ _(nada planejado)_
 
 ### Coleiras mecânicas do flow engine — **in-progress**
 
-- Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
 - Bench paralelo estrutural — `flow-parallel-bench` → backlog

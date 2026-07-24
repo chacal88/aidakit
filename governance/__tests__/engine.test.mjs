@@ -1017,6 +1017,208 @@ steps:
     "9e: outputs declaring the reserved key 'outcome' is REJECTED at load");
 }
 
+// ── 10. max_visits back-edge cap: bounds loops formed by on_result routes ──
+// (engine-max-visits) — the loop step's `max` bounds body iterations; this test
+// covers the OTHER loop shape the engine can produce: a back-edge via
+// on_result (e.g. critic → revise → specify). Before this leash, specify↔critic
+// could run indefinitely — a real session burned ~102M tokens on the 4th
+// round. With max_visits: 3 on `specify`, the 4th entry short-circuits and
+// escalates via on_max_visits to a human_gate — never a silent loop.
+
+// (10a) Parser validation: max_visits without on_max_visits is REJECTED
+// (fail-closed — an unbounded loop is worse than a hard stop); non-integer
+// max_visits is REJECTED; on_max_visits pointing at a nonexistent step is
+// REJECTED by the routing-target check.
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  mkdirSync(flowsUser, { recursive: true });
+
+  writeFileSync(join(flowsUser, "capnotarget.yaml"), `flow: capnotarget
+description: max_visits without on_max_visits
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    max_visits: 3
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const rNoTarget = loadFlow("capnotarget");
+  ok(rNoTarget.errors.length > 0 && rNoTarget.errors.some((e) => e.message.includes("on_max_visits")),
+    "10a-i: max_visits without on_max_visits is REJECTED at load (fail-closed)");
+
+  writeFileSync(join(flowsUser, "capbadint.yaml"), `flow: capbadint
+description: max_visits is not a positive integer
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    max_visits: 0
+    on_max_visits: end
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const rBadInt = loadFlow("capbadint");
+  ok(rBadInt.errors.length > 0 && rBadInt.errors.some((e) => e.message.includes("positive integer")),
+    "10a-ii: max_visits: 0 is REJECTED (must be a positive integer)");
+
+  writeFileSync(join(flowsUser, "capbadtarget.yaml"), `flow: capbadtarget
+description: on_max_visits pointing at a nonexistent step
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    max_visits: 3
+    on_max_visits: nowhere
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const rBadTarget = loadFlow("capbadtarget");
+  ok(rBadTarget.errors.length > 0 && rBadTarget.errors.some((e) => e.message.includes("on_max_visits") && e.message.includes("nowhere")),
+    "10a-iii: on_max_visits pointing at a nonexistent step is REJECTED at load");
+
+  writeFileSync(join(flowsUser, "capescnocap.yaml"), `flow: capescnocap
+description: on_max_visits without max_visits
+steps:
+  - id: a
+    type: invoke
+    invoke_target: aidakit:plan
+    on_max_visits: end
+    on_success: end
+  - id: end
+    type: terminal
+    outcome: completed
+`);
+  const rEscNoCap = loadFlow("capescnocap");
+  ok(rEscNoCap.errors.length > 0 && rEscNoCap.errors.some((e) => e.message.includes("on_max_visits") && e.message.includes("max_visits")),
+    "10a-iv: on_max_visits without max_visits is REJECTED at load");
+}
+
+// (10b) Mechanism: a step with max_visits=3 dispatches 3 times, then the 4th
+// entry short-circuits BEFORE dispatch and routes via on_max_visits. The
+// escalation step reaches its human_gate; dispatch count for the capped step
+// stays at 3 (not 4).
+{
+  const flowsUser = join(tmp, ".aidakit", "flows");
+  mkdirSync(flowsUser, { recursive: true });
+  writeFileSync(join(flowsUser, "capback.yaml"), `flow: capback
+description: specify↔critic back-edge cap
+steps:
+  - id: work
+    type: invoke
+    invoke_target: aidakit:plan
+    expects:
+      - success
+      - failure
+    max_visits: 3
+    on_max_visits: escalation
+    on_success: check
+    on_failure: aborted
+  - id: check
+    type: invoke
+    invoke_target: aidakit:spec-reviewer
+    expects:
+      - ok
+      - revise
+    on_result:
+      ok: done
+      revise: work
+  - id: escalation
+    type: human_gate
+    prompt: "Loop hit the cap. Abort?"
+    options:
+      - abort
+    on_result:
+      abort: aborted
+  - id: done
+    type: terminal
+    outcome: completed
+  - id: aborted
+    type: terminal
+    outcome: aborted
+`);
+  const { flow, errors } = loadFlow("capback");
+  eq(errors, [], "10b: capback flow parses");
+  let res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "cap10b", now: new Date("2026-07-17T00:00:00Z") } });
+  let workDispatches = 0;
+  let checkDispatches = 0;
+  const visited = [];
+  for (let i = 0; i < 20 && res.state.status === "paused"; i++) {
+    const p = res.state.pause;
+    visited.push(p.step_id);
+    let answer;
+    if (p.step_id === "work") { workDispatches++; answer = "success"; }
+    else if (p.step_id === "check") { checkDispatches++; answer = "revise"; }
+    else if (p.step_id === "escalation") { answer = "abort"; }
+    else throw new Error(`unexpected pause "${p.step_id}"`);
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
+  }
+  eq(workDispatches, 3, "10b: capped step dispatched exactly 3 times (max_visits=3)");
+  eq(checkDispatches, 3, "10b: the peer step dispatched 3 times (once per work entry)");
+  eq(visited.filter((s) => s === "work").length, 3, "10b: exactly 3 work pauses — the 4th short-circuits BEFORE dispatch");
+  ok(visited.includes("escalation"), "10b: routed to on_max_visits (escalation) after the cap");
+  eq(res.state.status, "aborted", "10b: escalation → abort terminates the flow");
+  // step_history records the max_visits_exceeded event on the capped step.
+  const maxEvent = res.state.step_history.find((h) => h.step_id === "work" && h.result === "max_visits_exceeded");
+  ok(maxEvent, "10b: step_history records the max_visits_exceeded entry on the capped step");
+  eq(maxEvent.output, { visits: 3, max_visits: 3 }, "10b: max_visits_exceeded output carries the counters");
+  // The visit counter is persisted in state.context (survives resume).
+  eq(res.state.context.__visits.work, 3, "10b: __visits counter persisted in context");
+}
+
+// (10c) Wiring in full.yaml: `specify` declares max_visits=3 and
+// on_max_visits=specify_escalation, and the escalation step exists.
+{
+  const { flow } = loadFlow("full");
+  const specify = flow.steps.find((s) => s.id === "specify");
+  eq(specify.max_visits, 3, "10c: full.yaml specify.max_visits = 3");
+  eq(specify.on_max_visits, "specify_escalation", "10c: full.yaml specify.on_max_visits = specify_escalation");
+  const esc = flow.steps.find((s) => s.id === "specify_escalation");
+  ok(esc && esc.type === "human_gate", "10c: full.yaml specify_escalation exists as a human_gate");
+  ok(esc && Array.isArray(esc.options) && esc.options.includes("abort"), "10c: specify_escalation offers 'abort'");
+  eq(esc.on_result.abort, "aborted", "10c: specify_escalation routes abort → aborted");
+}
+
+// (10d) End-to-end drive of full.yaml: critic keeps returning revise; on the
+// 4th call to specify the flow escalates to specify_escalation instead of
+// dispatching aidakit:plan again. The dispatch count for `specify` stays at 3.
+{
+  const request = "cap-specify-loop";
+  const { flow } = loadFlow("full");
+  let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "cap10d", now: new Date("2026-07-17T00:00:00Z") } });
+  let specifyDispatches = 0;
+  const visited = [];
+  for (let i = 0; i < 30 && res.state.status === "paused"; i++) {
+    const p = res.state.pause;
+    visited.push(p.step_id);
+    let answer;
+    switch (p.step_id) {
+      case "select": answer = selectAnswer(request); break;
+      case "classify": answer = "success"; break;
+      case "brainstorm": answer = "done"; break;
+      case "specify": specifyDispatches++; answer = "success"; break;
+      case "critic": answer = "revise"; break;
+      case "specify_escalation": answer = "abort"; break;
+      default: throw new Error(`unexpected pause "${p.step_id}"`);
+    }
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
+  }
+  eq(specifyDispatches, 3, "10d: full.yaml specify dispatched exactly 3 times before the cap trips");
+  ok(visited.includes("specify_escalation"), "10d: full.yaml routes to specify_escalation after the 3rd revise round");
+  eq(res.state.status, "aborted", "10d: specify_escalation → abort terminates the full flow");
+  // Sanity: the escalation blocked the FOURTH specify dispatch — the last
+  // pause in `visited` (before escalation) is critic (revise round 3), and
+  // specify_escalation follows immediately.
+  const escIdx = visited.indexOf("specify_escalation");
+  eq(visited[escIdx - 1], "critic", "10d: escalation lands right after the 3rd critic=revise (no 4th specify pause)");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

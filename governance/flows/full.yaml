@@ -68,13 +68,40 @@ steps:
 
   - id: specify
     type: invoke
-    description: aidakit:plan — authors proposal/design/tasks from the brainstorm (plan-only).
+    description: |
+      aidakit:plan — authors proposal/design/tasks from the brainstorm (plan-only).
+      Capped at 3 dispatches per flow_id: two back-edges re-enter this step
+      (critic=revise and readiness=needs-revision), and previous runs saw the
+      pair burn ~102M tokens on a 4th round. The 4th entry short-circuits
+      BEFORE calling aidakit:plan and escalates via specify_escalation — a
+      human_gate — instead of silently looping.
     invoke_target: aidakit:plan
+    max_visits: 3
+    on_max_visits: specify_escalation
     expects:
       - success
       - failure
     on_success: commit_plan
     on_failure: aborted
+
+  - id: specify_escalation
+    type: human_gate
+    description: |
+      Escalation gate — the specify↔critic (and readiness) loop hit max_visits
+      (3 rounds). Instead of burning more tokens on a 4th spec, hand it to the
+      human: abort and fix out-of-band (edit docs/features/<change_id>/, then
+      re-run the flow). No auto-resume path — a fresh flow starts a fresh
+      visit counter, which is the intended reset semantics.
+    prompt: |
+      "${inputs.request}": the spec loop ran 3 rounds without landing an
+      approved plan (critic kept asking to revise, or readiness kept flagging
+      needs-revision). The last spec is under
+      docs/features/${context.select.change_id}/. Abort so you can intervene
+      out-of-band and re-run the flow?
+    options:
+      - abort
+    on_result:
+      abort: aborted
 
   - id: commit_plan
     type: runs
