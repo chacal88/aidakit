@@ -26,6 +26,14 @@
 
 /**
  * Base step. Every step routes via on_result[outcome] ?? on_success ?? on_failure.
+ *
+ * `max_visits` bounds how many times the engine may DISPATCH this step in a
+ * single flow_id — the back-edge guard for loops formed by `on_result` (e.g.
+ * critic → revise → specify). The (max_visits+1)-th entry short-circuits BEFORE
+ * dispatch and routes via `on_max_visits` (typically a human_gate escalation).
+ * If `max_visits` is set without `on_max_visits`, the engine fails the flow with
+ * a diagnostic — fail-closed, because an unbounded loop is worse than a hard
+ * stop. Absent field = unbounded (today's behavior).
  * @typedef {Object} BaseStep
  * @property {string} id
  * @property {StepType} type
@@ -33,6 +41,8 @@
  * @property {string} [on_success]
  * @property {string} [on_failure]
  * @property {Object.<string,string>} [on_result]
+ * @property {number} [max_visits]     positive integer; bounds dispatch entries.
+ * @property {string} [on_max_visits]  step id to route to when the cap trips.
  */
 
 /** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[], outputs?:Object.<string,string[]>}} InvokeStep — dispatches the skill/agent named in `invoke_target`. `outputs` maps an outcome to the structured output keys a resume with that outcome MUST supply (safe single tokens, persisted into context[step.id] — ADR-006). */

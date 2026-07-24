@@ -8,6 +8,10 @@
 
 - Merge autônomo opt-in do PR — `configurable-pr-automation` → in-progress
 
+### Coleiras mecânicas do flow engine — **in-progress**
+
+- Cap mecânico de retries — `engine-max-visits` → in-progress
+
 ## Next (planned)
 
 _(nada planejado)_
@@ -20,7 +24,6 @@ _(nada planejado)_
 
 ### Coleiras mecânicas do flow engine — **backlog**
 
-- Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
 - Bench paralelo estrutural — `flow-parallel-bench` → backlog

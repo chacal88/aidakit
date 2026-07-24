@@ -161,6 +161,19 @@ function validateSteps(steps, where, errs) {
       }
     }
     if (s.type === "runs" && typeof s.command !== "string") errs.push(`${at}: runs step requires 'command' (string)`);
+    // Back-edge visit cap: max_visits must be a positive integer; on_max_visits
+    // must accompany it (fail-closed — an unbounded loop is worse than a hard stop).
+    if (s.max_visits !== undefined) {
+      if (typeof s.max_visits !== "number" || !Number.isInteger(s.max_visits) || s.max_visits < 1) {
+        errs.push(`${at}: 'max_visits' must be a positive integer`);
+      } else if (s.on_max_visits === undefined) {
+        errs.push(`${at}: 'max_visits' set without 'on_max_visits' — fail-closed requires an escalation target`);
+      } else if (typeof s.on_max_visits !== "string") {
+        errs.push(`${at}: 'on_max_visits' must be a string (step id)`);
+      }
+    } else if (s.on_max_visits !== undefined) {
+      errs.push(`${at}: 'on_max_visits' set without 'max_visits' — the escalation only fires when a cap is declared`);
+    }
     if ((s.type === "human_handoff" || s.type === "human_gate") && typeof s.prompt !== "string") errs.push(`${at}: step ${s.type} requires 'prompt' (string)`);
     if (s.type === "human_gate" && !Array.isArray(s.options)) errs.push(`${at}: human_gate step requires 'options' (list)`);
     if (s.type === "loop") {
@@ -210,6 +223,7 @@ function checkRoutingTargets(steps, path, errors) {
       const at = `${scope}${s.id}`;
       check(s.on_success, at, "on_success");
       check(s.on_failure, at, "on_failure");
+      check(s.on_max_visits, at, "on_max_visits");
       if (s.on_result && typeof s.on_result === "object") {
         for (const [k, v] of Object.entries(s.on_result)) check(v, at, `on_result.${k}`);
       }

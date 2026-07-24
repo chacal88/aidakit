@@ -127,6 +127,60 @@ function drive(state, flow, queue, initialResumeValue, initialResumeOutput) {
     const ctx = { state, flow, resumeValue, resumeOutput, loopVars: frame.loopVars, path: frame.path };
 
     const startedAt = new Date().toISOString();
+
+    // Back-edge visit cap: bounds loops formed by on_result routes (e.g.
+    // critic → revise → specify) that the loop step's `max` cannot see. The
+    // check runs BEFORE dispatch so an entry that trips the cap does NOT run
+    // the (typically expensive) step body — the whole point is to stop burning
+    // tokens on a runaway loop.
+    //
+    // A pausing step (invoke, human_gate) traverses drive() TWICE per logical
+    // visit: once to pause, once to consume the resume. Counting only fresh
+    // entries (resumeValue === undefined) makes 1 visit = 1 count regardless of
+    // step type — runs/terminal/etc are always fresh, so the semantics are
+    // uniform: "how many times did the engine start executing this step".
+    const isFreshEntry = resumeValue === undefined && resumeOutput === undefined;
+    if (typeof step.max_visits === "number" && isFreshEntry) {
+      const visits = state.context.__visits ?? {};
+      const priorEntries = visits[step.id] ?? 0;
+      if (priorEntries >= step.max_visits) {
+        const target = step.on_max_visits;
+        logEvent(state.flow_id, {
+          event: "step_max_visits_exceeded",
+          step_id: step.id,
+          visits: priorEntries,
+          max_visits: step.max_visits,
+          escalation: target ?? null,
+        });
+        state.step_history.push({
+          step_id: step.id,
+          step_type: step.type,
+          path: frame.path,
+          started_at: startedAt,
+          ended_at: new Date().toISOString(),
+          result: "max_visits_exceeded",
+          output: { visits: priorEntries, max_visits: step.max_visits },
+        });
+        resumeValue = undefined;
+        resumeOutput = undefined;
+        if (target) {
+          queue.unshift({ stepId: target, path: frame.path, loopVars: frame.loopVars });
+          continue;
+        }
+        // Fail-closed: parser rejects max_visits without on_max_visits, but if
+        // a hand-crafted state ever reaches here, treat it as a hard failure
+        // rather than silently swallowing the loop cap.
+        state.status = "failed";
+        state.outcome = "failed";
+        state.finished_at = new Date().toISOString();
+        saveState(state);
+        logEvent(state.flow_id, { event: "flow_end", outcome: "failed", error: `step "${step.id}" exceeded max_visits (${step.max_visits}) with no on_max_visits escalation` });
+        return { status: state.status, state };
+      }
+      visits[step.id] = priorEntries + 1;
+      state.context.__visits = visits;
+    }
+
     logEvent(state.flow_id, { event: "step_start", step_id: step.id, type: step.type, path: frame.path });
 
     let outcome;
