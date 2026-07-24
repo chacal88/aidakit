@@ -73,8 +73,26 @@ steps:
     expects:
       - success
       - failure
-    on_success: critic
+    on_success: commit_plan
     on_failure: aborted
+
+  - id: commit_plan
+    type: runs
+    description: |
+      EARLY PLAN COMMIT (ADR-009, completing ADR-007) — the moment the plan is
+      authored, commit docs/features/<id>/ so the roadmap derives in-progress from
+      the SHARED git state, visible from any worktree/clone and not only the tree
+      that wrote it. BEST-EFFORT and FAIL-SAFE: keyed on ${context.select.change_id}
+      (env-passed data, ADR-006). When change_id is populated it stages exactly that
+      change's dir and commits (skipping an empty commit); when it is absent the
+      `test -n` guard short-circuits — the command no-ops, never stages a bare
+      docs/features/, never loops — and the flow proceeds. Both outcomes route to
+      critic: a commit hiccup must not block the feature (aidakit:ship commits the
+      rest at the pr step). change_id populates reliably once flow-request-vs-change-id
+      lands; until then this step simply no-ops on the runs that don't report it.
+    command: "test -n \"${context.select.change_id}\" && git add \"docs/features/${context.select.change_id}\" && { git diff --cached --quiet || git commit -q -m \"plan(${context.select.change_id}): author proposal/design/tasks\"; } || true"
+    on_success: critic
+    on_failure: critic
 
   - id: critic
     type: invoke
