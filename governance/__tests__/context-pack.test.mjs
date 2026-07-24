@@ -10,7 +10,7 @@
 //
 // Pure Node, no framework — mirrors governance/__tests__/engine.test.mjs / check-docs.test.mjs.
 
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -245,6 +245,48 @@ function makeFreshnessProject() {
   const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
   ok(r.code === 0 && r.json && r.json.ok,
     "§freshness-accepts-plain-relative-path: plain repo-relative sources[] path is unaffected by the traversal guard");
+}
+
+// ── Round-2 bench fix: symlinked sources[].path bypasses the traversal
+// guard (Security veto, round 2) — Fix A validates the STRING shape of
+// sources[N].path only; a relative path that resolves (via a committed
+// symlink) to a target outside the repo sails through both string checks
+// and the validator follows the link, reads the real target, and echoes
+// its sha256 in the source-diverged message. Policy: no symlinks allowed
+// in sources[] at all (lstat-reject) — a context pack is a documentation
+// artifact and symlinked doc files are not a normal repo pattern.
+
+// FixB-i: sources[].path is a relative path that is itself a symlink
+// pointing OUTSIDE the repo root → exit 1 source-entry-invalid, and the
+// validator must NEVER read/hash the real target (no source-diverged).
+{
+  const { root } = makeFreshnessProject();
+  const outsideTarget = join(mkdtempSync(join(tmpdir(), "context-pack-freshness-outside-")), "attacker-target.txt");
+  writeFileSync(outsideTarget, "attacker-controlled content\n");
+  const linkPath = join(root, "docs", "features", "fixture-change", "evil-link");
+  symlinkSync(outsideTarget, linkPath);
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack([{ path: "docs/features/fixture-change/evil-link", sha256: "deadbeef" }]));
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-entry-invalid" && e.path === "docs/features/fixture-change/evil-link"),
+    "§freshness-symlink-to-outside-repo-rejected: symlinked source pointing outside root → exit 1 source-entry-invalid");
+  ok(r.json && !r.json.errors.some((e) => e.rule === "source-diverged"),
+    "§freshness-symlink-to-outside-repo-rejected: never reads/hashes the symlink target (no source-diverged leak)");
+}
+
+// FixB-ii: sources[].path is a relative path that is a symlink pointing at
+// another file INSIDE the repo root → still exit 1 source-entry-invalid
+// (policy is "no symlinks in sources[]" full stop, not just an outside-root
+// check — locks the lstat-reject policy regardless of target location).
+{
+  const { root, designPath } = makeFreshnessProject();
+  const linkPath = join(root, "docs", "features", "fixture-change", "inside-link");
+  symlinkSync(designPath, linkPath);
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack([{ path: "docs/features/fixture-change/inside-link", sha256: sha256(readFileSync(designPath, "utf8")) }]));
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-entry-invalid" && e.path === "docs/features/fixture-change/inside-link"),
+    "§freshness-symlink-to-inside-repo-rejected: symlinked source pointing inside root is still rejected (no symlinks in sources[] policy)");
 }
 
 // ── Round-1 bench fix B: change_id sanitization at FS-write sinks
