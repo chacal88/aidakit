@@ -8,13 +8,8 @@
 
 - Merge autônomo opt-in do PR — `configurable-pr-automation` → in-progress
 
-### Experiência de linha de comando dos flows — **in-progress**
-
-- Tabela de progresso do flow — `flow-run-progress-table` → in-progress
-
 ### Coleiras mecânicas do flow engine — **in-progress**
 
-- Request livre vs change-id nos flows — `flow-request-vs-change-id` → in-progress
 - Cap mecânico de retries — `engine-max-visits` → in-progress
 
 ## Next (planned)
@@ -23,11 +18,11 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Experiência de linha de comando dos flows — **in-progress**
+### Experiência de linha de comando dos flows — **backlog**
 
 - Sumários de passo do flow — `flow-step-summaries` → backlog
 
-### Coleiras mecânicas do flow engine — **in-progress**
+### Coleiras mecânicas do flow engine — **backlog**
 
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
@@ -47,3 +42,5 @@ _(nada planejado)_
 - Registro diferido no build (débito) — `add-debit` → done (2026-07-22)
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
 - Status derivado do git compartilhado (single-valued entre worktrees) — `roadmap-status-from-shared-git` → done (2026-07-24)
+- Request livre vs change-id nos flows — `flow-request-vs-change-id` → done (2026-07-24)
+- Commit precoce do plano no `full` flow (fecha a janela do ADR-007) — `flow-commit-plan-early` → done (2026-07-24)

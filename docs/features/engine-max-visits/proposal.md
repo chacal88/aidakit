@@ -11,7 +11,7 @@
 
 The engine's `loop` step bounds body iterations via its `max` field, but it cannot see the OTHER loop shape the engine produces: a back-edge via `on_result` (e.g. `critic: revise → specify`, `readiness: needs-revision → specify`). In [governance/flows/full.yaml](../../../governance/flows/full.yaml), the `specify` step is re-entered by both routes with no ceiling — the only cap lives in the *text* of the `aidakit:review` skill ("capped rounds"), which is doctrine, not mechanics.
 
-Cost is real: a live session ran the `specify ↔ critic` pair 4 times and burned ~102M tokens on the 4th round (`aidakit:plan` re-authoring proposal/design/tasks with the critic's revise notes). The [flow-request-vs-change-id proposal](../flow-request-vs-change-id/proposal.md) §Non-goals #1 explicitly named this debit ("No retry cap on the `implement`↔`check_*` back-edges — the infinite loop was the *symptom*; the mechanical cap is the already-declared `engine-max-visits` debit"), pointing at [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md).
+Cost is real: a live session ran the `specify ↔ critic` pair 4 times and burned ~102M tokens on the 4th round (`aidakit:plan` re-authoring proposal/design/tasks with the critic's revise notes). The [flow-request-vs-change-id proposal](../../archive/2026-07-24-flow-request-vs-change-id/proposal.md) §Non-goals #1 explicitly named this debit ("No retry cap on the `implement`↔`check_*` back-edges — the infinite loop was the *symptom*; the mechanical cap is the already-declared `engine-max-visits` debit"), pointing at [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md).
 
 This change adds a per-step visit cap declared in the YAML — `max_visits: N` bounds how many times the engine may dispatch a step in a single `flow_id`; the (N+1)-th entry short-circuits BEFORE dispatch and routes via `on_max_visits` (typically a `human_gate` escalation), never a silent loop.
 
@@ -32,7 +32,7 @@ This change adds a per-step visit cap declared in the YAML — `max_visits: N` b
 
 ## Affected capabilities
 
-Engine mechanism (`governance/engine/engine.js`, `parser.js`, `types.js`) and the `full` flow tail around specify/critic (`governance/flows/full.yaml`). **No `docs/specs/` in this repo** (confirmed in [flow-request-vs-change-id/proposal.md](../flow-request-vs-change-id/proposal.md) §Affected capabilities) — no capability spec delta. No ADR: this is a new field on an existing contract (BaseStep), not a supersession of a locked decision — the epic already declared the mechanism as the design target.
+Engine mechanism (`governance/engine/engine.js`, `parser.js`, `types.js`) and the `full` flow tail around specify/critic (`governance/flows/full.yaml`). **No `docs/specs/` in this repo** (confirmed in [flow-request-vs-change-id/proposal.md](../../archive/2026-07-24-flow-request-vs-change-id/proposal.md) §Affected capabilities) — no capability spec delta. No ADR: this is a new field on an existing contract (BaseStep), not a supersession of a locked decision — the epic already declared the mechanism as the design target.
 
 ## Impact per surface
 
@@ -58,7 +58,7 @@ Engine mechanism (`governance/engine/engine.js`, `parser.js`, `types.js`) and th
 
 ## Unblocks
 
-- Closes the `engine-max-visits` debit called out in [flow-request-vs-change-id/proposal.md](../flow-request-vs-change-id/proposal.md) §Non-goals #1.
+- Closes the `engine-max-visits` debit called out in [flow-request-vs-change-id/proposal.md](../../archive/2026-07-24-flow-request-vs-change-id/proposal.md) §Non-goals #1.
 - Makes `max_visits` available for any future flow to bound its own back-edges — `implement`, `document`, `hardening` are all candidates for a follow-up wiring change.
 
 ## Recorded decisions and inherited open decisions
