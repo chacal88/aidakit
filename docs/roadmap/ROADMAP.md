@@ -4,13 +4,7 @@
 
 ## Now (in-progress / in-review)
 
-### Experiência de linha de comando dos flows — **in-progress**
-
-- Agrupamento de comandos + inputs — `command-grouping-and-inputs` → in-progress
-
-### Coleiras mecânicas do flow engine — **in-progress**
-
-- Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → in-progress
+_(nada em andamento)_
 
 ## Next (planned)
 
@@ -18,12 +12,12 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Experiência de linha de comando dos flows — **in-progress**
+### Experiência de linha de comando dos flows — **backlog**
 
 - Tabela de progresso do flow — `flow-run-progress-table` → backlog
 - Sumários de passo do flow — `flow-step-summaries` → backlog
 
-### Coleiras mecânicas do flow engine — **in-progress**
+### Coleiras mecânicas do flow engine — **backlog**
 
 - Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog
@@ -34,6 +28,11 @@ _(nada planejado)_
 
 ## Done
 
+### Experiência de linha de comando dos flows
+
+- Agrupamento de comandos + inputs — `command-grouping-and-inputs` → done (2026-07-24)
+
 ### Coleiras mecânicas do flow engine
 
 - Registro diferido no build (débito) — `add-debit` → done (2026-07-22)
+- Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
