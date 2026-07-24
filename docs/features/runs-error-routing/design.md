@@ -95,7 +95,13 @@ if (outcome.kind === "infra") {
 }
 ```
 
-The `step_history` entry for this step is written above (line 196-206) with `result: outcomeKey(outcome)` → `"infra_error"`. So history + event log both preserve the classification.
+The `step_history` entry for this step is written above (line 196-206) with `result: outcomeKey(outcome)` → `"infra_error"`. **Also required — extend the `history.error` ternary at [`engine.js:204`](../../../governance/engine/engine.js).** Today the line reads `error: outcome.kind === "fail" ? outcome.error : undefined`, which would leave the `kind:"infra"` history entry with `error: undefined` even though `outcome.error` carries the classifier's full triage string ("runs infra error: exit 127; stderr: …"). Change it to:
+
+```
+error: outcome.kind === "fail" || outcome.kind === "infra" ? outcome.error : undefined,
+```
+
+So `state.step_history[last].error` mirrors the `runs_infra_error` event's `stderr`/exit summary and satisfies the "state file gives the human every triage field" contract stated below. History + event log + `state.step_history[last].error` all preserve the classification.
 
 ## Interrupt semantics — hard-stop, not synthetic human_gate
 
@@ -132,7 +138,7 @@ Fields are chosen to satisfy `aidakit:learn`'s mining needs (recurring infra def
 
 Every `on_failure` in the shipped flows was inspected. Verdict: **none depends on catching infra errors**; the routing change is safe for the shipped flows.
 
-**`governance/flows/fast.yaml` (13 `on_failure` sites)** — all target either `aborted` (terminal), a prior invoke step (e.g. `on_failure: select`, `on_failure: implement`), or `document`/`review` retry cycles. Every one assumes the target is being asked to correct a validator-detected NO. None inspects the failing step's error text.
+**`governance/flows/fast.yaml` (12 `on_failure` sites — verified with `grep -c on_failure governance/flows/fast.yaml`)** — all target either `aborted` (terminal), a prior invoke step (e.g. `on_failure: select`, `on_failure: implement`), or `document`/`review` retry cycles. Every one assumes the target is being asked to correct a validator-detected NO. None inspects the failing step's error text.
 
 **`governance/flows/full.yaml` (17 `on_failure` sites)** — same pattern. Notable: `on_failure: critic` at line 122 (the `commit_plan` step from [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)) — best-effort commit that routes both success and failure to `critic`. Under the new contract, if `git commit` returns 127 (git missing) that flow will hard-stop instead of falling through to `critic`. **Correct new behavior** — a machine without `git` is an infra problem the human must see, not a step to silently skip.
 
