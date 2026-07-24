@@ -15,9 +15,9 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { resolve, dirname, isAbsolute } from "node:path";
+import { resolve, dirname, isAbsolute, relative } from "node:path";
 import { parse as parseYaml } from "../engine/yaml-min.js";
-import { findProjectRoot } from "../engine/project-root.js";
+import { resolveProjectRoot } from "../engine/project-root.js";
 
 function fail(msg) { process.stderr.write(`check-context-pack-freshness — error: ${msg}\n`); process.exit(2); }
 
@@ -41,10 +41,10 @@ function main() {
   const sources = Array.isArray(fm.sources) ? fm.sources : [];
 
   // Same convention as check-doc-manifest.js: AIDAKIT_PROJECT_ROOT wins,
-  // otherwise climb from the pack's own directory.
-  const root = process.env.AIDAKIT_PROJECT_ROOT
-    ? resolve(process.env.AIDAKIT_PROJECT_ROOT)
-    : findProjectRoot(dirname(resolve(packPath)));
+  // otherwise climb from the pack's own directory (round-1 bench fix,
+  // quality-important: single shared owner via resolveProjectRoot, see
+  // governance/engine/project-root.js).
+  const root = resolveProjectRoot(undefined, dirname(resolve(packPath)));
 
   const errors = [];
   for (const src of sources) {
@@ -52,7 +52,21 @@ function main() {
       errors.push({ rule: "source-entry-invalid", message: `malformed sources[] entry: ${JSON.stringify(src)}` });
       continue;
     }
-    const abs = isAbsolute(src.path) ? src.path : resolve(root, src.path);
+    // SECURITY (round-1 bench, Security veto #1): a committed pack whose
+    // sources[N].path is absolute (or escapes root via `..` traversal) turns
+    // this validator into a local file existence + hash oracle — no code
+    // execution needed, just a crafted frontmatter block. Reject BOTH shapes
+    // as a malformed entry, before ever touching the filesystem.
+    if (isAbsolute(src.path)) {
+      errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: absolute paths are not allowed in sources[]: ${src.path}` });
+      continue;
+    }
+    const abs = resolve(root, src.path);
+    const rel = relative(root, abs);
+    if (rel.startsWith("..") || isAbsolute(rel)) {
+      errors.push({ rule: "source-entry-invalid", path: src.path, message: `source-entry-invalid: path escapes the project root: ${src.path}` });
+      continue;
+    }
     if (!existsSync(abs) || !statSync(abs).isFile()) {
       errors.push({ rule: "source-missing", path: src.path, message: `source-missing: ${src.path}` });
       continue;

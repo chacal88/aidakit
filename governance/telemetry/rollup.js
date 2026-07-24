@@ -14,7 +14,7 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { findProjectRoot } from "../engine/project-root.js";
+import { resolveProjectRoot } from "../engine/project-root.js";
 import { telemetryPathFor } from "./append.js";
 
 const SECTION_HEADING = "## Context-pack telemetry rollup";
@@ -123,9 +123,7 @@ export function writeRollupIntoEvidence(evidencePath, rollup) {
 // ── CLI ──────────────────────────────────────────────────────────────────
 
 function resolveRoot(explicitRoot) {
-  if (explicitRoot) return resolve(explicitRoot);
-  if (process.env.AIDAKIT_PROJECT_ROOT) return resolve(process.env.AIDAKIT_PROJECT_ROOT);
-  return findProjectRoot(process.cwd());
+  return resolveProjectRoot(explicitRoot, process.cwd());
 }
 
 function parseArgs(argv) {

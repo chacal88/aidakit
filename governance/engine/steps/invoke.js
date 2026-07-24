@@ -20,7 +20,8 @@ import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { interpolate } from "../interpolate.js";
 import { RESUME_OUTPUT_KEY_RE, RESUME_OUTPUT_VALUE_RE, RESERVED_OUTPUT_KEYS } from "../resume-output.js";
-import { findProjectRoot } from "../project-root.js";
+import { resolveProjectRoot } from "../project-root.js";
+import { isValidChangeId, assertValidChangeId, CHANGE_ID_RE } from "../change-id.js";
 import { appendTelemetry } from "../../telemetry/append.js";
 
 /** Resolves the change-id this dispatch's telemetry line should key on: the
@@ -37,9 +38,17 @@ function resolveChangeIdForTelemetry(ctx) {
 }
 
 /** Bytes of the on-disk pack for this change, or 0 if it doesn't exist
- * (fallback path — the dispatcher read the raw docs instead). */
-function packSizeFor(changeId) {
-  const root = process.env.AIDAKIT_PROJECT_ROOT ? resolve(process.env.AIDAKIT_PROJECT_ROOT) : findProjectRoot(process.cwd());
+ * (fallback path — the dispatcher read the raw docs instead).
+ *
+ * Round-1 bench fix (Security veto #2): change_id reaches this FS-read sink
+ * from the same resume `change_id=<value>` structured output as the write
+ * sinks (build.js's packPathFor, telemetry/append.js's telemetryPathFor) —
+ * guard fail-closed BEFORE any resolve()/join() here too, for the same
+ * reason (see governance/engine/change-id.js). Exported for direct unit
+ * testing of this sink in isolation. */
+export function packSizeFor(changeId) {
+  assertValidChangeId(changeId);
+  const root = resolveProjectRoot(undefined, process.cwd());
   const packPath = resolve(root, "docs", "features", changeId, ".context-pack.md");
   return existsSync(packPath) ? statSync(packPath).size : 0;
 }
@@ -59,6 +68,7 @@ function writeTelemetryIfPresent(step, ctx) {
     subagent: step.invoke_target,
     cache_creation: ctx.telemetry.cache_creation,
     cache_read: ctx.telemetry.cache_read,
+    output_tokens: ctx.telemetry.output_tokens,
     pack_size: packSizeFor(changeId),
     duration_ms: ctx.telemetry.duration_ms,
     pack_rebuilt: ctx.telemetry.pack_rebuilt,
@@ -109,8 +119,21 @@ export function executeInvoke(step, ctx) {
     const problems = [];
     for (const key of required) {
       const v = supplied[key];
-      if (v === undefined) problems.push(`missing required output "${key}"`);
-      else if (!RESUME_OUTPUT_VALUE_RE.test(String(v))) problems.push(`output "${key}" must be a single safe token matching ${RESUME_OUTPUT_VALUE_RE.source}`);
+      if (v === undefined) { problems.push(`missing required output "${key}"`); continue; }
+      if (!RESUME_OUTPUT_VALUE_RE.test(String(v))) { problems.push(`output "${key}" must be a single safe token matching ${RESUME_OUTPUT_VALUE_RE.source}`); continue; }
+      // Round-1 bench fix (Security veto #2): change_id is the ONE structured
+      // output that reaches path.resolve()/join() at multiple FS-write sinks
+      // downstream (build.js's packPathFor, invoke.js's own packSizeFor,
+      // telemetry/append.js's telemetryPathFor). The generic
+      // RESUME_OUTPUT_VALUE_RE above permits `.` and `/` (needed for OTHER
+      // outputs like branch names/paths/URLs), which is exactly what a
+      // `change_id=/tmp/pwned` or `change_id=../../../../tmp/pwned` resume
+      // would need to escape the project root — reject that shape at THIS
+      // boundary, the earliest point change_id enters the flow's context, in
+      // addition to each sink's own guard (defense in depth).
+      if (key === "change_id" && !isValidChangeId(String(v))) {
+        problems.push(`output "change_id" must be a single kebab-case segment matching ${CHANGE_ID_RE.source} (no "/", no ".", no uppercase)`);
+      }
     }
     if (problems.length) {
       return repause(step, ctx, [

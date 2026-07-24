@@ -16,8 +16,10 @@ import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
-const { buildPackContent } = await import("../context-pack/build.js");
+const { buildPackContent, packPathFor } = await import("../context-pack/build.js");
 const { loadFlow } = await import("../engine/parser.js");
+const { packSizeFor } = await import("../engine/steps/invoke.js");
+const { appendTelemetry, telemetryPathFor } = await import("../telemetry/append.js");
 function findStep(flow, id) { return flow.steps.find((s) => s.id === id); }
 
 let pass = 0, fail = 0;
@@ -212,6 +214,84 @@ function makeFreshnessProject() {
     "§freshness-separation-from-doc-manifest: stale pack fails freshness but doc-manifest (unrelated) stays green");
 }
 
+// ── Round-1 bench fix A: path traversal via sources[].path (Security veto #1) ──
+// A committed pack with an absolute or traversal-escaping sources[N].path
+// turns the freshness validator into a local file existence + hash oracle —
+// no code execution needed, just a crafted frontmatter block.
+
+// FixA-i: an absolute path in sources[].path → exit 1 with source-entry-invalid.
+{
+  const { root } = makeFreshnessProject();
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack([{ path: "/etc/passwd", sha256: sha256("whatever") }]));
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-entry-invalid" && /absolute/.test(e.message)),
+    "§freshness-rejects-absolute-source-path: absolute path in sources[] → exit 1 source-entry-invalid");
+}
+
+// FixA-ii: a `../../../../etc/passwd` traversal in sources[].path → exit 1 with source-entry-invalid.
+{
+  const { root } = makeFreshnessProject();
+  const packPath = join(root, "docs", "features", "fixture-change", ".context-pack.md");
+  writeFileSync(packPath, goodPack([{ path: "../../../../../../etc/passwd", sha256: sha256("whatever") }]));
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 1 && r.json && r.json.errors.some((e) => e.rule === "source-entry-invalid" && /escapes/.test(e.message)),
+    "§freshness-rejects-traversal-source-path: ../../../../etc/passwd in sources[] → exit 1 source-entry-invalid");
+}
+
+// FixA-iii: plain repo-relative path → still exit 0 (regression guard alongside N3a-i above).
+{
+  const { root, packPath } = makeFreshnessProject();
+  const r = run(freshVal, [packPath], { AIDAKIT_PROJECT_ROOT: root });
+  ok(r.code === 0 && r.json && r.json.ok,
+    "§freshness-accepts-plain-relative-path: plain repo-relative sources[] path is unaffected by the traversal guard");
+}
+
+// ── Round-1 bench fix B: change_id sanitization at FS-write sinks
+//    (Security veto #2) — direct unit tests of each of the three sinks in
+//    isolation (defense-in-depth alongside the resume-boundary tightening
+//    exercised later, in §7d-f, once the CLI helpers exist). ──────────────
+
+function changeIdSinkThrows(root, changeId) {
+  let threw = 0;
+  try { packPathFor(root, changeId); } catch (e) { if (/invalid change_id/.test(e.message)) threw++; }
+  try { packSizeFor(changeId); } catch (e) { if (/invalid change_id/.test(e.message)) threw++; }
+  try { telemetryPathFor(changeId, root); } catch (e) { if (/invalid change_id/.test(e.message)) threw++; }
+  return threw;
+}
+
+// FixB-i: `..` → all three sinks throw "invalid change_id".
+{
+  const root = mkdtempSync(join(tmpdir(), "change-id-sink-dotdot-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  ok(changeIdSinkThrows(root, "..") === 3, "§change-id-sinks-reject-dotdot: packPathFor/packSizeFor/telemetryPathFor all throw invalid change_id for \"..\"");
+}
+
+// FixB-ii: `/tmp/pwned` (absolute path) → all three sinks throw "invalid change_id".
+{
+  const root = mkdtempSync(join(tmpdir(), "change-id-sink-abs-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  ok(changeIdSinkThrows(root, "/tmp/pwned") === 3, "§change-id-sinks-reject-absolute: packPathFor/packSizeFor/telemetryPathFor all throw invalid change_id for \"/tmp/pwned\"");
+}
+
+// FixB-iii: `valid-id-1` (plain kebab-case) → all three sinks work.
+{
+  const root = mkdtempSync(join(tmpdir(), "change-id-sink-valid-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  let worked = true;
+  try { packPathFor(root, "valid-id-1"); } catch { worked = false; }
+  try { packSizeFor("valid-id-1"); } catch { worked = false; }
+  try { telemetryPathFor("valid-id-1", root); } catch { worked = false; }
+  ok(worked, "§change-id-sinks-accept-valid: a plain kebab-case change_id works at all three sinks");
+}
+
+// FixB-iv: `Invalid_ID` (underscore/uppercase) → all three sinks throw too — not just path-shaped attacks.
+{
+  const root = mkdtempSync(join(tmpdir(), "change-id-sink-shape-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  ok(changeIdSinkThrows(root, "Invalid_ID") === 3, "§change-id-sinks-reject-bad-shape: underscore/uppercase change_id rejected at all three sinks");
+}
+
 // ── §4 governance/context-pack/build.js (deterministic build/verify/rebuild) ──
 
 function makeBuildProject(changeId = "fixture-build-change") {
@@ -222,6 +302,11 @@ function makeBuildProject(changeId = "fixture-build-change") {
   mkdirSync(join(root, ".aidakit"), { recursive: true });
 
   writeFileSync(join(root, "docs", "decisions", "ADR-004-example.md"), "# ADR-004: Example\n\n- **Status:** accepted\n");
+  // Round-1 bench fix D fixture: a SECOND ADR, cited only via a RELATIVE
+  // markdown link (never the literal "docs/decisions/..." substring) — this
+  // is the shape the whole repo actually uses and the shape the old
+  // ADR_LINK_RE missed entirely.
+  writeFileSync(join(root, "docs", "decisions", "ADR-006-flow-values-as-data.md"), "# ADR-006: Flow values as data\n\n- **Status:** accepted\n");
 
   const proposal = [
     `# Proposal — ${changeId}`,
@@ -271,6 +356,21 @@ function makeBuildProject(changeId = "fixture-build-change") {
     "**MODIFY**",
     "",
     "- `governance/flows/full.yaml` — insert the phase.",
+    // Round-1 bench fix C fixture: a bullet with SEVERAL backtick tokens —
+    // the old single `.exec` per line silently dropped everything after the
+    // first token on a line like this.
+    "- `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/tester.md` — extend the protocol.",
+    "",
+    // Round-1 bench fix C fixture: a `### ` subsection inside the SAME `## `
+    // parent, with backticks that must NOT be captured as file-structure
+    // pointers — the old stop rule (`/^##\s+/m`, level-2 only) swept this in.
+    "### Assumptions",
+    "",
+    "- The telemetry directory `.aidakit/` is gitignored; consult `aidakit:learn` for the rollup step.",
+    "",
+    "## Dependencies",
+    "",
+    "- [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) — cited via a relative link, the shape the rest of the repo uses.",
     "",
   ].join("\n");
 
@@ -322,6 +422,7 @@ function makeBuildProject(changeId = "fixture-build-change") {
   copyFileSync(join(rootA, "docs", "features", changeId, "tasks.md"), join(rootB, "docs", "features", changeId, "tasks.md"));
   mkdirSync(join(rootB, "docs", "decisions"), { recursive: true });
   copyFileSync(join(rootA, "docs", "decisions", "ADR-004-example.md"), join(rootB, "docs", "decisions", "ADR-004-example.md"));
+  copyFileSync(join(rootA, "docs", "decisions", "ADR-006-flow-values-as-data.md"), join(rootB, "docs", "decisions", "ADR-006-flow-values-as-data.md"));
   const contentA = buildPackContent({ root: rootA, changeId }).content;
   const contentB = buildPackContent({ root: rootB, changeId }).content;
   ok(contentA === contentB && rootA !== rootB, "§build-deterministic-under-host-fuzz (tmp-cwd): different absolute roots, identical relative tree → byte-identical");
@@ -385,6 +486,54 @@ function runBuildCli(args) {
   const staleResult = runBuildCli(["verify", "--change-id", changeId, "--root", root]);
   ok(staleResult.code !== 0 && staleResult.json && staleResult.json.ok === false,
     "§verify-wraps-both-validators: stale pack (freshness fails) → verify non-zero");
+}
+
+// ── Round-1 bench fix F: content-correctness assertions on buildPackContent
+//    (tester critical #2 — this test shape would have caught Fix C's and Fix
+//    D's bugs at authoring time) ──────────────────────────────────────────
+
+// FixF-i: identity section contains the fixture's declared owner/date/phase.
+{
+  const { root, changeId } = makeBuildProject("content-correctness-identity");
+  const { content } = buildPackContent({ root, changeId });
+  const identity = content.split("## identity")[1].split("## decisions")[0];
+  ok(/owner: @fixture/.test(identity), "§build-content-identity: identity section contains owner: @fixture");
+  ok(/date: 2026-07-24/.test(identity), "§build-content-identity: identity section contains the fixture's declared date");
+  ok(/phase: fixture phase/.test(identity), "§build-content-identity: identity section contains the fixture's declared phase");
+}
+
+// FixF-ii: decisions section has one line per ### heading under design.md's ## Architecture.
+{
+  const { root, changeId } = makeBuildProject("content-correctness-decisions");
+  const { content } = buildPackContent({ root, changeId });
+  const decisions = content.split("## decisions")[1].split("## ADRs")[0];
+  ok(/The pack format/.test(decisions) && /The build script/.test(decisions),
+    "§build-content-decisions: decisions section lists both ### headings from design.md's Architecture section");
+}
+
+// FixF-iii / Fix C regression: code-map-pointers contains every CREATE/MODIFY
+// path — including every token off a multi-backtick bullet — and excludes
+// backtick tokens from a `### Assumptions` subsection nested in the same
+// `## ` parent.
+{
+  const { root, changeId } = makeBuildProject("content-correctness-pointers");
+  const { content } = buildPackContent({ root, changeId });
+  const pointers = content.split("## code-map-pointers")[1].split("## DoD")[0];
+  for (const p of ["governance/context-pack/build.js", "skills/context-pack/SKILL.md", "governance/flows/full.yaml", "agents/adr-reviewer.md", "agents/spec-reviewer.md", "agents/tester.md"]) {
+    ok(pointers.includes(p), `§build-content-pointers-multi-backtick: code-map-pointers includes ${p} (multi-backtick bullet)`);
+  }
+  ok(!/\.aidakit\//.test(pointers), "§build-content-pointers-excludes-assumptions: code-map-pointers does not capture .aidakit/ from the Assumptions subsection");
+  ok(!/aidakit:learn/.test(pointers), "§build-content-pointers-excludes-assumptions: code-map-pointers does not capture the aidakit:learn skill id from the Assumptions subsection");
+}
+
+// FixF-iv / Fix D regression: ADRs section contains ADR-006, cited ONLY via a
+// relative markdown link (`[ADR-006](../../decisions/ADR-006-....md)`).
+{
+  const { root, changeId } = makeBuildProject("content-correctness-adrs");
+  const { content } = buildPackContent({ root, changeId });
+  const adrs = content.split("## ADRs")[1].split("## specs")[0];
+  ok(/\[ADR-004\]/.test(adrs), "§build-content-adrs-relative-link: ADRs section lists ADR-004 (literal-path citation)");
+  ok(/\[ADR-006\]/.test(adrs), "§build-content-adrs-relative-link: ADRs section lists ADR-006 (relative-path citation)");
 }
 
 // ── §5 flow phase `context_pack` in full.yaml / fast.yaml ────────────────
@@ -475,26 +624,42 @@ for (const rel of DISPATCHER_FILES) {
     `§dispatcher-does-not-invoke-freshness-validator (${rel}): never shells out to check-context-pack-freshness.js`);
 }
 
+// ── Round-1 bench fix C+D: dogfood-pack regression (real repo docs) ─────
+// Rebuilds the ACTUAL context-pack-l1 dogfood pack (not a fixture) and
+// asserts it now lists all 10 dispatcher files from design.md's MODIFY
+// bullets (7 agents + 3 skills, previously dropped by the multi-backtick
+// bug, Fix C) and ADR-006 + ADR-009 (previously dropped by the relative-link
+// bug, Fix D — design.md's own Dependencies section cites both).
+{
+  const { content } = buildPackContent({ root: REPO, changeId: "context-pack-l1" });
+  const pointers = content.split("## code-map-pointers")[1].split("## DoD")[0];
+  for (const rel of DISPATCHER_FILES) {
+    ok(pointers.includes(rel), `§dogfood-regression-code-map-pointers: code-map-pointers includes ${rel}`);
+  }
+  const adrs = content.split("## ADRs")[1].split("## specs")[0];
+  ok(/\[ADR-006\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-006 (design.md Dependencies, relative link)");
+  ok(/\[ADR-009\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-009 (design.md Dependencies, relative link)");
+}
+
 // ── §7 telemetry: JSONL append helper ─────────────────────────────────────
+// (appendTelemetry/telemetryPathFor imported at the top of this file.)
 
-const { appendTelemetry, telemetryPathFor } = await import("../telemetry/append.js");
-
-// N7a-i: every appended line parses as JSON and carries the six declared fields + ts.
+// N7a-i: every appended line parses as JSON and carries the seven declared fields + ts.
 {
   const root = mkdtempSync(join(tmpdir(), "telemetry-"));
   mkdirSync(join(root, ".aidakit"), { recursive: true });
   const changeId = "telemetry-change";
   for (const subagent of ["aidakit:reviewer-quality", "aidakit:reviewer-security", "aidakit:tester"]) {
-    appendTelemetry({ root, changeId, subagent, cache_creation: 100, cache_read: 200, pack_size: 300, duration_ms: 400, pack_rebuilt: false });
+    appendTelemetry({ root, changeId, subagent, cache_creation: 100, cache_read: 200, output_tokens: 50, pack_size: 300, duration_ms: 400, pack_rebuilt: false });
   }
   const path = telemetryPathFor(changeId, root);
   const lines = readFileSync(path, "utf8").trim().split("\n");
   ok(lines.length === 3, "§telemetry-lines-valid-json: three dispatches → three lines");
-  const REQUIRED = ["ts", "subagent", "cache_creation", "cache_read", "pack_size", "duration_ms", "pack_rebuilt"];
+  const REQUIRED = ["ts", "subagent", "cache_creation", "cache_read", "output_tokens", "pack_size", "duration_ms", "pack_rebuilt"];
   ok(lines.every((l) => {
     const parsed = JSON.parse(l); // throws (test fails loudly) if a line isn't valid JSON
     return REQUIRED.every((k) => k in parsed);
-  }), "§telemetry-lines-valid-json: every line parses as JSON and carries the six fields + ts");
+  }), "§telemetry-lines-valid-json: every line parses as JSON and carries the seven fields + ts");
 }
 
 // N7a-ii: append-only — a fourth dispatch does not truncate/rewrite the prior three.
@@ -562,6 +727,28 @@ function telemetryFileFor(root, changeId) {
   ok(/paused at: select/.test(statusAfter), "§resume-parses-telemetry-kwargs: malformed kwarg leaves the flow still paused at select (state untouched)");
 }
 
+// Round-1 bench fix B (boundary tightening): the `select` step's own resume
+// boundary rejects a path-shaped change_id BEFORE it ever reaches a sink —
+// the flow re-pauses at `select` instead of crashing or persisting the bad
+// value (same doctrine as the invalid-outcome re-pause above). The generic
+// RESUME_OUTPUT_VALUE_RE alone would have ACCEPTED "../../../../tmp/pwned"
+// (it permits "." and "/"), so this exercises the change_id-specific check
+// added in governance/engine/steps/invoke.js.
+{
+  const root = mkdtempSync(join(tmpdir(), "change-id-boundary-"));
+  const flowId = startFastToSelect(root);
+  const r = runCli(["resume", flowId, "success", "change_id=../../../../tmp/pwned"], root);
+  ok(r.code === 0, "§change-id-boundary-repauses: resume with a traversal change_id does not crash the CLI");
+  const status = runCli(["status", flowId], root).out;
+  ok(/paused at: select/.test(status), "§change-id-boundary-repauses: flow re-pauses at select instead of persisting the traversal change_id");
+
+  const flowId2 = startFastToSelect(root);
+  const r2 = runCli(["resume", flowId2, "success", "change_id=Invalid_ID"], root);
+  ok(r2.code === 0, "§change-id-boundary-repauses: resume with an underscore/uppercase change_id does not crash the CLI");
+  const status2 = runCli(["status", flowId2], root).out;
+  ok(/paused at: select/.test(status2), "§change-id-boundary-repauses: flow re-pauses at select for a shape-invalid change_id too");
+}
+
 // N7d-ii: the resume handler forwards the kwargs to governance/telemetry/append.js —
 // one JSONL line appended with subagent=step.invoke_target, pack_size from the
 // on-disk pack (0 here — absent), and a ts field.
@@ -579,6 +766,10 @@ function telemetryFileFor(root, changeId) {
   ok(line.pack_size === 0, "§invoke-forwards-kwargs-to-helper: pack_size is 0 (no pack on disk for this change)");
   ok(line.cache_read === 100 && line.cache_creation === 50 && line.duration_ms === 999 && line.pack_rebuilt === true,
     "§invoke-forwards-kwargs-to-helper: numeric/boolean fields forwarded correctly");
+  // Round-1 bench fix E (tester critical #1): output_tokens was parsed off
+  // --tokens-output but silently dropped before ever reaching the JSONL
+  // record — assert it is now forwarded end-to-end.
+  ok(line.output_tokens === 20, "§invoke-forwards-kwargs-to-helper: output_tokens (--tokens-output=20) is forwarded correctly");
   ok(typeof line.ts === "string" && /^\d{4}-\d{2}-\d{2}T/.test(line.ts), "§invoke-forwards-kwargs-to-helper: ts is a real ISO-8601 timestamp");
 }
 

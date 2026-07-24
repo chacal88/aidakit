@@ -31,7 +31,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, dirname, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
-import { findProjectRoot } from "../engine/project-root.js";
+import { resolveProjectRoot } from "../engine/project-root.js";
+import { assertValidChangeId } from "../engine/change-id.js";
 
 const REQUIRED_SECTIONS = ["identity", "decisions", "ADRs", "specs", "code-map-pointers", "DoD"];
 
@@ -41,9 +42,7 @@ function sha256Buf(buf) { return createHash("sha256").update(buf).digest("hex");
 function sha256Text(text) { return sha256Buf(Buffer.from(text, "utf8")); }
 
 function resolveRoot(explicitRoot) {
-  if (explicitRoot) return resolve(explicitRoot);
-  if (process.env.AIDAKIT_PROJECT_ROOT) return resolve(process.env.AIDAKIT_PROJECT_ROOT);
-  return findProjectRoot(process.cwd());
+  return resolveProjectRoot(explicitRoot, process.cwd());
 }
 
 function readIfExists(absPath) {
@@ -52,9 +51,26 @@ function readIfExists(absPath) {
 
 // ── source discovery ─────────────────────────────────────────────────────
 
-const ADR_LINK_RE = /docs\/decisions\/(ADR-\d+-[a-z0-9-]+\.md)/g;
-const SPEC_LINK_RE = /docs\/specs\/[^\s)`\]]+\.md/g;
-const OPENSPEC_LINK_RE = /openspec\/specs\/[^\s)`\]]+\/spec\.md/g;
+// Round-1 bench fix (Spec NEEDS-REVISION): the earlier ADR_LINK_RE required
+// the literal substring "docs/decisions/" immediately before the filename,
+// so it missed every relative markdown link the rest of the repo actually
+// uses (`../../decisions/ADR-006-....md`, `[ADR-009](../../decisions/
+// ADR-009-....md)`, etc.) — the dogfood pack silently dropped ADR-006 and
+// ADR-009 even though design.md's own Dependencies section cites both.
+// Matching just the basename (`ADR-NNN-slug.md`) sidesteps the whole
+// "how many `../` precede this" problem — every ADR lives at
+// docs/decisions/ by repo convention, so discoverCitedPaths can always
+// reconstruct the canonical repo-relative path from the basename alone,
+// however the citing link was actually spelled.
+const ADR_LINK_RE = /(ADR-\d+-[a-z0-9-]+\.md)/g;
+// Specs/OpenSpec specs don't have a fixed basename convention (any capability
+// name is valid), so the fix here instead tolerates an arbitrary relative
+// prefix (`../`, nested dirs) before the literal `docs/specs/` /
+// `openspec/specs/` anchor, and captures ONLY the anchor onward — never the
+// leading `../` noise — so the extracted string is still a valid
+// repo-relative path.
+const SPEC_LINK_RE = /(?:\.\.\/|[a-z0-9_-]+\/)*(docs\/specs\/[^\s)`\]]+\.md)/g;
+const OPENSPEC_LINK_RE = /(?:\.\.\/|[a-z0-9_-]+\/)*(openspec\/specs\/[^\s)`\]]+\/spec\.md)/g;
 
 /** Scans the change's own proposal/design/tasks text for every ADR/spec
  * citation (the same citations reviewers already look for) and returns the
@@ -64,8 +80,8 @@ function discoverCitedPaths(texts) {
   const found = new Set();
   for (const text of texts) {
     for (const m of text.matchAll(ADR_LINK_RE)) found.add(`docs/decisions/${m[1]}`);
-    for (const m of text.matchAll(SPEC_LINK_RE)) found.add(m[0]);
-    for (const m of text.matchAll(OPENSPEC_LINK_RE)) found.add(m[0]);
+    for (const m of text.matchAll(SPEC_LINK_RE)) found.add(m[1]);
+    for (const m of text.matchAll(OPENSPEC_LINK_RE)) found.add(m[1]);
   }
   return [...found];
 }
@@ -111,16 +127,42 @@ function headingsInSection(text, parentSection) {
   return out;
 }
 
-/** Every `- \`path\`` bullet inside a named `### ` subsection (used to lift
- * the create/modify path list out of design.md's File-structure section). */
+/** Round-1 bench fix (quality-blocking): rejects backtick tokens that are not
+ * plausible file paths — a bare directory reference (`.aidakit/`, trailing
+ * slash, no filename) or a skill id (`aidakit:learn`, colon-delimited, no
+ * path separator at all). Kept permissive on everything else: any token
+ * containing a `/`, or ending in one of the extensions this repo's tracked
+ * artifacts actually use. */
+function looksLikeFilePath(token) {
+  if (token.includes(":")) return false;
+  if (token.endsWith("/")) return false;
+  return token.includes("/") || /\.(md|js|mjs|yaml|yml|ts)$/.test(token);
+}
+
+/** Every backtick-quoted, path-shaped token on a `- ` bullet line inside a
+ * named `### ` subsection (used to lift the create/modify path list out of
+ * design.md's File-structure section).
+ *
+ * Round-1 bench fix (quality-blocking, dogfood-found): (a) a bullet can list
+ * SEVERAL backtick tokens on one line (`- CREATE: \`a.md\`, \`b.md\``) — the
+ * old single `.exec` per line kept only the first, silently dropping the
+ * rest; matchAll now collects every token. (b) the old stop condition only
+ * matched a `##` (level-2) heading, so the sweep also ingested `### 3-point
+ * estimate` / `### Effort breakdown` / `### Assumptions` — now stops at the
+ * first heading of level 2 OR 3. */
 function bulletPathsInSubsection(text, subsectionHeadingRe) {
   const m = subsectionHeadingRe.exec(text);
   if (!m) return [];
   const rest = text.slice(m.index + m[0].length);
-  const next = /^##\s+/m.exec(rest); // stop at the next level-2 heading
+  const next = /^###?\s+/m.exec(rest); // stop at the next level-2 OR level-3 heading
   const scoped = next ? rest.slice(0, next.index) : rest;
   const out = [];
-  for (const bm of scoped.matchAll(/^-\s*`([^`]+)`/gm)) out.push(bm[1]);
+  for (const line of scoped.split(/\r?\n/)) {
+    if (!/^-\s/.test(line)) continue;
+    for (const bm of line.matchAll(/`([^`]+)`/g)) {
+      if (looksLikeFilePath(bm[1])) out.push(bm[1]);
+    }
+  }
   return [...new Set(out)];
 }
 
@@ -277,7 +319,17 @@ function parseArgs(argv) {
   return { subcommand, opts };
 }
 
-function packPathFor(root, changeId) {
+/** Round-1 bench fix (Security veto #2): change_id reaches this FS-write
+ * sink from a resume's `change_id=<value>` structured output, which the
+ * generic RESUME_OUTPUT_VALUE_RE permits to contain `.` and `/` (and even a
+ * leading `/`) — `change_id=/tmp/pwned` or `change_id=../../../../tmp/pwned`
+ * would otherwise let resolve() write outside the project root. Guard
+ * fail-closed BEFORE any resolve()/join() — see governance/engine/
+ * change-id.js for the shared strict shape. Exported for direct unit testing
+ * of this sink in isolation (defense-in-depth from the resume boundary
+ * check in governance/engine/steps/invoke.js). */
+export function packPathFor(root, changeId) {
+  assertValidChangeId(changeId);
   return resolve(root, "docs", "features", changeId, ".context-pack.md");
 }
 

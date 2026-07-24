@@ -15,8 +15,9 @@
 // caller supplied telemetry kwargs; never invoked by an agent/skill directly.
 
 import { mkdirSync, appendFileSync } from "node:fs";
-import { dirname, resolve, join } from "node:path";
-import { findProjectRoot } from "../engine/project-root.js";
+import { dirname, join } from "node:path";
+import { resolveProjectRoot } from "../engine/project-root.js";
+import { assertValidChangeId } from "../engine/change-id.js";
 
 /**
  * @param {string} changeId
@@ -24,11 +25,12 @@ import { findProjectRoot } from "../engine/project-root.js";
  * @returns {string} absolute path to the change's telemetry JSONL
  */
 export function telemetryPathFor(changeId, root) {
-  const base = root
-    ? resolve(root)
-    : process.env.AIDAKIT_PROJECT_ROOT
-      ? resolve(process.env.AIDAKIT_PROJECT_ROOT)
-      : findProjectRoot(process.cwd());
+  // Round-1 bench fix (Security veto #2): change_id reaches this FS-write
+  // sink from the same resume `change_id=<value>` structured output as
+  // build.js's packPathFor and invoke.js's packSizeFor — guard fail-closed
+  // BEFORE any join() here too (see governance/engine/change-id.js).
+  assertValidChangeId(changeId);
+  const base = resolveProjectRoot(root, process.cwd());
   return join(base, ".aidakit", "tasks", changeId, ".telemetry.jsonl");
 }
 
@@ -40,6 +42,7 @@ export function telemetryPathFor(changeId, root) {
  *   subagent: string,
  *   cache_creation?: number,
  *   cache_read?: number,
+ *   output_tokens?: number,
  *   pack_size?: number,
  *   duration_ms?: number,
  *   pack_rebuilt?: boolean,
@@ -48,7 +51,7 @@ export function telemetryPathFor(changeId, root) {
  * @returns {string} the path the line was appended to
  */
 export function appendTelemetry(entry) {
-  const { changeId, root, ts, subagent, cache_creation, cache_read, pack_size, duration_ms, pack_rebuilt } = entry;
+  const { changeId, root, ts, subagent, cache_creation, cache_read, output_tokens, pack_size, duration_ms, pack_rebuilt } = entry;
   if (!changeId) throw new Error("appendTelemetry: changeId is required");
   if (!subagent) throw new Error("appendTelemetry: subagent is required");
 
@@ -60,6 +63,11 @@ export function appendTelemetry(entry) {
     subagent,
     cache_creation: cache_creation ?? 0,
     cache_read: cache_read ?? 0,
+    // Round-1 bench fix (tester critical #1): output_tokens was parsed off
+    // the resume CLI (resume-output.js's TELEMETRY_KWARG_SPECS) but silently
+    // dropped before it ever reached the JSONL record — grouped next to
+    // cache_read/cache_creation, the other per-dispatch token counters.
+    output_tokens: output_tokens ?? 0,
     pack_size: pack_size ?? 0,
     duration_ms: duration_ms ?? 0,
     pack_rebuilt: pack_rebuilt ?? false,

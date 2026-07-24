@@ -111,7 +111,7 @@ Why the SAME bytes across dispatches: preserving whatever same-`subagent_type` c
 Append-only, gitignored, one JSON object per dispatch:
 
 ```json
-{"ts":"2026-07-25T14:03:12Z","subagent":"aidakit:reviewer-quality","cache_creation":1240,"cache_read":18320,"pack_size":9284,"duration_ms":11530,"pack_rebuilt":false}
+{"ts":"2026-07-25T14:03:12Z","subagent":"aidakit:reviewer-quality","cache_creation":1240,"cache_read":18320,"output_tokens":512,"pack_size":9284,"duration_ms":11530,"pack_rebuilt":false}
 ```
 
 Fields:
@@ -122,6 +122,7 @@ Fields:
 | `subagent` | string | the `subagent_type` dispatched (e.g. `aidakit:reviewer-quality`) |
 | `cache_creation` | integer | tokens attributed to cache_creation in the SDK response |
 | `cache_read` | integer | tokens attributed to cache_read in the SDK response |
+| `output_tokens` | integer | tokens attributed to the dispatch's own output (round-1 bench fix E: parsed off `--tokens-output` but previously dropped before reaching the JSONL record) |
 | `pack_size` | integer | bytes of the pack injected (0 if fallback) |
 | `duration_ms` | integer | wall-clock dispatch duration |
 | `pack_rebuilt` | boolean | true when this dispatch triggered a lazy rebuild |

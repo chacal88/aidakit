@@ -33,23 +33,25 @@
 // or read/git error resolves to `false`; only an EXPLICIT `pr.auto_merge:
 // true`, ALREADY COMMITTED on the base ref, grants the opt-in.
 
-import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { parse } from "../engine/yaml-min.js";
-import { findProjectRoot } from "../engine/project-root.js";
+import { resolveProjectRoot } from "../engine/project-root.js";
 
 /**
  * Resolves the target project's root: honors AIDAKIT_PROJECT_ROOT when set;
  * otherwise climbs from `startDir` until a `.aidakit/` marker directory is
- * found (governance/engine/project-root.js's findProjectRoot — the single
- * shared owner of that climb, round-3 fix; also used by
- * governance/validators/check-doc-manifest.js, so the two never drift).
+ * found. Round-1 bench fix (quality-important, "cut don't copy"): this used
+ * to be its OWN copy of the composition; it now delegates to
+ * governance/engine/project-root.js's resolveProjectRoot — the single owner
+ * shared by every FS-root-resolving call site in the kit (also used by
+ * governance/context-pack/build.js, governance/validators/
+ * check-context-pack-freshness.js, governance/telemetry/append.js,
+ * governance/telemetry/rollup.js, governance/engine/steps/invoke.js).
  * @param {string} startDir
  * @returns {string}
  */
 export function resolveRoot(startDir) {
-  if (process.env.AIDAKIT_PROJECT_ROOT) return resolve(process.env.AIDAKIT_PROJECT_ROOT);
-  return findProjectRoot(startDir);
+  return resolveProjectRoot(undefined, startDir);
 }
 
 /** Runs `git -C <root> <args>`, returning stdout (utf8) or throwing on any
