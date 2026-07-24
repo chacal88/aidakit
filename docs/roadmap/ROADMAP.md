@@ -4,7 +4,9 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em andamento)_
+### Coleiras mecânicas do flow engine — **in-progress**
+
+- Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → in-progress
 
 ## Next (planned)
 
@@ -12,13 +14,12 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Coleiras mecânicas do flow engine — **backlog**
+### Coleiras mecânicas do flow engine — **in-progress**
 
 - Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog
 - Retry com memória — `retry-memory` → backlog
 - Bench paralelo estrutural — `flow-parallel-bench` → backlog
-- Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → backlog
 - `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → backlog
 - Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → backlog
 
