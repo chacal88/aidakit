@@ -6,7 +6,7 @@
 
 **razor** is a scheduling SaaS for barbershops (NestJS + React + PostgreSQL with Neon and Prisma). Bounded contexts: **Appointment** (core), **Registration**, and **Notification**; Billing is out of the MVP. The main aggregate is **Appointment**, with the R1 invariant: *"a professional never has two overlapping appointments"* — a decision recorded in `docs/decisions/ADR-003-appointment-as-aggregate.md`. Domain events leave through the outbox (`ADR-004-notification-async-outbox.md`).
 
-This guide's change came from phase 4 of [aidakit:design](../../commands/design.md):
+This guide's change came from phase 4 of [aidakit:flow-design](../../commands/flow-design.md):
 
 > **`feature-appointment-cancellation`** — cancel an appointment with a policy: up to 2h beforehand, no penalty.
 
@@ -14,7 +14,7 @@ razor does not use OpenSpec, so **kit mode** applies ([PROCESS.md](../../PROCESS
 
 | # | Step | You invoke | Gate |
 |---|-------|-------------|------|
-| 1 | Next unit of work (entry point) | `/aidakit:build` (1st step picks the change) | — |
+| 1 | Next unit of work (entry point) | `/aidakit:flow-build` (1st step picks the change) | — |
 | 2 | Plan (plan-only), in the new session | [aidakit:plan](../../skills/plan/SKILL.md) | `/aidakit:review` without `--diff` + plan-only PR |
 | 3 | Readiness | [aidakit:readiness](../../skills/readiness/SKILL.md) | **GATE 1** — `Status: APPROVED` + `Ready to implement: yes` |
 | 4 | Implement | skill [test-driven-development](../../skills/test-driven-development/SKILL.md) | RED → GREEN → REFACTOR |
@@ -25,12 +25,12 @@ razor does not use OpenSpec, so **kit mode** applies ([PROCESS.md](../../PROCESS
 | 9 | Post-merge | [aidakit:docs](../../skills/docs/SKILL.md) archive | WORKING → DURABLE promotion |
 | 10 | Close the loop | report done to `aidakit:orchestrator` | next prompt |
 
-## Step 1 — ask for the next change (`/aidakit:build`)
+## Step 1 — ask for the next change (`/aidakit:flow-build`)
 
-The **entry point** of the cycle is always `/aidakit:build` ([PROCESS.md](../../PROCESS.md) §2): the **1st step of the flow** picks the next ready change and generates the self-contained prompt (logic previously exposed as a separate command, now absorbed into build). You don't decide the change by hand — `aidakit:orchestrator` does it from the repo's real artifacts:
+The **entry point** of the cycle is always `/aidakit:flow-build` ([PROCESS.md](../../PROCESS.md) §2): the **1st step of the flow** picks the next ready change and generates the self-contained prompt (logic previously exposed as a separate command, now absorbed into build). You don't decide the change by hand — `aidakit:orchestrator` does it from the repo's real artifacts:
 
 ```
-/aidakit:build
+/aidakit:flow-build
 ```
 
 The flow does not execute the implementation in this session: at startup, it asks the `aidakit:orchestrator` agent for a **self-contained prompt** with fresh facts from the repo ([GOVERNANCE.md](../../GOVERNANCE.md) §6) and displays it verbatim. The orchestrator inspects the active changes, the `git log`, the archive, and the open decisions, picks the first ready change whose dependencies have already been shipped, and assembles the prompt for the new session.
@@ -78,7 +78,7 @@ In the new session, since the change still has no spec, you invoke [aidakit:plan
 
 The `aidakit:planner` agent authors the four plan-only artifacts in `docs/features/feature-appointment-cancellation/` — proposal, design, tasks, evidence (stub) — plus the spec delta (`specs/appointment/spec.md`). It is **plan-only, never product code**: the planner reads the recorded decisions and the specs the change extends, and cross-checks that every cited decision exists, that every `design.md` deliverable has a bullet in `tasks.md`, and that every path matches the repo's real layout. The `proposal.md` follows the template documented in [aidakit:spec](../../skills/spec/SKILL.md); see the filled-in example for this change: **[proposal-appointment-cancellation.md](../examples/proposal-appointment-cancellation.md)**.
 
-The planning round closes with `/aidakit:review feature-appointment-cancellation` (without `--diff`: structural validation of the artifacts + the two reviewers) and a **plan-only PR** via `/commit-push-pr`, which the human merges. With the plan on main, the `aidakit:orchestrator` can already return, on a next `/aidakit:build`, the change's **execution** prompt — displayed verbatim, to paste into a new session:
+The planning round closes with `/aidakit:review feature-appointment-cancellation` (without `--diff`: structural validation of the artifacts + the two reviewers) and a **plan-only PR** via `/commit-push-pr`, which the human merges. With the plan on main, the `aidakit:orchestrator` can already return, on a next `/aidakit:flow-build`, the change's **execution** prompt — displayed verbatim, to paste into a new session:
 
 ```text
 You are in a new execution session of the razor repo (branch main,

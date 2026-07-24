@@ -11,14 +11,16 @@
 
 ## 1. Process and orchestration (the spine of the kit)
 
+> The two **flow orchestrators** below (`aidakit:flow-design`, `aidakit:flow-build`) are the `flow` group — grouped under the `flow-` prefix in `/aidakit:` autocomplete, stateful and resumable (they drive the engine in `governance/`). Every other tool in this catalog is a **single-shot utility** (invokes a skill or reads a file, and returns) — the absence of the `flow-` prefix is itself the utility signal.
+
 | Tool | Where | What it does |
 |---|---|---|
 | `DOCS.md` (plugin root) | kit — doctrine | The law of documents: canonical structure of `docs/`, 7 inviolable rules (indexes, WORM ADR, dated archive), placement tree, WORKING → DURABLE cycle |
 | `GOVERNANCE.md` (plugin root) | kit — doctrine | The law of execution: 3 escalations to the human, everything via PR, separated roles (author ≠ reviewer ≠ shipper), git/ship guardrails, anti-drift |
 | `PROCESS.md` (plugin root) | kit — doctrine | Reference for the per-change execution cycle (aidakit pipeline) |
 | [`governance/README.md`](../../governance/README.md) | kit — doctrine | Source of truth for the **executable governance layer** (the flow engine + ledgers that make `PROCESS.md`/`GOVERNANCE.md` executable) — see [section 2](#2-executable-governance-layer-governance) |
-| `aidakit:design` (+ `/aidakit:design`) | kit | The conductor of project planning: 4 phases with gates (Business → DDD Modeling → Architecture → Implementation), state in `docs/design/STATE.md` |
-| `aidakit:build` (+ `/aidakit:build`) | kit | Human interface to build **one change** from plan to PR on top of the flow engine (`governance/`); the flow's 1st step picks the next ready change (via `aidakit:orchestrator`) — see [section 2](#2-executable-governance-layer-governance) |
+| `aidakit:flow-design` (+ `/aidakit:flow-design`) | kit — **flow orchestrator** | The conductor of project planning: 4 phases with gates (Business → DDD Modeling → Architecture → Implementation), state in `docs/design/STATE.md` |
+| `aidakit:flow-build` (+ `/aidakit:flow-build`) | kit — **flow orchestrator** | Human interface to build **one change** from plan to PR on top of the flow engine (`governance/`); the flow's 1st step picks the next ready change (via `aidakit:orchestrator`) — see [section 2](#2-executable-governance-layer-governance) |
 | `aidakit:catalog` (+ `/aidakit:catalog`) | kit | This index — "do I have a tool for X?" |
 | `aidakit:plan` (+ `/aidakit:plan`) | kit | Plan-only change authoring (proposal/design/tasks) via the `aidakit:planner` agent: breakdown, estimation, risk matrix, with a review gate before coding |
 | `aidakit:spec` | kit | Reads specs + a proposal template with a quality checklist (testable criteria, committed effort) |
@@ -43,7 +45,7 @@
 
 | Tool | Where | What it does |
 |---|---|---|
-| Flow engine (`governance/engine/` + [`cli.js`](../../governance/cli.js)); `/aidakit:build` command | kit — engine | Runs a YAML flow step by step (7 step types), with gates, resumable state, and **inversion of control** — the engine is the deterministic spine, Claude dispatches the subagents. CLI: `node governance/cli.js <start\|resume\|status\|abort\|list>`; the human interface is `/aidakit:build <start\|resume\|status\|abort\|list>` |
+| Flow engine (`governance/engine/` + [`cli.js`](../../governance/cli.js)); `/aidakit:flow-build` command | kit — engine | Runs a YAML flow step by step (7 step types), with gates, resumable state, and **inversion of control** — the engine is the deterministic spine, Claude dispatches the subagents. CLI: `node governance/cli.js <start\|resume\|status\|abort\|list>`; the human interface is `/aidakit:flow-build <start\|resume\|status\|abort\|list>` |
 | Default flow [`fast.yaml`](../../governance/flows/fast.yaml) | kit — flow | A fast Margi-style flow: from change to PR with minimal ceremony (pick change → readiness → TDD → review → PR → human merge gate). Small, reversible work |
 | Default flow [`full.yaml`](../../governance/flows/full.yaml) | kit — flow | A full codeflow/psim-style flow: adversarial brainstorm → spec with a critic → pre-apply gate → implementation → review bench (rounds with a ceiling) → hardening → learn → PR → human gate. Broad, architectural, or irreversible work |
 | Local ledgers ([`governance/ledgers/ledger.js`](../../governance/ledgers/ledger.js)) | kit — engine | Append-only NDJSON per change in `.aidakit/tasks/<change-id>/`: `token.ndjson` (cost attributed to the phase×role×round structure) and `error.ndjson` (error/rework with dedup). Feeds `aidakit:learn` to propose process improvements |
@@ -56,7 +58,7 @@ A project can have its own flows in `.aidakit/flows/`. The execution state lives
 |---|---|
 | `aidakit:identify-domain` (classifies domain × type × flags — the 1st step of a change; selects the brainstorm's ammunition and the review matrix) | kit |
 | `aidakit:brainstorm` (adversarial brainstorm, default-on — grills the owner BEFORE spending spec/implementation tokens; it is a gate) | kit |
-| `aidakit:design` phase 1 (interview on goals/processes/rules/experts/ubiquitous language) | kit |
+| `aidakit:flow-design` phase 1 (interview on goals/processes/rules/experts/ubiquitous language) | kit |
 | `product-management:brainstorm` / `product-management:product-brainstorming` | official plugin |
 | `product-management:write-spec` (formal PRD) | official plugin |
 | `deep-research` (market/regulatory research with sources) | built-in |
@@ -65,7 +67,7 @@ A project can have its own flows in `.aidakit/flows/`. The execution state lives
 
 | Tool | Where | What it does |
 |---|---|---|
-| `aidakit:design` phase 2 | kit | Interview: entities, VOs, aggregates, bounded contexts + light event storming |
+| `aidakit:flow-design` phase 2 | kit | Interview: entities, VOs, aggregates, bounded contexts + light event storming |
 | `aidakit:ddd-strategic-design` | kit | A disciplined strategic checklist: subdomains, a context catalog, a glossary with anti-terms, a table template |
 
 **On-demand corpus:** the complete DDD family (a router + 9 companions: tactical, context mapping, etc.): `~/.claude/skills/skills/domain-driven-design/SKILL.md` — load the router and follow its map when you need the detailed tactical part.
@@ -74,7 +76,7 @@ A project can have its own flows in `.aidakit/flows/`. The execution state lives
 
 | Tool | Where | What it does |
 |---|---|---|
-| `aidakit:design` phase 3 (+ architecture and ADR templates) | kit | APIs, events, integrations, data; one ADR per decision in `docs/decisions/` |
+| `aidakit:flow-design` phase 3 (+ architecture and ADR templates) | kit | APIs, events, integrations, data; one ADR per decision in `docs/decisions/` |
 | `aidakit:saas-multi-tenant` | kit | Shared-schema multi-tenancy in Postgres: RLS, ORM scoping, cross-tenant leakage gotchas (caution: the Prisma example uses the deprecated `$use` → use `$extends`) |
 | `aidakit:security-threat-model` | kit | Threat modeling anchored in the repo: trust boundaries, a TM-nnn table, likelihood×impact |
 | `engineering:system-design` | official plugin | Exploration of design alternatives |
@@ -91,7 +93,7 @@ A project can have its own flows in `.aidakit/flows/`. The execution state lives
 
 | Tool | Where | What it does |
 |---|---|---|
-| `aidakit:design` phase 4 → the change build cycle (see `PROCESS.md`) | kit | Vertical changes → spec → plan → TDD → gates |
+| `aidakit:flow-design` phase 4 → the change build cycle (see `PROCESS.md`) | kit | Vertical changes → spec → plan → TDD → gates |
 | `aidakit:implement` | kit | The implementation step of the flow: orchestrates the kit's TDD discipline (and `systematic-debugging` when a bug shows up) and returns the outcome (`success`/`failure`) to the flow. Thin by design — the intelligence lives in the skills it invokes |
 | `aidakit:ship` | kit | The mechanical delivery step up to the **PR URL**: staging by name + conventional commit + push + PR via `commit-commands`, with the ship guardrails of `GOVERNANCE.md` §4. **Stops at the PR** — the merge is always the human's |
 | `aidakit:test-driven-development` | kit | The behavioral leash of TDD: a mandatory "watch it fail", a rationalizations table, mock anti-patterns |
@@ -206,7 +208,7 @@ These two close the cycle that the [governance ledgers](#2-executable-governance
 
 | Agent | Role |
 |---|---|
-| [`aidakit:orchestrator`](../../agents/orchestrator.md) | Picks the next ready change and generates the self-contained execution prompt (dispatched in the 1st step of the `aidakit:build` flows) |
+| [`aidakit:orchestrator`](../../agents/orchestrator.md) | Picks the next ready change and generates the self-contained execution prompt (dispatched in the 1st step of the `aidakit:flow-build` flows) |
 | [`aidakit:planner`](../../agents/planner.md) | Authors the plan-only change (proposal/design/tasks/evidence), with no product code (dispatched by `aidakit:plan`) |
 | [`aidakit:research`](../../agents/research.md) | Research/exploration in an isolated context, returning synthesized findings |
 | [`aidakit:brainstorm`](../../agents/brainstorm.md) | Conducts the adversarial brainstorm (grills the owner on the 4 axes of attack) BEFORE the spec and returns assumptions + acceptance criteria (dispatched by `aidakit:brainstorm`) |

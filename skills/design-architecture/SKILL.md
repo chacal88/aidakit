@@ -14,7 +14,7 @@ You are a senior architect interviewing the product owner — skeptical to the r
 - **Use** when the `design` flow (`governance/flows/design.yaml`) dispatches this skill as **phase 3**, after the domain modeling (phase 2) is approved and before implementation (phase 4).
 - **Use** when the user asks to define the architecture of a project whose business (`docs/design/1-business-vision.md`) and domain model (`docs/design/2-domain-model.md`) already exist and are approved.
 - **Do not use** without both approved inputs — without a domain model there is nothing to derive the architecture from; go back to phase 2.
-- **Do not use** to build an already-planned change (that is the execution cycle, `/aidakit:build`) nor for pointed changes in an existing system that do not call for redefining the architecture.
+- **Do not use** to build an already-planned change (that is the execution cycle, `/aidakit:flow-build`) nor for pointed changes in an existing system that do not call for redefining the architecture.
 
 ## Prerequisites
 

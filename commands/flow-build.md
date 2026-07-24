@@ -1,6 +1,19 @@
 ---
-description: Builds a change from plan to PR via the aidakit flow engine — start, resume, status, abort, list
+description: Flow orchestrator — builds a change from plan to PR via the aidakit flow engine — start, resume, status, abort, list, register
 ---
+
+First, inspect `$ARGUMENTS`. If it is empty or does not start with one of the
+verbs below (`start`, `resume`, `status`, `abort`, `list`, `register`), do NOT
+guess or proceed — print the Usage block verbatim and stop.
+
+## Usage
+**This is a flow orchestrator command.** It drives the `fast`/`full` flow via the engine (`node governance/cli.js`).
+
+**Expected inputs:** `start <flow> [key=value ...]` · `resume <flow_id> <outcome>` · `status <flow_id>` · `abort <flow_id>` · `list` · `register "<free-form request>"`
+
+**Examples (copy-paste):**
+- `/aidakit:flow-build start fast request="add rate limiting to the webhook endpoint"`
+- `/aidakit:flow-build status <flow_id>`
 
 Human interface to build **one change** — from plan to PR — on top of the executable flow engine (the engine in `governance/`, which does NOT get renamed). Translate the user's request into the engine's CLI and run it via Bash:
 
@@ -23,7 +36,7 @@ Human interface to build **one change** — from plan to PR — on top of the ex
 
 **Resuming a parked debit:** `node governance/cli.js resume <flow_id> plan` continues into planning (the flow proceeds into `select`, with the roadmap's feature line + acceptance sub-bullet as context — no re-explanation needed); `resume <flow_id> discard` aborts the parked flow (the roadmap entry stays declared, at `backlog`).
 
-**Boundary — when NOT to use `register`:** a request too rich to fit a feature line + a one-line acceptance sub-bullet is not a debit — plan it now (`aidakit:roadmap from` or `/aidakit:build` in the default build mode), don't park it.
+**Boundary — when NOT to use `register`:** a request too rich to fit a feature line + a one-line acceptance sub-bullet is not a debit — plan it now (`aidakit:roadmap from` or `/aidakit:flow-build` in the default build mode), don't park it.
 
 Full guide: `docs/guides/flows.md`. Engine source of truth: `governance/README.md`.
 
@@ -31,3 +44,4 @@ User request: $ARGUMENTS
 
 <!-- aidakit v0.3 — /aidakit:build: builds a change (flow engine in governance/); 1st step absorbs the change selection, 2026-07-17 -->
 <!-- aidakit v0.4 — `register` verb: defer a request as a debit (roadmap register mode → start fast mode=register → park), no plan/implement until resumed, 2026-07-22 -->
+<!-- aidakit v0.5 — renamed /aidakit:build → /aidakit:flow-build (flow group prefix, command-grouping-and-inputs); adds the classification-led description, Usage block and empty/malformed-$ARGUMENTS guard, 2026-07-24 -->

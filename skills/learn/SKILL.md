@@ -35,7 +35,7 @@ Read the diff, the **correction events** (`{ kind: "correction", ... }` in `.aid
 Every learning with `action: doc-update`/`rule` becomes a **proposed literal diff** in `.aidakit/tasks/<change-id>/proposed-updates.md`: target (file), category, summary, and the before/after. **Never** edit the doc/rule directly — the human reviews and applies (or it becomes a change of its own). This is the skill's inviolable principle.
 
 ### 4. Record the scoped memory (served back)
-- `scope: project` → one line in `.aidakit/memory/learnings.md` (committable): the `remember` (1 line) + the kind. It is read at the start of the next `/aidakit:build`/change start of this repo.
+- `scope: project` → one line in `.aidakit/memory/learnings.md` (committable): the `remember` (1 line) + the kind. It is read at the start of the next `/aidakit:flow-build`/change start of this repo.
 - `scope: user` → propose an item for the user's auto-memory (the same memory mechanism you already use) — the `remember` + why.
 - **Never** record a secret, credential, sensitive path, or code snippet in the `remember`/`class` — only the class (1 line). The rich detail stays in the `proposed-updates.md`.
 
@@ -86,7 +86,7 @@ This is the WORKING → DURABLE cycle (DOCS.md §4) applied to knowledge: the op
 ## Related
 
 - [aidakit:reflect](../reflect/SKILL.md) — lightweight per-phase reflection that feeds this consolidation.
-- [/aidakit:build](../../commands/build.md) — serves the memory back at the start of the next change (the `aidakit:orchestrator` on the 1st step, logic once exposed as `aidakit:orchestrator` (1st step of `/aidakit:build`)).
+- [/aidakit:flow-build](../../commands/flow-build.md) — serves the memory back at the start of the next change (the `aidakit:orchestrator` on the 1st step, logic once exposed as `aidakit:orchestrator` (1st step of `/aidakit:flow-build`)).
 - Invoked at the `learn` step of the [full](../../governance/flows/full.yaml) flow.
 
 <!-- aidakit v0.3 — ported from learner/post-task-learning (codeflow/psim), no cloud: local memory + auto-memory — translated to EN -->

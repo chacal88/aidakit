@@ -4,6 +4,10 @@
 
 ## Now (in-progress / in-review)
 
+### Experiência de linha de comando dos flows — **in-progress**
+
+- Agrupamento de comandos + inputs — `command-grouping-and-inputs` → in-progress
+
 ### Coleiras mecânicas do flow engine — **in-progress**
 
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → in-progress
@@ -13,6 +17,11 @@
 _(nada planejado)_
 
 ## Later (backlog)
+
+### Experiência de linha de comando dos flows — **in-progress**
+
+- Tabela de progresso do flow — `flow-run-progress-table` → backlog
+- Sumários de passo do flow — `flow-step-summaries` → backlog
 
 ### Coleiras mecânicas do flow engine — **in-progress**
 
