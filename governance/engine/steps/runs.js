@@ -26,7 +26,15 @@ export function executeRuns(step, ctx) {
   // cannot break the command structure or inject commands.
   const { command, vars } = interpolateCommand(step.command, ctx);
   const cwd = step.cwd ? interpolateString(step.cwd, ctx) : projectRoot();
-  const env = { ...process.env, ...vars, AIDAKIT_GOVERNANCE };
+  // AIDAKIT_GOVERNANCE (path to this kit's governance/ dir) and AIDAKIT_FLOW_ID
+  // (this run's own flow_id) are engine-owned env keys, alongside the
+  // ${...}-derived $AIDAKIT_VAR_n data keys (ADR-006 §1: values are env-passed,
+  // never spliced into command text). AIDAKIT_FLOW_ID lets a `runs` step locate
+  // its OWN persisted state (governance/engine/persistence.js's statePath) —
+  // e.g. the retry-memory append helper reads state.context.__visits from it
+  // without the flow having to thread flow_id through `${...}` interpolation
+  // (ADR-004: env carries structural/identity data, not flow-authored values).
+  const env = { ...process.env, ...vars, AIDAKIT_GOVERNANCE, AIDAKIT_FLOW_ID: ctx.state.flow_id };
   if (step.env) {
     for (const [k, v] of Object.entries(step.env)) {
       env[k] = interpolateString(String(v), ctx);
