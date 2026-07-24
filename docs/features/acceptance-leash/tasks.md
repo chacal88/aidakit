@@ -140,4 +140,4 @@
 ## 9. Cleanup / documentation
 
 - [ ] Update `docs/roadmap/epics/EPIC-flow-engine-leashes.md` Feature 2 line to point at the completed change (append a "**Delivered** — PR #XX" suffix during ship; deferred to implement/ship, not planning).
-- [ ] `docs/features/README.md` — no update needed (the in-flight list is derived from disk).
+- [ ] `docs/features/README.md` proposal-template update is covered in §2b (GREEN) — no additional cleanup here.
