@@ -40,3 +40,4 @@ _(nada planejado)_
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
 - Status derivado do git compartilhado (single-valued entre worktrees) — `roadmap-status-from-shared-git` → done (2026-07-24)
 - Request livre vs change-id nos flows — `flow-request-vs-change-id` → done (2026-07-24)
+- Commit precoce do plano no `full` flow (fecha a janela do ADR-007) — `flow-commit-plan-early` → done (2026-07-24)
