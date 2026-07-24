@@ -1,7 +1,7 @@
-<!-- File: docs/decisions/ADR-010-context-pack-per-change.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
+<!-- File: docs/decisions/ADR-012-context-pack-per-change.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
 <!-- An ADR is WORM: never edit a past decision. Changed your mind → a new ADR that supersedes or amends this one. -->
 
-# ADR-010: The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix
+# ADR-012: The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix
 
 - **Status:** proposed (moves to accepted when `context-pack-l1`'s PR merges)
 - **Date:** 2026-07-24
