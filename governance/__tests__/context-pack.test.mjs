@@ -16,6 +16,8 @@ import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
+const { buildPackContent } = await import("../context-pack/build.js");
+
 let pass = 0, fail = 0;
 function ok(c, n) { if (c) pass++; else { fail++; console.log(`FAIL ${n}`); } }
 
@@ -206,6 +208,168 @@ function makeFreshnessProject() {
 
   ok(freshResult.code === 1 && docResult.code === 0 && docResult.json.ok,
     "§freshness-separation-from-doc-manifest: stale pack fails freshness but doc-manifest (unrelated) stays green");
+}
+
+// ── §4 governance/context-pack/build.js (deterministic build/verify/rebuild) ──
+
+function makeBuildProject(changeId = "fixture-build-change") {
+  const root = mkdtempSync(join(tmpdir(), "context-pack-build-"));
+  const changeDir = join(root, "docs", "features", changeId);
+  mkdirSync(changeDir, { recursive: true });
+  mkdirSync(join(root, "docs", "decisions"), { recursive: true });
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+
+  writeFileSync(join(root, "docs", "decisions", "ADR-004-example.md"), "# ADR-004: Example\n\n- **Status:** accepted\n");
+
+  const proposal = [
+    `# Proposal — ${changeId}`,
+    "",
+    `**Change ID:** \`${changeId}\``,
+    "**Date:** `2026-07-24`",
+    "**Owner:** `@fixture`",
+    "**Phase / Package:** `fixture phase`",
+    "",
+    "## Problem",
+    "",
+    "The dispatchers re-read durable context every time. This wastes tokens.",
+    "",
+    "## Success criteria",
+    "",
+    "1. The pack exists.",
+    "2. The pack validates.",
+    "",
+    "## References",
+    "",
+    "- [ADR-004](docs/decisions/ADR-004-example.md) — the cited ADR.",
+    "",
+  ].join("\n");
+
+  const design = [
+    `# Design — ${changeId}`,
+    "",
+    "## Architecture",
+    "",
+    "### The pack format",
+    "",
+    "Frontmatter plus six sections.",
+    "",
+    "### The build script",
+    "",
+    "Deterministic, zero-dep.",
+    "",
+    "## Concrete implementation plan",
+    "",
+    "### File structure — create / modify / delete",
+    "",
+    "**CREATE**",
+    "",
+    "- `governance/context-pack/build.js` — the build script.",
+    "- `skills/context-pack/SKILL.md` — the skill contract.",
+    "",
+    "**MODIFY**",
+    "",
+    "- `governance/flows/full.yaml` — insert the phase.",
+    "",
+  ].join("\n");
+
+  const tasks = `# Tasks — ${changeId}\n\n- [ ] N1. Do the thing.\n`;
+
+  writeFileSync(join(changeDir, "proposal.md"), proposal);
+  writeFileSync(join(changeDir, "design.md"), design);
+  writeFileSync(join(changeDir, "tasks.md"), tasks);
+
+  return { root, changeDir, changeId };
+}
+
+// N4a-i: build twice from identical sources → byte-identical output.
+{
+  const { root, changeId } = makeBuildProject();
+  const p1 = buildPackContent({ root, changeId }).content;
+  const p2 = buildPackContent({ root, changeId }).content;
+  ok(p1 === p2 && p1.length > 0, "§build-deterministic-twice: build called twice from identical sources → byte-identical");
+}
+
+// N4a-ii-a: wall-clock fuzz — different SOURCE_DATE_EPOCH / real-time gap between builds; no effect.
+{
+  const { root, changeId } = makeBuildProject();
+  const before = buildPackContent({ root, changeId }).content;
+  process.env.SOURCE_DATE_EPOCH = "0";
+  const afterEpoch0 = buildPackContent({ root, changeId }).content;
+  process.env.SOURCE_DATE_EPOCH = String(Math.floor(Date.now() / 1000));
+  const afterEpochNow = buildPackContent({ root, changeId }).content;
+  delete process.env.SOURCE_DATE_EPOCH;
+  ok(before === afterEpoch0 && before === afterEpochNow, "§build-deterministic-under-host-fuzz (wall-clock): SOURCE_DATE_EPOCH never leaks into output");
+}
+
+// N4a-ii-b: PID fuzz — build in-process vs. build in a spawned subprocess → byte-identical.
+{
+  const { root, changeId } = makeBuildProject();
+  const inProcess = buildPackContent({ root, changeId }).content;
+  const target = join(root, "docs", "features", changeId, ".context-pack.md");
+  execFileSync("node", [buildJs, "--change-id", changeId, "--root", root], { encoding: "utf8" });
+  const subprocess = readFileSync(target, "utf8");
+  ok(inProcess === subprocess, "§build-deterministic-under-host-fuzz (PID): in-process build === subprocess build");
+}
+
+// N4a-ii-c: tmp-cwd fuzz — identical source tree copied into two different absolute paths → byte-identical output.
+{
+  const { root: rootA, changeId } = makeBuildProject("fuzz-cwd-change");
+  const rootB = mkdtempSync(join(tmpdir(), "context-pack-build-copy-"));
+  copyFileSync(join(rootA, "docs", "features", changeId, "proposal.md"), (() => { mkdirSync(join(rootB, "docs", "features", changeId), { recursive: true }); return join(rootB, "docs", "features", changeId, "proposal.md"); })());
+  copyFileSync(join(rootA, "docs", "features", changeId, "design.md"), join(rootB, "docs", "features", changeId, "design.md"));
+  copyFileSync(join(rootA, "docs", "features", changeId, "tasks.md"), join(rootB, "docs", "features", changeId, "tasks.md"));
+  mkdirSync(join(rootB, "docs", "decisions"), { recursive: true });
+  copyFileSync(join(rootA, "docs", "decisions", "ADR-004-example.md"), join(rootB, "docs", "decisions", "ADR-004-example.md"));
+  const contentA = buildPackContent({ root: rootA, changeId }).content;
+  const contentB = buildPackContent({ root: rootB, changeId }).content;
+  ok(contentA === contentB && rootA !== rootB, "§build-deterministic-under-host-fuzz (tmp-cwd): different absolute roots, identical relative tree → byte-identical");
+  rmSync(rootB, { recursive: true, force: true });
+}
+
+// N4a-iii: sources[] in the output is path-sorted regardless of discovery order.
+{
+  const { root, changeId } = makeBuildProject();
+  const { content } = buildPackContent({ root, changeId });
+  const m = /sources:\n([\s\S]*?)\n---/.exec(content);
+  ok(!!m, "§build-sources-path-sorted: frontmatter has a sources: block");
+  const pathsInOutput = [...content.matchAll(/^\s{2}- path: (.+)$/gm)].map((mm) => mm[1]);
+  const expectedSorted = [...pathsInOutput].sort();
+  ok(JSON.stringify(pathsInOutput) === JSON.stringify(expectedSorted), "§build-sources-path-sorted: sources[] in output is path-sorted lexicographically");
+}
+
+// N4a-iv: mutate a source, rebuild → that source's sha256 AND the top hash both change.
+{
+  const { root, changeId, changeDir } = makeBuildProject();
+  const before = buildPackContent({ root, changeId }).content;
+  writeFileSync(join(changeDir, "design.md"), readFileSync(join(changeDir, "design.md"), "utf8") + "\n\n### A new decision\n\nAdded after the fact.\n");
+  const after = buildPackContent({ root, changeId }).content;
+  const beforeTop = /built_at_source_hash: (\S+)/.exec(before)[1];
+  const afterTop = /built_at_source_hash: (\S+)/.exec(after)[1];
+  ok(before !== after && beforeTop !== afterTop, "§build-rebuild-refreshes-hashes: mutated source → sources[].sha256 and built_at_source_hash both change");
+}
+
+// N4a-v: verify returns non-zero if EITHER validator fails (byte-stability OR freshness).
+// (build.js's own subcommand token must come FIRST — it is not a validator, so it
+// does not take the shared `--json`-prefixed `run()` helper's argument shape.)
+function runBuildCli(args) {
+  try {
+    const out = execFileSync("node", [buildJs, ...args], { encoding: "utf8" });
+    return { code: 0, json: JSON.parse(out.trim().split("\n").pop()) };
+  } catch (e) {
+    const out = (e.stdout || "").trim();
+    return { code: e.status, json: out ? JSON.parse(out.split("\n").pop()) : null };
+  }
+}
+{
+  const { root, changeId, changeDir } = makeBuildProject("verify-change");
+  runBuildCli(["build", "--change-id", changeId, "--root", root]);
+  const okResult = runBuildCli(["verify", "--change-id", changeId, "--root", root]);
+  ok(okResult.code === 0 && okResult.json.ok, "§verify-wraps-both-validators: fresh + well-formed pack → verify exit 0");
+
+  writeFileSync(join(changeDir, "design.md"), readFileSync(join(changeDir, "design.md"), "utf8") + "\nmutated after build\n");
+  const staleResult = runBuildCli(["verify", "--change-id", changeId, "--root", root]);
+  ok(staleResult.code !== 0 && staleResult.json && staleResult.json.ok === false,
+    "§verify-wraps-both-validators: stale pack (freshness fails) → verify non-zero");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

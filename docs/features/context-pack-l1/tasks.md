@@ -51,23 +51,23 @@
 
 ### 4a. RED
 
-- [ ] N4a-i. Test §build-deterministic-twice: call `build` twice from identical sources; `diff -q pack1 pack2` returns nothing (byte-identical). (AC #4, #11)
-- [ ] N4a-ii. Test §build-deterministic-under-host-fuzz: broaden AC #11 (byte-stability) coverage by fuzzing every host-varying vector the pack schema forbids. Sub-bullets:
-  - **N4a-ii-a. Wall-clock fuzz** — mock `Date.now` and/or set env `SOURCE_DATE_EPOCH` to different values across two consecutive `build` invocations from identical sources; output bytes remain identical. (AC #11)
-  - **N4a-ii-b. PID fuzz** — run one `build` in the current process (PID A) and a second `build` in a forked/spawned subprocess (PID B, e.g. via `node:child_process.spawnSync`) from the same source tree; `diff -q` returns nothing. Alternative equivalent: inject a fake PID via env (e.g. `FAKE_PID=99999`) if the build helper reads a PID at all — the assertion is that no PID reaches the output regardless of vector. (AC #11)
-  - **N4a-ii-c. Tmp-cwd fuzz** — copy the source tree into `/tmp/build-a-<rand>` and `/tmp/build-b-<rand>` (byte-identical trees, different absolute paths), run `build` from each cwd, assert byte-identical pack output. Guarantees no absolute path from the build environment leaks into the pack (paths inside the pack must be repo-relative, not cwd-relative). (AC #11)
-- [ ] N4a-iii. Test §build-sources-path-sorted: input sources in random order → `sources[]` in the output is path-sorted lexicographically.
-- [ ] N4a-iv. Test §build-rebuild-refreshes-hashes: mutate a source, run `rebuild`; the pack's `sources[N].sha256` for that path updates and `built_at_source_hash` changes. (AC #7)
-- [ ] N4a-v. Test §verify-wraps-both-validators: `verify` returns non-zero if either byte-stability OR freshness fails. (AC #4)
+- [x] N4a-i. Test §build-deterministic-twice: call `build` twice from identical sources; `diff -q pack1 pack2` returns nothing (byte-identical). (AC #4, #11)
+- [x] N4a-ii. Test §build-deterministic-under-host-fuzz: broaden AC #11 (byte-stability) coverage by fuzzing every host-varying vector the pack schema forbids. Sub-bullets:
+  - [x] **N4a-ii-a. Wall-clock fuzz** — mock `Date.now` and/or set env `SOURCE_DATE_EPOCH` to different values across two consecutive `build` invocations from identical sources; output bytes remain identical. (AC #11)
+  - [x] **N4a-ii-b. PID fuzz** — run one `build` in the current process (PID A) and a second `build` in a forked/spawned subprocess (PID B, e.g. via `node:child_process.spawnSync`) from the same source tree; `diff -q` returns nothing. Alternative equivalent: inject a fake PID via env (e.g. `FAKE_PID=99999`) if the build helper reads a PID at all — the assertion is that no PID reaches the output regardless of vector. (AC #11)
+  - [x] **N4a-ii-c. Tmp-cwd fuzz** — copy the source tree into `/tmp/build-a-<rand>` and `/tmp/build-b-<rand>` (byte-identical trees, different absolute paths), run `build` from each cwd, assert byte-identical pack output. Guarantees no absolute path from the build environment leaks into the pack (paths inside the pack must be repo-relative, not cwd-relative). (AC #11)
+- [x] N4a-iii. Test §build-sources-path-sorted: input sources in random order → `sources[]` in the output is path-sorted lexicographically.
+- [x] N4a-iv. Test §build-rebuild-refreshes-hashes: mutate a source, run `rebuild`; the pack's `sources[N].sha256` for that path updates and `built_at_source_hash` changes. (AC #7)
+- [x] N4a-v. Test §verify-wraps-both-validators: `verify` returns non-zero if either byte-stability OR freshness fails. (AC #4)
 
 ### 4b. GREEN
 
-- [ ] N4b-i. Create `skills/context-pack/SKILL.md` (contract only) with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no PID, no tmp-path, no random IDs). Document that the underlying node script lives at `governance/context-pack/build.js` (reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
-- [ ] N4b-ii. Create `governance/context-pack/build.js` (NOT under `skills/` — placement under `governance/` is what makes it reachable through `$AIDAKIT_GOVERNANCE`; `skills/` is a sibling of `governance/`, not a child, so a `skills/context-pack/build.js` node script would not be callable from a `runs` step): discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). Zero-dep node, mirrors the invocation contract of `governance/validators/check-doc-manifest.js`. (AC #1, #3, #4)
+- [x] N4b-i. Create `skills/context-pack/SKILL.md` (contract only) with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no PID, no tmp-path, no random IDs). Document that the underlying node script lives at `governance/context-pack/build.js` (reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
+- [x] N4b-ii. Create `governance/context-pack/build.js` (NOT under `skills/` — placement under `governance/` is what makes it reachable through `$AIDAKIT_GOVERNANCE`; `skills/` is a sibling of `governance/`, not a child, so a `skills/context-pack/build.js` node script would not be callable from a `runs` step): discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). Zero-dep node, mirrors the invocation contract of `governance/validators/check-doc-manifest.js`. (AC #1, #3, #4)
 
 ### 4c. REFACTOR
 
-- [ ] N4c. Re-run §build-* and §verify-* → green; full suite → no regression.
+- [x] N4c. Re-run §build-* and §verify-* → green; full suite → no regression.
 
 ## 5. New flow phase `context_pack` in `full.yaml` and `fast.yaml`
 
