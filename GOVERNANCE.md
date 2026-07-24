@@ -7,7 +7,7 @@
 
 The agent decides on its own everything not listed below. **Exactly three actions escalate to the human — always:**
 
-1. **Merging a PR.** Never the agent's. The agent delivers the PR URL and stops. The human is the final gate ("trust but verify via PR").
+1. **Merging a PR.** Never the agent's. The agent delivers the PR URL and stops. The human is the final gate ("trust but verify via PR"). *Scoped exception:* a project may declare `pr.auto_merge: true` in its `aidakit.config.yaml`, opting its flows' merge step into an autonomous merge — opt-in only, never the default, registered in [ADR-008](docs/decisions/ADR-008-opt-in-autonomous-pr-merge.md).
 2. **Superseding or contradicting an ADR.** The agent proposes (a new ADR in draft, with the conflict named); the human decides. An agent never bypasses a recorded decision in silence.
 3. **Leaving the approved scope** (of the change plan, the design phase, or the roadmap). The agent stops, presents the dependency/discovery, and waits.
 
@@ -31,7 +31,7 @@ Never, without exception:
 - `git commit --no-verify` / `-n`; after a hook failure: **a new commit**, never `--amend`
 - `git add -A`/`--all`/`git add .` — staging is always by name
 - `git reset --hard`, `git clean -fdx`, `git branch -D`, `git checkout -- .` without an explicit request from the human
-- `gh pr merge` — see rule 1 of the authority model
+- `gh pr merge` — see rule 1 of the authority model. Opt-in exception per [ADR-008](docs/decisions/ADR-008-opt-in-autonomous-pr-merge.md) (`pr.auto_merge: true`): **that carve-out is fail-closed**, the deliberate inverse of this section's general fail-open default below — on doubt it blocks, it does not allow
 - Staging a file that looks like a secret (`.env*`, `*credentials*`, `*.pem`, `*secret*`, inline keys)
 
 A conscious bypass exists: `AIDAKIT_BYPASS=1` on the command — **logged** in `.claude/.cache/aidakit-bypass.log` with date and command, for retroactive review. Hook philosophy: when in doubt, allow (a false positive costs more than the residual risk).
@@ -56,3 +56,4 @@ Every agent declares in its body, in this order: **Role** (one sentence) · **Pr
 Before coding, re-inspect the real state of the repo (git log, key files). Any assumption in the plan changed → **STOP** and report (rule 3). Introspection ≠ invocation: what the plan promises works, prove it by invoking against the running system, not just by reading the schema.
 
 <!-- aidakit v0.3 — doctrine distilled from Margi (ADR-038), mx and recruit on 2026-07-17 — translated to EN -->
+<!-- aidakit v0.8 — rule 1 + §4 gh-pr-merge line: opt-in scoped exception pointer to ADR-008 (pr.auto_merge, fail-closed carve-out), configurable-pr-automation, 2026-07-24 -->

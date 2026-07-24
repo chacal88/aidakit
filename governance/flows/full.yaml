@@ -295,8 +295,42 @@ steps:
     expects:
       - success
       - failure
-    on_success: merge
+    on_success: merge_route
     on_failure: aborted
+
+  - id: merge_route
+    type: runs
+    description: |
+      Routes the tail by config. exit 0 = pr.auto_merge is on (attempts the
+      autonomous merge) · exit≠0 = absent/false/error (falls into today's
+      human_gate). Fail-closed toward the human — read via the single-source
+      helper (governance/pr/pr-config.js) shared with the hooks/pre-bash.js
+      gh-pr-merge carve-out, so the two never diverge (ADR-008).
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-pr-automation.js\" --field auto_merge"
+    on_success: auto_merge
+    on_failure: merge
+
+  - id: auto_merge
+    type: invoke
+    description: |
+      aidakit:merge — OPT-IN autonomous merge (ADR-008; opt-in read from the base
+      branch, never this PR's own diff). Confirms mergeability on the host and
+      merges via the host's normal mechanism (gh pr merge, no --admin/--no-verify/
+      bypass). Any doubt/failure (not mergeable, gh not
+      configured, no permission, branch protection, changes-requested) →
+      outcome blocked/failure → falls into the human_gate below, reporting why.
+    invoke_target: aidakit:merge
+    input:
+      request: "${inputs.request}"
+      change_id: "${context.select.change_id}"
+    expects:
+      - merged
+      - blocked
+      - failure
+    on_result:
+      merged: done
+      blocked: merge
+      failure: merge
 
   - id: merge
     type: human_gate

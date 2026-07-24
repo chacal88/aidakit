@@ -4,6 +4,14 @@
 
 ## Now (in-progress / in-review)
 
+### Automação de entrega (PR → merge) — **in-progress**
+
+- Merge autônomo opt-in do PR — `configurable-pr-automation` → in-progress
+
+### Experiência de linha de comando dos flows — **in-progress**
+
+- Tabela de progresso do flow — `flow-run-progress-table` → in-progress
+
 ### Coleiras mecânicas do flow engine — **in-progress**
 
 - Request livre vs change-id nos flows — `flow-request-vs-change-id` → in-progress
@@ -14,7 +22,7 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Experiência de linha de comando dos flows — **backlog**
+### Experiência de linha de comando dos flows — **in-progress**
 
 - Sumários de passo do flow — `flow-step-summaries` → backlog
 
