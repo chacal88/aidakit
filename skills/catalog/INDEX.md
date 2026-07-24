@@ -96,6 +96,7 @@ A project can have its own flows in `.aidakit/flows/`. The execution state lives
 | `aidakit:flow-design` phase 4 → the change build cycle (see `PROCESS.md`) | kit | Vertical changes → spec → plan → TDD → gates |
 | `aidakit:implement` | kit | The implementation step of the flow: orchestrates the kit's TDD discipline (and `systematic-debugging` when a bug shows up) and returns the outcome (`success`/`failure`) to the flow. Thin by design — the intelligence lives in the skills it invokes |
 | `aidakit:ship` | kit | The mechanical delivery step up to the **PR URL**: staging by name + conventional commit + push + PR via `commit-commands`, with the ship guardrails of `GOVERNANCE.md` §4. **Stops at the PR** — the merge is always the human's |
+| `aidakit:merge` | kit | **OPT-IN** autonomous PR merge (ADR-008), dispatched only by the flow's `auto_merge` step past the `merge_route` gate. Checks host mergeability, merges via `gh pr merge` with no privileged bypass; any doubt/failure falls back to the `merge` human gate |
 | `aidakit:test-driven-development` | kit | The behavioral leash of TDD: a mandatory "watch it fail", a rationalizations table, mock anti-patterns |
 | `aidakit:react-best-practices` | kit | 45 React/Next performance rules (Vercel), with an impact rating |
 | `nestjs-best-practices` | global | NestJS doctrine (see phase 3) |
@@ -233,3 +234,4 @@ These two close the cycle that the [governance ledgers](#2-executable-governance
 <!-- aidakit v0.3 — agents reorg 5→11 (§14: brainstorm/implementer/tester/reviewer-quality/reviewer-security/reviewer-architecture) + flow/plan/review/next/docs/governance commands marked 2026-07-17 -->
 <!-- aidakit v0.3 — rename: roteiro→design (plan the project) and flow→build (build one change); next and old-design absorbed (next → 1st step of build; old-design → plan); change→change vocabulary; 7 current commands (build/catalogo/design/docs/governance/plan/review) 2026-07-17 -->
 <!-- aidakit v0.3 — translated to EN -->
+<!-- aidakit v0.8 — aidakit:merge cataloged (opt-in autonomous PR merge, ADR-008), configurable-pr-automation, 2026-07-24 -->

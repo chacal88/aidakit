@@ -10,3 +10,4 @@ Precedência: em divergência com DOCS.md / PROCESS.md, a doutrina vence.
 
 - [EPIC-flow-engine-leashes](epics/EPIC-flow-engine-leashes.md) — Coleiras mecânicas do flow engine (caps de retry, coleira das metas, retry com memória, bench paralelo estrutural)
 - [EPIC-flow-cli-ux](epics/EPIC-flow-cli-ux.md) — Experiência de linha de comando dos flows (agrupamento de comandos + inputs, tabela de progresso, sumários de passo)
+- [EPIC-delivery-automation](epics/EPIC-delivery-automation.md) — Automação de entrega (merge autônomo opt-in do PR, gated por ADR-008)

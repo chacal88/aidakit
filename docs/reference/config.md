@@ -19,6 +19,7 @@ To create it, **copy the commented template** [aidakit.config.example.yaml](../.
 | [`language`](#language) | Language of the CONTENT the kit generates (prose only) | every generating skill | `en` |
 | [`domains`](#domains) | Domain map by path + strictness order | [aidakit:identify-domain](../../skills/identify-domain/SKILL.md) | single domain `produto` |
 | [`review.matrix`](#reviewmatrix) | Classification flag → reviewer agents summoned | [aidakit:review](../../skills/review/SKILL.md) | the skill's built-in matrix |
+| [`pr.auto_merge`](#prauto_merge) | Opt in the flow's merge step to an autonomous merge (ADR-008) | `merge_route` gate + `hooks/pre-bash.js` (via `governance/pr/pr-config.js`) | `false` (fail-closed — human merges) |
 
 ---
 
@@ -102,12 +103,32 @@ The whole summoned bench runs in parallel, in a single turn; each agent returns 
 
 ---
 
+## `pr.auto_merge`
+
+Consumed at runtime by the flow's `merge_route` gate (`governance/validators/check-pr-automation.js`) and by the `hooks/pre-bash.js` `gh pr merge` carve-out — both read it through the same single-source helper, `governance/pr/pr-config.js`, so the two decisions never diverge. This is the **first** field the engine itself reads at runtime (every other field above is read by a generating skill, not the engine).
+
+```yaml
+pr:
+  auto_merge: false   # bool — opt-in autonomous merge for the flow's merge step; gated by ADR-008
+```
+
+- **Default when absent: `false`.** No `pr:` block, or `auto_merge: false` (explicit or any non-`true` value, including a malformed config) — the flow's tail behaves exactly as it does today: the `merge` step is a `human_gate`, the human merges on the host.
+- **Read from the repo's TRUSTED BASE BRANCH — never the working tree.** `pr.auto_merge` must already be **committed** on the repo's base branch (`git show <base-ref>:aidakit.config.yaml`; base resolves via `AIDAKIT_BASE_REF`, else `origin/HEAD`, else a local `main`, else `master`). A PR that adds `pr.auto_merge: true` to its own diff does **not** grant itself the opt-in — a human merges that first PR, same as today; only PRs opened **after** the field is already on the base branch see it as enabled. This is a deliberate security boundary (ADR-008): the opt-in must be a prior, already-merged decision.
+- **`auto_merge: true`, once committed on the base,** opts the project's flows into the autonomous merge: the tail routes `pr → merge_route → auto_merge` (the [`aidakit:merge`](../../skills/merge/SKILL.md) skill), which checks mergeability on the host and merges via `gh pr merge` — never with `--admin`/`--no-verify` (`gh pr merge` has no `--force` flag). Any doubt or failure falls back to the same `human_gate`, reporting why.
+- **Fail-closed.** Absence, `false`, the field only present on a feature/PR branch (never the base), not a git repository, an unresolvable base ref, or any read/parse error all resolve to `false` — only an explicit `pr.auto_merge: true`, committed on the base, grants the opt-in. The `gh pr merge` block the `pre-bash` hook otherwise enforces unconditionally becomes, for this ONE case, a fail-closed exception scoped to this field — see [ADR-008](../decisions/ADR-008-opt-in-autonomous-pr-merge.md) and [GOVERNANCE.md](../../GOVERNANCE.md) §1/§4.
+- **Scoped, per project — never a global kit toggle.** The kit's own repository (no `aidakit.config.yaml`) is unaffected; only a project that explicitly declares the field, on its base branch, opts in.
+
+---
+
 ## Related
 
 - [aidakit.config.example.yaml](../../aidakit.config.example.yaml) — the commented template to copy.
 - [aidakit:identify-domain](../../skills/identify-domain/SKILL.md) — consumes `domains`.
 - [aidakit:review](../../skills/review/SKILL.md) — consumes `review.matrix`.
+- [aidakit:merge](../../skills/merge/SKILL.md) — dispatched only when `pr.auto_merge` resolves `true`.
+- [ADR-008](../decisions/ADR-008-opt-in-autonomous-pr-merge.md) — the scoped supersession this field implements.
 - [DOCS.md §5](../../DOCS.md) — the language-hygiene rule (prose vs. structure) this field implements.
 - [Skills reference](skills.md) · [Agents reference](agents.md) — the other lookup references. Back to the [reference index](README.md) and the [master index](../INDEX.md).
 
 <!-- aidakit v0.3 — reference for aidakit.config.yaml (language + domains + review.matrix), created on 2026-07-20 -->
+<!-- aidakit v0.8 — pr.auto_merge field (opt-in autonomous merge, ADR-008), configurable-pr-automation, 2026-07-24 -->

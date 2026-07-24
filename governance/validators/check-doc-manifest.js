@@ -26,6 +26,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
+import { findProjectRoot } from "../engine/project-root.js";
 
 function fail(msg) { process.stderr.write(`check-doc-manifest — error: ${msg}\n`); process.exit(2); }
 
@@ -93,18 +94,6 @@ function main() {
     }
   }
   process.exit(errors.length === 0 ? 0 : 1);
-}
-
-/** Walks up from the given dir until it finds one containing .aidakit/ ; otherwise returns the cwd. */
-function findProjectRoot(start) {
-  let dir = start;
-  for (let i = 0; i < 20; i++) {
-    if (existsSync(resolve(dir, ".aidakit"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return process.cwd();
 }
 
 main();

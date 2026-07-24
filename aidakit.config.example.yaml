@@ -49,3 +49,27 @@ review:
       - reviewer-architecture
     ui:
       - reviewer-quality
+
+# ── pr ────────────────────────────────────────────────────────────────────
+# Read at RUNTIME by the flow's merge_route gate and the pre-bash hook's
+# gh-pr-merge carve-out (single-source: governance/pr/pr-config.js) — the
+# only field in this file the engine itself reads, not a generating skill.
+# Default when absent (or auto_merge: false): today's behavior, unchanged —
+# the flow's merge step is a human_gate, the human merges on the host.
+#
+# IMPORTANT: this field is read from the repo's TRUSTED BASE BRANCH (already
+# committed there), never from a PR's own working tree/diff — a PR cannot
+# grant itself the opt-in by adding this field to its own change. The PR that
+# FIRST introduces auto_merge: true is merged by a human, same as today; only
+# PRs opened AFTER it is already on the base branch see it as enabled.
+#
+# Setting auto_merge: true (and merging it to the base branch) opts this
+# project's flows into an autonomous merge (the aidakit:merge skill checks
+# mergeability on the host and merges via `gh pr merge`, never
+# --admin/--no-verify; any doubt falls back to the human gate). This is a
+# SCOPED, opt-in exception to GOVERNANCE.md §1 rule 1 ("merging a PR is never
+# the agent's") — requires the conscious opt-in registered in ADR-008
+# (docs/decisions/ADR-008-opt-in-autonomous-pr-merge.md). Do not set this to
+# true without reading that ADR first.
+pr:
+  auto_merge: false
