@@ -176,7 +176,7 @@
 
 ## 10. Dogfood: build the pack for THIS change
 
-- [ ] N10. Run `node governance/context-pack/build.js --change-id context-pack-l1` → writes `docs/features/context-pack-l1/.context-pack.md`. Validate:
+- [x] N10. Run `node governance/context-pack/build.js --change-id context-pack-l1` → writes `docs/features/context-pack-l1/.context-pack.md`. Validate:
   - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #1, #3, #11)
   - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #2, #6, #12)
   - Re-run `build` → produces byte-identical output (`diff -q` returns nothing). (AC #4)
