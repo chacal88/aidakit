@@ -1,0 +1,165 @@
+# Tasks — context-pack-l1
+
+**Change ID:** `context-pack-l1`
+**Date:** `2026-07-24`
+**Owner:** `@chacal88`
+**Phase / Package:** `skills + agents + governance (flows/validators) — per-change L1 context pack`
+
+> TDD, tests first. Every validator, the deterministic build, the dispatcher wiring and the telemetry writer get a RED test before the GREEN implementation, then REFACTOR. Test idiom: pure Node `.mjs`, no framework — mirrors [`governance/__tests__/engine.test.mjs`](../../../governance/__tests__/engine.test.mjs). **Anti-drift ([GOVERNANCE.md](../../../GOVERNANCE.md) §8):** re-inspect the repo before coding; any assumption from [design.md](design.md) that changed → STOP and report.
+
+## 1. Setup
+
+- [ ] N1. Re-read [design.md](design.md) against live code: confirm the flow YAML shapes ([full.yaml:148-161](../../../governance/flows/full.yaml), [fast.yaml:100-113](../../../governance/flows/fast.yaml)), the validator invocation convention ([check-doc-manifest.js](../../../governance/validators/check-doc-manifest.js), [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)), the current dispatcher agent files ([agents/adr-reviewer.md](../../../agents/adr-reviewer.md) ... [agents/tester.md](../../../agents/tester.md)), and the `.gitignore` `.aidakit/` line. No divergence found → proceed. Divergence found → STOP and report.
+
+## 2. Pack schema + `check-context-pack.js` (byte-stability validator)
+
+### 2a. RED
+
+- [ ] N2a-i. Test §pack-byte-stability-empty-sources: write a pack with an empty `sources[]`; `check-context-pack.js` exits 0 (an empty pack is well-formed).
+- [ ] N2a-ii. Test §pack-byte-stability-wall-clock-rejected: write a pack whose frontmatter contains an ISO-8601 timestamp field not covered by the schema (`built_at: 2026-07-25T…`); validator exits 1 with an error naming the offending field. (AC #11)
+- [ ] N2a-iii. Test §pack-byte-stability-random-id-rejected: write a pack containing a UUID/tmp-path in the body sections; validator exits 1 naming the pattern. (AC #11)
+- [ ] N2a-iv. Test §pack-schema-missing-section: write a pack missing one of the six required sections; validator exits 1 naming the missing section. (AC #3)
+- [ ] N2a-v. Test §pack-schema-excerpt-forbidden: write a pack whose `code-map-pointers` section contains a fenced code block; validator exits 1 with `pointers-only rule violated`. (AC #3)
+
+### 2b. GREEN
+
+- [ ] N2b-i. Create `governance/validators/check-context-pack.js` — zero-dep, exit codes 0/1/2, JSON+stderr contract mirroring `check-doc-manifest.js`. Enforce: frontmatter fields (`change_id`, `built_at_source_hash`, `pack_version`, `sources[]`); six required `##` sections in fixed order; ban ISO timestamps outside the schema, UUIDs, `/tmp/…` and other wall-clock/host-varying patterns; ban fenced code blocks under `## code-map-pointers` and `## specs`. (AC #3, #11)
+
+### 2c. REFACTOR
+
+- [ ] N2c. Re-run §pack-byte-stability-* and §pack-schema-* → green; full governance suite → no regression.
+
+## 3. Freshness validator (`check-context-pack-freshness.js`)
+
+### 3a. RED
+
+- [ ] N3a-i. Test §freshness-all-sources-match: given a pack whose every `sources[N].sha256` matches the file on disk, exit 0.
+- [ ] N3a-ii. Test §freshness-one-source-diverges: mutate one source file after pack build; validator exits 1 naming the divergent path. (AC #2, #6)
+- [ ] N3a-iii. Test §freshness-source-missing: delete one source file; validator exits 1 with `source-missing` naming the path. (AC #2)
+- [ ] N3a-iv. Test §freshness-scope-only-declared-sources: mutate a file that is NOT in `sources[]`; validator exits 0 (invalidation MUST NOT be repo-wide). (AC #6)
+- [ ] N3a-v. Test §freshness-separation-from-doc-manifest: run both validators on the same change dir where the pack is stale but the doc-manifest is complete; freshness exits 1 while doc-manifest exits 0 (the two failure modes stay independent). (AC #12)
+
+### 3b. GREEN
+
+- [ ] N3b-i. Create `governance/validators/check-context-pack-freshness.js` — reads the pack frontmatter, walks `sources[]`, recomputes sha256, exits 0 iff all match. Never globs the repo; only reads the paths declared in `sources[]`. Uses `findProjectRoot` / `AIDAKIT_PROJECT_ROOT` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md). (AC #6, #11, #12)
+
+### 3c. REFACTOR
+
+- [ ] N3c. Re-run §freshness-* → green; full governance suite → no regression.
+
+## 4. `aidakit:context-pack` skill (build / verify / rebuild)
+
+### 4a. RED
+
+- [ ] N4a-i. Test §build-deterministic-twice: call `build` twice from identical sources; `diff -q pack1 pack2` returns nothing (byte-identical). (AC #4, #11)
+- [ ] N4a-ii. Test §build-deterministic-under-wall-clock-fuzz: mock `Date.now`/env `SOURCE_DATE_EPOCH` to advance across builds; output bytes remain identical. (AC #11)
+- [ ] N4a-iii. Test §build-sources-path-sorted: input sources in random order → `sources[]` in the output is path-sorted lexicographically.
+- [ ] N4a-iv. Test §build-rebuild-refreshes-hashes: mutate a source, run `rebuild`; the pack's `sources[N].sha256` for that path updates and `built_at_source_hash` changes. (AC #7)
+- [ ] N4a-v. Test §verify-wraps-both-validators: `verify` returns non-zero if either byte-stability OR freshness fails. (AC #4)
+
+### 4b. GREEN
+
+- [ ] N4b-i. Create `skills/context-pack/SKILL.md` with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no random IDs). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
+- [ ] N4b-ii. Create `skills/context-pack/build.js`: discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). (AC #1, #3, #4)
+
+### 4c. REFACTOR
+
+- [ ] N4c. Re-run §build-* and §verify-* → green; full suite → no regression.
+
+## 5. New flow phase `context_pack` in `full.yaml` and `fast.yaml`
+
+### 5a. RED
+
+- [ ] N5a-i. Test §flow-full-phase-inserted: load `full.yaml`; assert a `context_pack` step exists between `readiness` and `implement`; `readiness.on_result.approved === "context_pack"`; `context_pack.on_success === "implement"`; `context_pack.on_failure === "implement"` (best-effort). (AC #5)
+- [ ] N5a-ii. Test §flow-fast-phase-inserted: same assertions on `fast.yaml`. (AC #5)
+- [ ] N5a-iii. Test §flow-phase-uses-governance-env: the `context_pack.command` string contains `"$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js"` (invocation follows [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). (AC #5)
+- [ ] N5a-iv. Test §flow-phase-interpolates-change-id: the command references `${context.select.change_id}` inside double quotes ([ADR-006](../../decisions/ADR-006-flow-values-as-data.md)). (AC #5)
+
+### 5b. GREEN
+
+- [ ] N5b-i. Edit [`governance/flows/full.yaml`](../../../governance/flows/full.yaml): change `readiness.on_result.approved` from `implement` to `context_pack`; insert a `context_pack` `runs` step whose command runs the freshness validator and, on failure, invokes the `build` script; route `on_success: implement` and `on_failure: implement`. (AC #5)
+- [ ] N5b-ii. Edit [`governance/flows/fast.yaml`](../../../governance/flows/fast.yaml): identical insertion between `readiness` and `implement`. (AC #5)
+
+### 5c. REFACTOR
+
+- [ ] N5c. Re-run §flow-* → green; run `node governance/__tests__/engine.test.mjs` → no regression.
+
+## 6. Dispatcher/reviewer wiring (verify-then-inject, graceful fallback)
+
+### 6a. RED — contract test per dispatcher
+
+- [ ] N6a-i. Test §dispatcher-reads-pack-when-present: for each of `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md`, `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — grep-assert the file contains the marker string `context pack` AND references `docs/features/<change_id>/.context-pack.md` (or the templated equivalent). (AC #8)
+- [ ] N6a-ii. Test §dispatcher-falls-back-when-absent: same files contain an explicit fallback clause (regex: `fall.?back.*raw|absent.*proposal|pack.*absent`). (AC #8)
+
+### 6b. GREEN
+
+- [ ] N6b-i. Add a "Step 0.5 — Load the context pack" clause to each of the seven agent files listed above: read `docs/features/<change_id>/.context-pack.md` when it exists AND freshness passes; treat the pack as authoritative for durable context; open pointed-at files on demand; **fall back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs directly when the pack is absent or stale — never fail the dispatch**. (AC #8)
+- [ ] N6b-ii. Add the equivalent clause to `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` under Prerequisites so their invocation prompt injects the pack. (AC #8)
+
+### 6c. REFACTOR
+
+- [ ] N6c. Re-run §dispatcher-* → green.
+
+## 7. Telemetry file `.aidakit/tasks/<id>/.telemetry.jsonl`
+
+### 7a. RED
+
+- [ ] N7a-i. Test §telemetry-lines-valid-json: write a synthetic telemetry file with three dispatches; every line parses as JSON and carries the six declared fields (`subagent`, `cache_creation`, `cache_read`, `pack_size`, `duration_ms`, `pack_rebuilt`) plus `ts`. (AC #9)
+- [ ] N7a-ii. Test §telemetry-append-only: append a fourth dispatch; the file contains four lines in the original order (no truncation, no rewrite of prior lines). (AC #9)
+- [ ] N7a-iii. Test §telemetry-gitignored: assert `.aidakit/` line is present in [`.gitignore`](../../../.gitignore) so `.aidakit/tasks/<id>/.telemetry.jsonl` is transitively ignored. (AC #9)
+
+### 7b. GREEN
+
+- [ ] N7b-i. Add a telemetry-writer helper (co-located with `skills/context-pack/build.js` or in a `governance/telemetry/` file — chosen at implementation time) that dispatchers call after each SDK response with the six fields. The helper opens the file in append mode; it never rewrites prior content. (AC #9)
+- [ ] N7b-ii. Confirm [`.gitignore`](../../../.gitignore) already covers `.aidakit/` (line 1) — no edit required; document in `evidence.md`. (AC #9)
+
+### 7c. REFACTOR
+
+- [ ] N7c. Re-run §telemetry-* → green.
+
+## 8. `aidakit:learn` rollup into `evidence.md`
+
+### 8a. RED
+
+- [ ] N8a-i. Test §learn-rollup-written: given a synthetic telemetry JSONL with three dispatches, `aidakit:learn` writes a `## Context-pack telemetry rollup` section into `evidence.md` containing total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent table. (AC #10)
+- [ ] N8a-ii. Test §learn-rollup-idempotent: running `learn` twice replaces the section rather than duplicating it. (AC #10)
+
+### 8b. GREEN
+
+- [ ] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #10)
+
+### 8c. REFACTOR
+
+- [ ] N8c. Re-run §learn-* → green.
+
+## 9. ADR-010 + index update
+
+### 9a. RED
+
+- [ ] N9a-i. Test §adr-010-passes-format: `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` exits 0. (AC #13)
+- [ ] N9a-ii. Test §adr-010-indexed: `docs/decisions/README.md` contains a row for `ADR-010` in the ID table AND a mention under a thematic bucket. (AC #13)
+
+### 9b. GREEN
+
+- [ ] N9b-i. Create [`docs/decisions/ADR-010-context-pack-per-change.md`](../../decisions/ADR-010-context-pack-per-change.md) with the five sections (Status+Date · Context · Decision · Consequences · Alternatives considered) mirroring [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md). Status: `Proposed` at authoring time, moves to `accepted` in the same commit that merges this change. (AC #13)
+- [ ] N9b-ii. Edit [`docs/decisions/README.md`](../../decisions/README.md): add the ADR-010 row to the index table and a bullet under an appropriate thematic bucket (Context caching — new bucket, or extend Learning & memory). (AC #13)
+
+### 9c. REFACTOR
+
+- [ ] N9c. Re-run §adr-010-* → green; `node governance/validators/check-links.js docs/decisions` → exit 0.
+
+## 10. Dogfood: build the pack for THIS change
+
+- [ ] N10. Run `node skills/context-pack/build.js --change-id context-pack-l1` → writes `docs/features/context-pack-l1/.context-pack.md`. Validate:
+  - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #1, #3, #11)
+  - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #2, #6, #12)
+  - Re-run `build` → produces byte-identical output (`diff -q` returns nothing). (AC #4)
+
+## 11. Full suite + doc validators
+
+- [ ] N11-i. `node governance/__tests__/engine.test.mjs` → green (no regression).
+- [ ] N11-ii. All `governance/__tests__/*.test.mjs` → green (including the new `context-pack.test.mjs`).
+- [ ] N11-iii. `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `context-pack-l1` derives `in-progress`.
+- [ ] N11-iv. `node governance/validators/check-links.js docs/features/context-pack-l1` → exit 0.
+- [ ] N11-v. `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` → exit 0.
+- [ ] N11-vi. `node governance/validators/check-doc-manifest.js .aidakit/tasks/context-pack-l1/doc-manifest.json` → exit 0 (produced by the flow's `document` step; verified end-to-end that a stale context pack does NOT trip this validator — AC #12).
