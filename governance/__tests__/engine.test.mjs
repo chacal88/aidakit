@@ -2,7 +2,7 @@
 // Proves: parse+validation of the real flows, execution order, pause/resume with
 // persisted state, routing via on_result, and loop with max/until.
 
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, appendFileSync, readFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -1465,6 +1465,185 @@ function seedBrokenAcceptanceManifest(request) {
   ok(checkAcceptanceRuns.length < 3, "11e: check_acceptance recovered before exhausting max_visits (visits < 3)");
   ok(!visited.includes("acceptance_escalation"), "11e: the recovery never reaches acceptance_escalation");
   eq(res.state.status, "completed", "11e: full.yaml completes normally once the manifest is fixed");
+}
+
+// ── 12. Infra-error routing (runs-error-routing): infra errors ALWAYS bypass
+// on_failure and hard-stop the flow — command not found, permission denied,
+// signal-kill, spawn failure, and a Node require() failure remapped by the
+// prelude to exit 250. Structural signals only (ADR-011). Every case here
+// declares on_failure on the `runs` step and proves the target is NEVER
+// dispatched — the defect this change fixes.
+function readInfraLog(flowId) {
+  const p = join(tmp, ".aidakit", "flows", "logs", `${flowId}.log`);
+  if (!existsSync(p)) return [];
+  return readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+}
+function assertInfraHardStop(res, { label, exitCodeSubstr }) {
+  eq(res.state.status, "failed", `${label}: flow status is "failed"`);
+  eq(res.state.outcome, "failed", `${label}: flow outcome is "failed"`);
+  const last = res.state.step_history[res.state.step_history.length - 1];
+  ok(last, `${label}: step_history has an entry`);
+  eq(last && last.step_id, "r", `${label}: last history entry is the runs step`);
+  eq(last && last.result, "infra_error", `${label}: last history entry result is "infra_error"`);
+  ok(last && typeof last.error === "string" && last.error.length > 0, `${label}: history error is a non-empty string`);
+  if (exitCodeSubstr) ok(!!(last && typeof last.error === "string" && last.error.includes(exitCodeSubstr)), `${label}: history error includes "${exitCodeSubstr}"`);
+  ok(!res.state.step_history.some((h) => h.step_id === "never_taken"), `${label}: on_failure target "never_taken" was NOT dispatched`);
+  const log = readInfraLog(res.state.flow_id);
+  const ev = log.find((e) => e.event === "runs_infra_error");
+  ok(ev, `${label}: a runs_infra_error event was logged`);
+  return ev;
+}
+
+// §12.1: exit 127 (POSIX "command not found") hard-stops even with on_failure declared.
+{
+  const flow = {
+    flow: "infra-127", version: 1,
+    steps: [
+      { id: "r", type: "runs", command: "definitely-not-a-real-command-xyz", on_failure: "never_taken" },
+      { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+    ],
+  };
+  const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "infra127", now: new Date("2026-07-17T00:00:00Z") } });
+  const ev = assertInfraHardStop(res, { label: "12.1", exitCodeSubstr: "exit 127" });
+  if (ev) eq(ev.exit_code, 127, "12.1: runs_infra_error event exit_code === 127");
+}
+
+// §12.2: exit 126 (permission denied — mode 000 on the invoked file).
+{
+  const scriptPath = join(tmp, "infra-noperm.sh");
+  writeFileSync(scriptPath, "#!/bin/sh\necho hi\n");
+  chmodSync(scriptPath, 0o000);
+  try {
+    const flow = {
+      flow: "infra-126", version: 1,
+      steps: [
+        { id: "r", type: "runs", command: `"${scriptPath}"`, on_failure: "never_taken" },
+        { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+      ],
+    };
+    const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "infra126", now: new Date("2026-07-17T00:00:00Z") } });
+    const ev = assertInfraHardStop(res, { label: "12.2", exitCodeSubstr: "exit 126" });
+    if (ev) eq(ev.exit_code, 126, "12.2: runs_infra_error event exit_code === 126");
+  } finally {
+    chmodSync(scriptPath, 0o644);
+  }
+}
+
+// §12.3: killed by signal (self-SIGSEGV). res.status is null, res.signal is set.
+{
+  const flow = {
+    flow: "infra-signal", version: 1,
+    steps: [
+      { id: "r", type: "runs", command: "kill -SEGV $$", on_failure: "never_taken" },
+      { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+    ],
+  };
+  const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "infrasig", now: new Date("2026-07-17T00:00:00Z") } });
+  const ev = assertInfraHardStop(res, { label: "12.3", exitCodeSubstr: "SIGSEGV" });
+  if (ev) {
+    eq(ev.signal, "SIGSEGV", "12.3: runs_infra_error event signal === SIGSEGV");
+    eq(ev.exit_code, null, "12.3: runs_infra_error event exit_code === null");
+  }
+}
+
+// §12.4: spawnSync itself fails to start the child (res.error truthy) — driven
+// via a `cwd` that does not exist, which makes spawnSync's pre-exec chdir fail
+// with a deterministic ENOENT before any command runs.
+{
+  const flow = {
+    flow: "infra-spawn-error", version: 1,
+    steps: [
+      { id: "r", type: "runs", command: "true", cwd: "/no/such/dir", on_failure: "never_taken" },
+      { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+    ],
+  };
+  const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "infraspawn", now: new Date("2026-07-17T00:00:00Z") } });
+  const ev = assertInfraHardStop(res, { label: "12.4", exitCodeSubstr: "spawn error:" });
+  if (ev) {
+    eq(ev.exit_code, null, "12.4: runs_infra_error event exit_code === null");
+    eq(ev.signal, null, "12.4: runs_infra_error event signal === null");
+  }
+}
+
+// §12.5: a Node validator whose require() cannot resolve its target. Under the
+// prelude the exit is remapped to the reserved sentinel 250 (infra), not the
+// bare "1" Node would otherwise exit with (which is structurally identical to
+// a validator's legitimate process.exit(1) NO — the original defect).
+{
+  const fakeDir = join(tmp, "gov-fake");
+  mkdirSync(fakeDir, { recursive: true });
+  const validatorPath = join(fakeDir, "needs-missing.cjs");
+  writeFileSync(validatorPath, "require('./absolutely-missing-module');\n");
+  const flow = {
+    flow: "infra-require", version: 1,
+    steps: [
+      { id: "r", type: "runs", command: `node "${validatorPath}"`, on_failure: "never_taken" },
+      { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+    ],
+  };
+  const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "infrareq", now: new Date("2026-07-17T00:00:00Z") } });
+  const ev = assertInfraHardStop(res, { label: "12.5", exitCodeSubstr: "exit 250" });
+  if (ev) eq(ev.exit_code, 250, "12.5: runs_infra_error event exit_code === 250");
+}
+
+// §12.6: ADR-011 §Decision 4 backward-compat contract — an ORDINARY validator
+// failure (bare `exit 1`, no infra signal at all) must still route via
+// on_failure exactly like before this change. This is the inverse of
+// assertInfraHardStop: proves a boundary regression (e.g. `res.status >= 126`
+// instead of `=== 126`) would NOT silently reclassify every ordinary
+// validator failure as infra — it would go red here.
+function assertOrdinaryFailureRoutes(res, { label, onFailureTarget }) {
+  const runsEntries = res.state.step_history.filter((h) => h.step_id === "r");
+  const last = runsEntries[runsEntries.length - 1];
+  ok(last, `${label}: step_history has an entry for the runs step`);
+  eq(last && last.result, "failure", `${label}: runs step's history entry result is "failure" (NOT "infra_error")`);
+  ok(res.state.step_history.some((h) => h.step_id === onFailureTarget), `${label}: on_failure target "${onFailureTarget}" IS present in step_history (was actually dispatched)`);
+  const log = readInfraLog(res.state.flow_id);
+  ok(!log.some((e) => e.event === "runs_infra_error"), `${label}: no runs_infra_error event was logged`);
+}
+{
+  const flow = {
+    flow: "ordinary-failure", version: 1,
+    steps: [
+      { id: "r", type: "runs", command: "exit 1", on_failure: "landed" },
+      { id: "landed", type: "terminal", outcome: "aborted", message: "reached via on_failure" },
+    ],
+  };
+  const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "ord126", now: new Date("2026-07-17T00:00:00Z") } });
+  assertOrdinaryFailureRoutes(res, { label: "12.6", onFailureTarget: "landed" });
+  eq(res.state.status, "aborted", "12.6: flow completes through the on_failure route (not hard-stopped as infra)");
+}
+
+// §12.7: NODE_OPTIONS append preservation — an inherited NODE_OPTIONS (e.g.
+// from a parent process tuning heap size) must be PRESERVED, not clobbered,
+// when the prelude's --require is injected (ADR-004 "engine extends, doesn't
+// shadow" precedence). A regression that overwrites NODE_OPTIONS instead of
+// appending would break any consumer repo relying on inherited flags.
+{
+  const priorNodeOptions = process.env.NODE_OPTIONS;
+  process.env.NODE_OPTIONS = "--max-old-space-size=256";
+  try {
+    // Read process.env.NODE_OPTIONS directly inside a node child (not via a
+    // shell `echo $NODE_OPTIONS`, which is subject to shell-parsing quirks;
+    // not via process.execArgv, which — verified empirically on Node 22 — does
+    // NOT reflect NODE_OPTIONS-derived flags at all).
+    const flow = {
+      flow: "node-options-append", version: 1,
+      steps: [
+        { id: "r", type: "runs", command: "node -e \"console.log(process.env.NODE_OPTIONS)\"", on_failure: "never_taken" },
+        { id: "never_taken", type: "terminal", outcome: "aborted", message: "must not run" },
+      ],
+    };
+    const res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "nodeopt127", now: new Date("2026-07-17T00:00:00Z") } });
+    const r = res.state.step_history.find((h) => h.step_id === "r");
+    ok(r && r.result === "success", "12.7: the node child ran successfully (exit 0)");
+    const childNodeOptions = (r && r.output && r.output.stdout) || "";
+    ok(childNodeOptions.includes("--max-old-space-size=256"), "12.7: the child's effective NODE_OPTIONS preserves the inherited --max-old-space-size=256");
+    ok(/--require=.*infra-detect\.cjs/.test(childNodeOptions), "12.7: the child's effective NODE_OPTIONS also carries the injected --require=…infra-detect.cjs");
+  } finally {
+    if (priorNodeOptions === undefined) delete process.env.NODE_OPTIONS;
+    else process.env.NODE_OPTIONS = priorNodeOptions;
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

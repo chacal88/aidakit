@@ -25,7 +25,7 @@ The classifier in [`governance/engine/steps/runs.js`](../../../governance/engine
 | `res.status === 0` | validator judged YES | `next / success` |
 | any other exit (`1`, `2`, `3`, …, `125`, `128–255`) | validator judged NO | `next / failure` |
 
-**Why 250:** POSIX reserves 128 + N for signal exits (128–165); shells use 126–128 for permission/not-found; 250 is safely outside those ranges AND outside the 1–125 "normal application error" band. Documented in ADR-010. Consumer flows that legitimately want to reserve their own exits above 250 are free to; nothing else in the kit uses ≥250.
+**Why 250:** POSIX reserves 128 + N for signal exits (128–165); shells use 126–128 for permission/not-found; 250 is safely outside those ranges AND outside the 1–125 "normal application error" band. Documented in ADR-011. Consumer flows that legitimately want to reserve their own exits above 250 are free to; nothing else in the kit uses ≥250.
 
 **Ambiguous case (Q3, deferred to plan):** when none of the infra signals match, the classifier returns validator-failure (exit≠0 → `outcome:"failure"`), preserving today's routing via `on_failure`. Locked here — the detector is high-confidence so ambiguous cases are rare by construction; changing this default to fail-closed would break every shipped `on_failure` retry loop with no benefit the structural signals don't already provide.
 
@@ -146,14 +146,14 @@ Every `on_failure` in the shipped flows was inspected. Verdict: **none depends o
 
 **`governance/flows/design.yaml`** — no `on_failure` beyond `aborted`. Trivially safe.
 
-**Consumer flows (out of scope for edits, in scope for the ADR consequences section):** any `.aidakit/flows/*.yaml` that relied on `on_failure` catching a spawn-error would now hard-stop. Documented in ADR-010 as the "consumer flows breaking-change surface"; the mitigation is that no shipped kit example ever suggested that idiom, so consumers are unlikely to have written it.
+**Consumer flows (out of scope for edits, in scope for the ADR consequences section):** any `.aidakit/flows/*.yaml` that relied on `on_failure` catching a spawn-error would now hard-stop. Documented in ADR-011 as the "consumer flows breaking-change surface"; the mitigation is that no shipped kit example ever suggested that idiom, so consumers are unlikely to have written it.
 
 ## Freeze — naming conventions and evidence location
 
 - **New outcome kind:** `"infra"` (singular, lower-case, matches existing `"next"|"pause"|"fail"|"terminal"` style).
 - **New history result:** `"infra_error"` (snake_case, matches existing `"max_visits_exceeded"` from [`engine.js:161`](../../../governance/engine/engine.js)).
 - **New log event:** `"runs_infra_error"` (namespaced by step type, matches existing `"step_start"`/`"step_end"`/`"step_max_visits_exceeded"` pattern).
-- **Sentinel exit code:** `250` (documented in ADR-010; not reserved for anything else in the kit).
+- **Sentinel exit code:** `250` (documented in ADR-011; not reserved for anything else in the kit).
 - **New env var:** none — `NODE_OPTIONS` is a standard Node variable, not a kit-specific name (unlike `AIDAKIT_GOVERNANCE` / `AIDAKIT_VAR_n`).
 - **New file paths:** `governance/engine/prelude/infra-detect.cjs` (new dir `prelude/` under `engine/`).
 - **Evidence location:** [`docs/features/runs-error-routing/evidence.md`](evidence.md) — records the manual repro of the original `validator-path-resolution` bug + the full test-suite output.
@@ -168,7 +168,7 @@ Single-commit revert restores the prior behavior — the change is additive at e
 
 No state file migration needed — flows that ran under the new contract and completed successfully never populated any new field; flows that hit an infra hard-stop failed with a specific event that can be re-triaged manually.
 
-## Alternatives considered (summary — full detail in ADR-010)
+## Alternatives considered (summary — full detail in ADR-011)
 
 | Option | Pros | Cons | Cost to undo |
 |---|---|---|---|

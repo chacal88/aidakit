@@ -137,10 +137,12 @@
  * Result of a step executor:
  *  - {kind:"next", outcome}   → engine routes via on_result/on_success/on_failure
  *  - {kind:"pause", pause}    → engine persists and exits
+ *  - {kind:"infra", error}    → infra error (ADR-010); ALWAYS hard-stops, bypasses on_failure
  *  - {kind:"fail", error}     → engine routes via on_failure or marks it failed
  *  - {kind:"terminal", ...}   → engine ends the flow
  * @typedef {{kind:"next",outcome:string,output?:unknown}
  *          |{kind:"pause",pause:PauseInfo,output?:unknown}
+ *          |{kind:"infra",error:string,output?:unknown}
  *          |{kind:"fail",error:string,output?:unknown}
  *          |{kind:"terminal",outcome:"completed"|"aborted",message?:string}} StepOutcome
  */

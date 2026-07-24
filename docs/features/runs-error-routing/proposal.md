@@ -31,7 +31,7 @@ Locked resolutions from [`brainstorm.md`](brainstorm.md) §"Escalation resolutio
 - **`governance/engine/engine.js`** — new routing clause `if (outcome.kind === "infra")` BEFORE the existing `kind:"fail"` block: emits `runs_infra_error` log event, records the step_history entry with `result:"infra_error"`, and hard-stops the flow (`status:"failed"`, `outcome:"failed"`, error message names the exit code / signal / trailing stderr). Fail-closed: bypasses `on_failure`, no resume, no retry.
 - **`governance/engine/persistence.js`** — no change; `logEvent` accepts any event shape (line 77) — `runs_infra_error` is a non-breaking addition.
 - **`governance/__tests__/engine.test.mjs`** — new §12 covering: exit 127, exit 126, signal-kill (`res.signal`), spawnSync `res.error` even with `on_failure` declared, `require()`-throws-under-prelude → exit 250 → hard-stop. Regression proving the shipped flows' `on_failure` targets are NOT taken on any of these.
-- **`docs/decisions/ADR-010-runs-infra-error-routing.md`** (new) — locks the contract: infra-error is a first-class outcome kind, always bypasses `on_failure`, detected via structural signals + Node prelude sentinel 250.
+- **`docs/decisions/ADR-011-runs-infra-error-routing.md`** (new) — locks the contract: infra-error is a first-class outcome kind, always bypasses `on_failure`, detected via structural signals + Node prelude sentinel 250.
 
 ## Non-goals (explicit)
 
@@ -53,7 +53,7 @@ Locked resolutions from [`brainstorm.md`](brainstorm.md) §"Escalation resolutio
 | `governance/engine/` | 3 files: `steps/runs.js` (classifier + NODE_OPTIONS injection), `engine.js` (new `kind:"infra"` routing clause), `prelude/infra-detect.cjs` (new module, ~30 lines) |
 | `governance/__tests__/` | 1 file: `engine.test.mjs` (+5 test cases, ≈150 lines) |
 | `governance/flows/` | none — shipped flows unchanged; audit result in [design.md](design.md) confirms no `on_failure` target today depends on catching infra |
-| `docs/decisions/` | 1 file: `ADR-010-runs-infra-error-routing.md` + index update in `docs/decisions/README.md` |
+| `docs/decisions/` | 1 file: `ADR-011-runs-infra-error-routing.md` + index update in `docs/decisions/README.md` |
 | `docs/guides/flows.md` | +1 short paragraph documenting the infra-error surface for consumer flow authors |
 | `docs/features/runs-error-routing/` | this change directory |
 | `agents/`, `skills/`, `commands/`, `hooks/` | none |
@@ -68,8 +68,8 @@ Locked resolutions from [`brainstorm.md`](brainstorm.md) §"Escalation resolutio
 - New §12 in `engine.test.mjs` covers: `res.status===127`, `res.status===126`, `res.signal` set, `res.error` from spawnSync even with `on_failure` declared, and a Node `require()` throw exiting 250 under the prelude. Every one asserts `state.status==="failed"`, `state.outcome==="failed"`, `runs_infra_error` event emitted, and — critically — that `on_failure` target step was NOT dispatched.
 - Reproduction of the original `validator-path-resolution` bug: a synthesized `runs` step invoking `node` with a `require()` pointing at a nonexistent module now surfaces as infra-error, not as a `on_failure` retry loop. Recorded in [evidence.md](evidence.md).
 - Full governance suite (`node governance/__tests__/*.test.mjs`) — 0 failures.
-- `node governance/validators/check-adr-format.js docs/decisions/ADR-010-runs-infra-error-routing.md` → exit 0.
-- `node governance/validators/check-links.js docs/features/runs-error-routing docs/decisions/ADR-010-runs-infra-error-routing.md docs/guides/flows.md` → exit 0.
+- `node governance/validators/check-adr-format.js docs/decisions/ADR-011-runs-infra-error-routing.md` → exit 0.
+- `node governance/validators/check-links.js docs/features/runs-error-routing docs/decisions/ADR-011-runs-infra-error-routing.md docs/guides/flows.md` → exit 0.
 - Evidence recorded in [evidence.md](evidence.md).
 
 ## Unblocks
@@ -85,5 +85,5 @@ Locked resolutions from [`brainstorm.md`](brainstorm.md) §"Escalation resolutio
   - [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract. Adds precedent for engine-owned names in the `runs` child env; the new `NODE_OPTIONS` injection follows the same "engine wins over inherited" precedence.
   - [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) — flow values as data. The infra detector operates on the spawn result AFTER interpolation, so ADR-006's data-passing guarantee is preserved; nothing this change does re-splices values into shell text.
   - [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md) — precedent for fewer knobs / structural mechanism over opt-in doctrine. Directly cited in the Q1 resolution.
-- This change **introduces [ADR-010](../../decisions/ADR-010-runs-infra-error-routing.md)** locking the routing + detection contract. Numbered next-in-sequence per [`docs/decisions/README.md`](../../decisions/README.md) (ADR-009 is the current highest); ADR ID verified.
+- This change **introduces [ADR-011](../../decisions/ADR-011-runs-infra-error-routing.md)** locking the routing + detection contract. Numbered next-in-sequence per [`docs/decisions/README.md`](../../decisions/README.md) (ADR-009 is the current highest); ADR ID verified.
 - No open-decisions log exists in this repo; nothing inherited.
