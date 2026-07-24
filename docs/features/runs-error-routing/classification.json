@@ -1,0 +1,21 @@
+{
+  "change_id": "runs-error-routing",
+  "domain": "product",
+  "type": "bug",
+  "flags": ["architecture", "contract"],
+  "classification": "standard",
+  "source": {
+    "roadmap_line": "`runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → backlog",
+    "epic": "docs/roadmap/epics/EPIC-flow-engine-leashes.md",
+    "acceptance": "the `runs` step separates 'missing command/module' (infrastructure error: surfaces and interrupts the flow) from 'validator judged NO' (exit≠0: routes normally via on_failure) — today a `Cannot find module` exits as a common exit≠0 and enters correction loop via on_failure instead of exposing the real error."
+  },
+  "rationale": {
+    "domain": "Repo declares no domain-by-path taxonomy in aidakit.config.yaml → single-domain default (`product`). The kit is the product; governance/engine/ is product surface here.",
+    "type": "Matches doctrine trigger 'Y came back instead of Z': validator infra errors are being misrouted through on_failure instead of surfacing.",
+    "flags": {
+      "architecture": "Splitting infra-error from validator-NO changes the engine's error-routing responsibility inside the `runs` step.",
+      "contract": "Flow YAMLs rely on on_failure semantics; introducing a new exit category (infra-error) changes the contract with flow authors."
+    }
+  },
+  "produced_by": "aidakit:identify-domain (dispatched by full-260724-da7f14 · classify step)"
+}

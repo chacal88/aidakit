@@ -202,7 +202,7 @@ function drive(state, flow, queue, initialResumeValue, initialResumeOutput) {
       ended_at: new Date().toISOString(),
       result: outcomeKey(outcome),
       output: "output" in outcome ? outcome.output : undefined,
-      error: outcome.kind === "fail" ? outcome.error : undefined,
+      error: outcome.kind === "fail" || outcome.kind === "infra" ? outcome.error : undefined,
     };
     state.step_history.push(history);
     logEvent(state.flow_id, { event: "step_end", step_id: step.id, result: history.result });
@@ -235,6 +235,25 @@ function drive(state, flow, queue, initialResumeValue, initialResumeOutput) {
       state.finished_at = new Date().toISOString();
       saveState(state);
       logEvent(state.flow_id, { event: "flow_end", outcome: state.outcome });
+      return { status: state.status, state };
+    }
+    if (outcome.kind === "infra") {
+      // Infra errors (command not found, permission denied, signal-kill,
+      // spawn failure, Node require() failure) ALWAYS hard-stop the flow —
+      // the on_failure lookup is not performed. ADR-010.
+      logEvent(state.flow_id, {
+        event: "runs_infra_error",
+        step_id: step.id,
+        command: outcome.output?.command,
+        exit_code: outcome.output?.exit_code,
+        signal: outcome.output?.signal,
+        stderr: (outcome.output?.stderr ?? "").slice(-2000),
+      });
+      state.status = "failed";
+      state.outcome = "failed";
+      state.finished_at = new Date().toISOString();
+      saveState(state);
+      logEvent(state.flow_id, { event: "flow_end", outcome: "failed", error: outcome.error });
       return { status: state.status, state };
     }
     if (outcome.kind === "fail") {
@@ -368,6 +387,7 @@ function emitSummary(state, step, outcome) {
 function outcomeKey(o) {
   if (o.kind === "next") return o.outcome === "success" ? "success" : o.outcome === "failure" ? "failure" : o.outcome;
   if (o.kind === "pause") return "paused";
+  if (o.kind === "infra") return "infra_error";
   if (o.kind === "fail") return "failure";
   return "success"; // terminal
 }
