@@ -20,11 +20,11 @@ The design in [design.md](design.md) rests on those three bullets and no other e
 ## Validation Outputs
 
 - `node governance/__tests__/engine.test.mjs` → **149 passed, 0 failed** (no regression; the new `context_pack` phase and the engine's telemetry-kwargs extension are both exercised by this suite via the real `full`/`fast` flows).
-- `node governance/__tests__/context-pack.test.mjs` (new, this change) → **98 passed, 0 failed**. Covers: byte-stability validator (§2), freshness validator (§3), the deterministic build (§4, including wall-clock/PID/tmp-cwd fuzz), the `context_pack` flow phase in both YAMLs (§5), the 10-file dispatcher/skill wiring contract (§6), the telemetry JSONL helper + engine resume-kwargs extension (§7), the `aidakit:learn` rollup (§8), and ADR-010 conformance (§9).
+- `node governance/__tests__/context-pack.test.mjs` (new, this change) → **98 passed, 0 failed**. Covers: byte-stability validator (§2), freshness validator (§3), the deterministic build (§4, including wall-clock/PID/tmp-cwd fuzz), the `context_pack` flow phase in both YAMLs (§5), the 10-file dispatcher/skill wiring contract (§6), the telemetry JSONL helper + engine resume-kwargs extension (§7), the `aidakit:learn` rollup (§8), and ADR-012 conformance (§9).
 - Full governance suite (`governance/__tests__/*.test.mjs`, 15 files) → **all green**, no regression: candidates 8/0, check-adr-format 8/0, check-bench 20/0, check-docs 8/0, check-links 7/0, context-pack 98/0, dna-freshness 7/0, dna-write 14/0, engine 149/0, ledger 8/0, plugin-version 12/0, pr-automation 161/0, progress-table 30/0, roadmap 28/0, yaml-min 17/0.
 - `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `context-pack-l1` derives **in-progress** (feature "Context pack por change (L1)" under `EPIC-context-caching`).
 - `node governance/validators/check-links.js docs/features/context-pack-l1` → exit 0, 5 files checked, no broken links (after fixing the dogfood pack's ADR links to be pack-relative — see Correction events below).
-- `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` → exit 0.
+- `node governance/validators/check-adr-format.js docs/decisions/ADR-012-context-pack-per-change.md` → exit 0.
 - `node governance/validators/check-context-pack.js docs/features/context-pack-l1/.context-pack.md` → exit 0 (byte-stable, all six sections present and in order, no wall-clock/UUID/tmp-path, no excerpts).
 - `AIDAKIT_PROJECT_ROOT=<worktree> node governance/validators/check-context-pack-freshness.js docs/features/context-pack-l1/.context-pack.md` → exit 0, 5/5 sources fresh. (The explicit `AIDAKIT_PROJECT_ROOT` is needed only because this worktree is nested under the main checkout, which has its own `.aidakit/` marker that `findProjectRoot` would otherwise climb to first — an artifact of this sandbox's directory layout, not of the validator; the real flow's `runs` step always passes the correct `cwd`/root.)
 - Rebuild determinism: built the dogfood pack twice from identical sources → `diff -q` returns nothing (byte-identical), confirmed both via the pure `buildPackContent` function (unit test) and via the actual CLI dogfood run.
@@ -66,13 +66,13 @@ Behavioral coverage (by behavior, not by line):
 - **Dispatcher/skill wiring** — all 10 files (7 agents + 3 skills) mention the pack and the `.context-pack.md` path, all 10 declare an explicit fallback-when-absent clause, and none of the 10 shells out to the freshness validator by name. 3 assertions × 10 files = 30/30 from §6a.
 - **Telemetry** — JSONL lines valid + carry all 6 fields + `ts`, append-only (order preserved), `.gitignore` coverage confirmed; plus the engine extension: kwargs parse, malformed kwarg fails closed before touching state, forwarding to `append.js` with correct `subagent`/`pack_size`/`ts`, absence of kwargs writes nothing, and the pre-existing `engine.test.mjs` suite stays green. 7/7 behaviors from §7a/§7d.
 - **Learn rollup** — written with correct totals/sums/means/per-subagent breakdown, idempotent replace (not duplicate) on rerun, and the exact `No telemetry captured for this run.` message when the JSONL is absent. 3/3 behaviors from §8a.
-- **ADR-010 conformance** — passes `check-adr-format.js`, indexed in `docs/decisions/README.md`. 2/2 behaviors from §9a.
+- **ADR-012 conformance** — passes `check-adr-format.js`, indexed in `docs/decisions/README.md`. 2/2 behaviors from §9a.
 
 ## Benchmark comparison
 
 Not measured in this session: producing a real before/after `cache_read`/`cache_creation` comparison requires an actual live dispatch of a reviewer agent (e.g. `aidakit:reviewer-quality`) both with and without the pack injected, which only happens when this change's own flow run reaches the `review`/bench steps — outside the implementer's scope (the implementer does not dispatch reviewers; see agents/implementer.md "What you do NOT do"). The `aidakit:learn` rollup (§ above) is the durable place this comparison lands once the flow actually runs dispatches with telemetry kwargs supplied by the parent Claude.
 
-As a size proxy (not a token-cost measurement): `docs/features/context-pack-l1/proposal.md` + `design.md` + `tasks.md` + the two cited ADRs (`ADR-004`, `ADR-010`) total well over 30 KB combined, versus the built `.context-pack.md` at under 4 KB — consistent with the prefix-size-reduction premise the design rests on, though the real `cache_read`/`cache_creation` delta can only be measured via actual dispatches.
+As a size proxy (not a token-cost measurement): `docs/features/context-pack-l1/proposal.md` + `design.md` + `tasks.md` + the two cited ADRs (`ADR-004`, `ADR-012`) total well over 30 KB combined, versus the built `.context-pack.md` at under 4 KB — consistent with the prefix-size-reduction premise the design rests on, though the real `cache_read`/`cache_creation` delta can only be measured via actual dispatches.
 
 ## Unresolved Deviations
 

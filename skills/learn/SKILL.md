@@ -41,7 +41,7 @@ Every learning with `action: doc-update`/`rule` becomes a **proposed literal dif
 
 ### 4.5 Context-pack telemetry rollup
 
-Before the worktree is cleaned, distill `.aidakit/tasks/<change-id>/.telemetry.jsonl` (the per-dispatch log `governance/engine/steps/invoke.js`'s resume handler writes — see [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md) §Decision-7/8) into a durable `## Context-pack telemetry rollup` section in `evidence.md`: total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent breakdown. Run it with:
+Before the worktree is cleaned, distill `.aidakit/tasks/<change-id>/.telemetry.jsonl` (the per-dispatch log `governance/engine/steps/invoke.js`'s resume handler writes — see [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md) §Decision-7/8) into a durable `## Context-pack telemetry rollup` section in `evidence.md`: total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent breakdown. Run it with:
 
 ```
 node governance/telemetry/rollup.js --change-id <change-id>

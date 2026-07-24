@@ -53,7 +53,7 @@ export function packSizeFor(changeId) {
   return existsSync(packPath) ? statSync(packPath).size : 0;
 }
 
-/** Live write-site for `.telemetry.jsonl` (ADR-010 §"Live write-site — engine
+/** Live write-site for `.telemetry.jsonl` (ADR-012 §"Live write-site — engine
  * extension"): the resume handler is the ONLY point where the engine holds
  * both the dispatched agent's usage numbers (via ctx.telemetry, supplied by
  * the parent Claude on `resume`) and the step that was actually dispatched.

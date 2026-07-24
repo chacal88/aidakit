@@ -5,9 +5,9 @@ description: Builds, verifies and rebuilds a change's per-change L1 context pack
 
 # aidakit:context-pack — the per-change L1 context cache
 
-> One dispatch shrinks: instead of every reviewer/dispatcher re-reading `proposal.md` + `design.md` + `tasks.md` + the cited ADRs/specs from scratch, they read one small, byte-stable pointers-only pack. See [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md) for the full decision and [EPIC-context-caching](../../docs/roadmap/epics/EPIC-context-caching.md) for the L1 envelope (L2 — embeddings/cross-change — is explicitly out of scope here).
+> One dispatch shrinks: instead of every reviewer/dispatcher re-reading `proposal.md` + `design.md` + `tasks.md` + the cited ADRs/specs from scratch, they read one small, byte-stable pointers-only pack. See [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md) for the full decision and [EPIC-context-caching](../../docs/roadmap/epics/EPIC-context-caching.md) for the L1 envelope (L2 — embeddings/cross-change — is explicitly out of scope here).
 
-Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../../GOVERNANCE.md) / [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md), the doctrine wins.
+Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../../GOVERNANCE.md) / [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md), the doctrine wins.
 
 ## When to use (and when not)
 
@@ -15,7 +15,7 @@ Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../..
 - **Use** `verify` locally before dispatching by hand, to confirm the pack is both well-formed (byte-stable) and fresh (sources unchanged).
 - **Use** `rebuild` after editing `proposal.md`/`design.md`/`tasks.md` or any cited ADR/spec, to force a fresh pack.
 - **Don't use** it to author the plan itself — that's [aidakit:plan](../plan/SKILL.md). This skill only distills an ALREADY-authored plan into a smaller artifact.
-- **Don't use** it to enforce freshness from inside an agent/reviewer's Bash session — agents/reviewers/skills READ the pack if present and fall back to the raw docs if absent; they never re-invoke the freshness validator themselves (ADR-010 §Decision-6, ADR-004 §negative-consequence-2). Freshness is enforced upstream, once, by the flow's `context_pack` `runs` step.
+- **Don't use** it to enforce freshness from inside an agent/reviewer's Bash session — agents/reviewers/skills READ the pack if present and fall back to the raw docs if absent; they never re-invoke the freshness validator themselves (ADR-012 §Decision-6, ADR-004 §negative-consequence-2). Freshness is enforced upstream, once, by the flow's `context_pack` `runs` step.
 
 ## The artifact
 
@@ -50,7 +50,7 @@ node governance/context-pack/build.js verify  --change-id <id> [--root <path>]
 
 The build **must** produce byte-identical output across repeated runs from identical sources, regardless of:
 
-- **Wall-clock** — no `Date.now()`, no timestamp of any kind in the pack (the telemetry JSONL is where timestamps legitimately live — see [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md) §Decision-7).
+- **Wall-clock** — no `Date.now()`, no timestamp of any kind in the pack (the telemetry JSONL is where timestamps legitimately live — see [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md) §Decision-7).
 - **Process identity** — no PID, no environment-derived randomness.
 - **Working directory** — every path stored in `sources[]` is REPO-RELATIVE; building the same source tree from two different absolute cwd's produces the same bytes.
 - **Discovery order** — `sources[]` is always emitted path-sorted, independent of the order sources were discovered on disk.
@@ -59,4 +59,4 @@ A rebuild that produces different bytes from unchanged sources is a bug in the b
 
 ## Where the flow calls this
 
-Neither `build` nor `verify` are invoked by agents/reviewers directly. The flow's `context_pack` phase (a `runs` step between `readiness` and `implement` in both `governance/flows/full.yaml` and `governance/flows/fast.yaml`) checks freshness first and lazily rebuilds on staleness — best-effort, fail-safe: both outcomes route to `implement`. See [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md) §Decision-5 for the routing rationale.
+Neither `build` nor `verify` are invoked by agents/reviewers directly. The flow's `context_pack` phase (a `runs` step between `readiness` and `implement` in both `governance/flows/full.yaml` and `governance/flows/fast.yaml`) checks freshness first and lazily rebuilds on staleness — best-effort, fail-safe: both outcomes route to `implement`. See [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md) §Decision-5 for the routing rationale.

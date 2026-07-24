@@ -58,7 +58,7 @@ export function parseResumeOutput(tokens) {
   return out;
 }
 
-// ── telemetry kwargs (ADR-010 §Decision-7/8 — additive, opt-in) ──────────
+// ── telemetry kwargs (ADR-012 §Decision-7/8 — additive, opt-in) ──────────
 //
 // `resume` additionally accepts `--<kwarg>=<value>` tokens carrying the
 // parent dispatcher's own usage numbers for THIS dispatch (cache_read,

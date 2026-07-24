@@ -69,7 +69,7 @@ function cmdResume(argv) {
   const value = argv[1];
   if (!flowId || value === undefined || value === "") fail("usage: resume <flow_id> <outcome> [key=value ...] [--tokens-cache-read=N] [--tokens-cache-creation=N] [--tokens-output=N] [--duration-ms=N] [--pack-rebuilt=true|false]");
   // key=value tokens after the outcome are structured outputs (resume-output.js);
-  // --<kwarg>=<value> tokens are the OPTIONAL telemetry kwargs (ADR-010) — additive,
+  // --<kwarg>=<value> tokens are the OPTIONAL telemetry kwargs (ADR-012) — additive,
   // backward compatible: absent kwargs = no telemetry, no error. Both kinds are
   // validated and split apart BEFORE any state is touched, same fail-closed contract.
   let resumeOutput;

@@ -1,12 +1,12 @@
 // governance/telemetry/append.js — append-only JSONL writer for per-change
-// context-pack telemetry (ADR-010 §Decision-7).
+// context-pack telemetry (ADR-012 §Decision-7).
 //
 // Zero-dep. Resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via
 // findProjectRoot / AIDAKIT_PROJECT_ROOT — the same convention as
 // check-doc-manifest.js. Always opens in APPEND mode: never rewrites,
 // truncates or reorders prior lines.
 //
-// The telemetry file is EXEMPT from the pack's byte-stability rule (ADR-010
+// The telemetry file is EXEMPT from the pack's byte-stability rule (ADR-012
 // §Decision-7 explicitly): `ts` is a real wall-clock timestamp, because this
 // file's whole purpose is a chronological, ephemeral, gitignored per-dispatch
 // log — unlike `.context-pack.md`, it is never injected as a stable prefix.

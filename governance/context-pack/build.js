@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// governance/context-pack/build.js — deterministic build/verify/rebuild for `.context-pack.md` (ADR-010).
+// governance/context-pack/build.js — deterministic build/verify/rebuild for `.context-pack.md` (ADR-012).
 //
 // Placement note (design.md §"The new flow phase"): this file lives under
 // `governance/`, NOT `skills/`, so it is reachable from a flow's `runs` step
@@ -9,7 +9,7 @@
 // `skills/context-pack/SKILL.md` is the human/agent-facing contract that
 // documents this script; this file is the mechanical implementation.
 //
-// Determinism (byte-stability, ADR-010 §Decision-3): the build reads ONLY the
+// Determinism (byte-stability, ADR-012 §Decision-3): the build reads ONLY the
 // bytes of the change's own proposal.md/design.md/tasks.md and the ADRs/specs
 // they cite — no Date.now(), no process.pid, no random ids, no absolute
 // cwd-derived paths ever reach the output. `sources[]` paths are stored

@@ -24,7 +24,7 @@
 | [ADR-007](ADR-007-roadmap-status-from-shared-git.md) | The roadmap derives status from the shared git state, so it is single-valued across worktrees (amends ADR-002) | accepted | 2026-07-24 |
 | [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) | Autonomous PR merge, opt-in per project — scoped supersession of GOVERNANCE.md §1 rule 1 | accepted | 2026-07-24 |
 | [ADR-009](ADR-009-flow-commits-plan-early.md) | The full flow commits the plan when it is authored, so in-progress derives from shared git (completes ADR-007) | accepted | 2026-07-24 |
-| [ADR-010](ADR-010-context-pack-per-change.md) | The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix | proposed | 2026-07-24 |
+| [ADR-012](ADR-012-context-pack-per-change.md) | The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix | proposed | 2026-07-24 |
 
 ## Thematic grouping
 
@@ -33,6 +33,6 @@
 - **Flow engine:** [ADR-004](ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract for validator resolution independent of cwd; [ADR-006](ADR-006-flow-values-as-data.md) — flow values are data (env-passed `runs` interpolation + structured invoke outputs); [ADR-009](ADR-009-flow-commits-plan-early.md) — the `full` flow's `commit_plan` step commits the authored plan.
 - **Command surface:** [ADR-005](ADR-005-command-namespacing.md) — `flow` group prefix, mechanical grouping rule, and the locked `flow-<name>` naming syntax.
 - **Delivery & shipping governance:** [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) — autonomous PR merge, opt-in per project, as a scoped supersession of GOVERNANCE.md §1 rule 1.
-- **Context caching:** [ADR-010](ADR-010-context-pack-per-change.md) — the context pack as a first-class per-change artifact (L1 of the caching epic), byte-stable and source-scoped invalidated, injected as a stable prefix at every dispatcher/reviewer, with a freshness validator kept separate from the doc-manifest.
+- **Context caching:** [ADR-012](ADR-012-context-pack-per-change.md) — the context pack as a first-class per-change artifact (L1 of the caching epic), byte-stable and source-scoped invalidated, injected as a stable prefix at every dispatcher/reviewer, with a freshness validator kept separate from the doc-manifest.
 
 <!-- The DISCOVERY index (DECISION_INDEX.md, with decision trees and tours by role) is created once this repo reaches ≥15 ADRs (DOCS.md §1). -->

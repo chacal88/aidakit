@@ -28,12 +28,12 @@ function run(...targets) {
 }
 
 const HEAD = "- **Status:** accepted\n- **Date:** 2026-07-20\n";
-const adrPT = (extra = "") => `# ADR-010: something\n\n${HEAD}\n## Contexto\nx\n## Decisão\nx\n## Consequências\nx\n## Alternativas consideradas\nx\n${extra}`;
+const adrPT = (extra = "") => `# ADR-012: something\n\n${HEAD}\n## Contexto\nx\n## Decisão\nx\n## Consequências\nx\n## Alternativas consideradas\nx\n${extra}`;
 const adrEN = (extra = "") => `# ADR-011: something\n\n${HEAD}\n## Context\nx\n## Decision\nx\n## Consequences\nx\n## Alternatives considered\nx\n${extra}`;
 
 // PT passes.
-write("docs/decisions/ADR-010-em-portugues.md", adrPT());
-let r = run(join(tmp, "docs/decisions/ADR-010-em-portugues.md"));
+write("docs/decisions/ADR-012-em-portugues.md", adrPT());
+let r = run(join(tmp, "docs/decisions/ADR-012-em-portugues.md"));
 ok(r.code === 0 && r.json.ok, "ADR with PT headings passes");
 
 // EN passes (the bug we were fixing).

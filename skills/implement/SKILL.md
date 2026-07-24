@@ -20,7 +20,7 @@ Precedence: if it diverges from [PROCESS.md](../../PROCESS.md) / [GOVERNANCE.md]
 - An approved plan for the change (`docs/features/<change-id>/tasks.md` or the OpenSpec change at `openspec/changes/<change-id>/tasks.md`), with `Status: APPROVED` from [aidakit:readiness](../readiness/SKILL.md).
 - The `aidakit:implementer` agent available.
 - The change's branch/worktree already created (never `main`).
-- **Context pack, read-if-present.** When `docs/features/<change-id>/.context-pack.md` exists, inject it into the dispatcher's prompt as the stable prefix of durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — see [ADR-010](../../docs/decisions/ADR-010-context-pack-per-change.md). Freshness is guaranteed upstream by the flow's `context_pack` phase; this skill never runs the pack's freshness validator itself. **If the pack is absent**, fall back to the raw `proposal.md`/`design.md`/`tasks.md`/cited ADRs, exactly as before — a missing pack never fails the dispatch.
+- **Context pack, read-if-present.** When `docs/features/<change-id>/.context-pack.md` exists, inject it into the dispatcher's prompt as the stable prefix of durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — see [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md). Freshness is guaranteed upstream by the flow's `context_pack` phase; this skill never runs the pack's freshness validator itself. **If the pack is absent**, fall back to the raw `proposal.md`/`design.md`/`tasks.md`/cited ADRs, exactly as before — a missing pack never fails the dispatch.
 
 ## Doctrine (the law the dispatch carries)
 

@@ -62,7 +62,7 @@
 
 ### 4b. GREEN
 
-- [x] N4b-i. Create `skills/context-pack/SKILL.md` (contract only) with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no PID, no tmp-path, no random IDs). Document that the underlying node script lives at `governance/context-pack/build.js` (reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
+- [x] N4b-i. Create `skills/context-pack/SKILL.md` (contract only) with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no PID, no tmp-path, no random IDs). Document that the underlying node script lives at `governance/context-pack/build.js` (reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Cite [ADR-012](../../decisions/ADR-012-context-pack-per-change.md). (AC #4)
 - [x] N4b-ii. Create `governance/context-pack/build.js` (NOT under `skills/` — placement under `governance/` is what makes it reachable through `$AIDAKIT_GOVERNANCE`; `skills/` is a sibling of `governance/`, not a child, so a `skills/context-pack/build.js` node script would not be callable from a `runs` step): discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). Zero-dep node, mirrors the invocation contract of `governance/validators/check-doc-manifest.js`. (AC #1, #3, #4)
 
 ### 4c. REFACTOR
@@ -124,7 +124,7 @@
 
 ### 7d. RED — engine extension for the live write-site
 
-> Context (see [design.md](design.md) §"Live write-site — engine extension" and [ADR-010](../../decisions/ADR-010-context-pack-per-change.md) Consequences): [`governance/engine/steps/invoke.js`](../../../governance/engine/steps/invoke.js) is IoC — it pauses, asks the parent Claude to dispatch, resumes on `node governance/cli.js resume …`. The engine itself never observes the SDK response, so the only sanctioned live write-site for `.telemetry.jsonl` is the resume handler, extended additively to accept usage kwargs from the parent.
+> Context (see [design.md](design.md) §"Live write-site — engine extension" and [ADR-012](../../decisions/ADR-012-context-pack-per-change.md) Consequences): [`governance/engine/steps/invoke.js`](../../../governance/engine/steps/invoke.js) is IoC — it pauses, asks the parent Claude to dispatch, resumes on `node governance/cli.js resume …`. The engine itself never observes the SDK response, so the only sanctioned live write-site for `.telemetry.jsonl` is the resume handler, extended additively to accept usage kwargs from the parent.
 
 - [x] N7d-i. Test §resume-parses-telemetry-kwargs: `node governance/cli.js resume <flow_id> <outcome> change_id=<id> --tokens-cache-read=18320 --tokens-cache-creation=1240 --tokens-output=512 --duration-ms=11530 --pack-rebuilt=false` parses without error; the existing `<flow_id> <outcome> [key=value ...]` signature keeps working; the new kwargs are validated as safe single tokens under the same rule as `resume-output.js` (integers for the counters, `true|false` for `pack-rebuilt`); a malformed kwarg errors out BEFORE any state is touched. (AC #9)
 - [x] N7d-ii. Test §invoke-forwards-kwargs-to-helper: when the resume handler receives the telemetry kwargs, it forwards them to `governance/telemetry/append.js` with `subagent` derived from `step.invoke_target`, `pack_size` computed from the on-disk pack (0 if absent), and `ts` set to the current UTC ISO-8601 timestamp; one JSONL line is appended to `.aidakit/tasks/<change_id>/.telemetry.jsonl` with the six declared fields plus `ts`. (AC #9)
@@ -151,24 +151,24 @@
 
 ### 8b. GREEN
 
-- [x] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #10)
+- [x] N8b-i. Edit [`skills/learn/SKILL.md`](../../../skills/learn/SKILL.md): add §4.5 "Context-pack telemetry rollup" that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl`, aggregates it, and writes the rollup section into `evidence.md` idempotently. Cite [ADR-012](../../decisions/ADR-012-context-pack-per-change.md). (AC #10)
   - When `.telemetry.jsonl` is absent OR empty (zero lines), the rollup section written into `evidence.md` says exactly `No telemetry captured for this run.` instead of crashing on a missing file or zero-division on empty aggregates. The section header itself is still written (so the idempotent replacement in N8a-ii keeps working on the next run when telemetry does arrive).
 
 ### 8c. REFACTOR
 
 - [x] N8c. Re-run §learn-* → green.
 
-## 9. ADR-010 + index update
+## 9. ADR-012 + index update
 
 ### 9a. RED
 
-- [x] N9a-i. Test §adr-010-passes-format: `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` exits 0. (AC #13)
-- [x] N9a-ii. Test §adr-010-indexed: `docs/decisions/README.md` contains a row for `ADR-010` in the ID table AND a mention under a thematic bucket. (AC #13)
+- [x] N9a-i. Test §adr-010-passes-format: `node governance/validators/check-adr-format.js docs/decisions/ADR-012-context-pack-per-change.md` exits 0. (AC #13)
+- [x] N9a-ii. Test §adr-010-indexed: `docs/decisions/README.md` contains a row for `ADR-012` in the ID table AND a mention under a thematic bucket. (AC #13)
 
 ### 9b. GREEN
 
-- [x] N9b-i. Create [`docs/decisions/ADR-010-context-pack-per-change.md`](../../decisions/ADR-010-context-pack-per-change.md) with the five sections (Status+Date · Context · Decision · Consequences · Alternatives considered) mirroring [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md). Status: `Proposed` at authoring time, moves to `accepted` in the same commit that merges this change. (AC #13)
-- [x] N9b-ii. Edit [`docs/decisions/README.md`](../../decisions/README.md): add the ADR-010 row to the index table and a bullet under an appropriate thematic bucket (Context caching — new bucket, or extend Learning & memory). (AC #13)
+- [x] N9b-i. Create [`docs/decisions/ADR-012-context-pack-per-change.md`](../../decisions/ADR-012-context-pack-per-change.md) with the five sections (Status+Date · Context · Decision · Consequences · Alternatives considered) mirroring [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md). Status: `Proposed` at authoring time, moves to `accepted` in the same commit that merges this change. (AC #13)
+- [x] N9b-ii. Edit [`docs/decisions/README.md`](../../decisions/README.md): add the ADR-012 row to the index table and a bullet under an appropriate thematic bucket (Context caching — new bucket, or extend Learning & memory). (AC #13)
 
 ### 9c. REFACTOR
 
@@ -187,5 +187,5 @@
 - [x] N11-ii. All `governance/__tests__/*.test.mjs` → green (including the new `context-pack.test.mjs`).
 - [x] N11-iii. `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `context-pack-l1` derives `in-progress`.
 - [x] N11-iv. `node governance/validators/check-links.js docs/features/context-pack-l1` → exit 0.
-- [x] N11-v. `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` → exit 0.
+- [x] N11-v. `node governance/validators/check-adr-format.js docs/decisions/ADR-012-context-pack-per-change.md` → exit 0.
 - [x] N11-vi. `node governance/validators/check-doc-manifest.js .aidakit/tasks/context-pack-l1/doc-manifest.json` → exit 0 (produced by the flow's `document` step; verified end-to-end that a stale context pack does NOT trip this validator — AC #12).
