@@ -69,29 +69,40 @@ Verify (`aidakit:context-pack verify`) is a thin wrapper around the two validato
 
 ### The new flow phase: `context_pack` (between `readiness` and `implement`)
 
-Both `full.yaml` and `fast.yaml` gain a new `runs` step. Placement is right after `readiness` (approved → `context_pack`) and before `implement`. Contract: verify freshness; if stale, rebuild lazily; then route to `implement`. Never blocks the flow — a build failure (unlikely; the skill is deterministic) routes to `implement` anyway (best-effort, mirroring `commit_plan`'s fail-safe posture from [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)); the dispatchers themselves tolerate the missing pack by falling back to reading the raw docs.
+Both `full.yaml` and `fast.yaml` gain a new `runs` step (type: `runs`, NOT `invoke` — this is critical: only `runs` steps receive the `$AIDAKIT_GOVERNANCE` env var per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md), and the freshness/build commands depend on it). Placement is right after `readiness` (approved → `context_pack`) and before `implement`. Contract: verify freshness; if stale, rebuild lazily; then route to `implement`. Never blocks the flow — a build failure (unlikely; the build is deterministic) routes to `implement` anyway (best-effort, mirroring `commit_plan`'s fail-safe posture from [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)); the dispatchers themselves tolerate the missing pack by falling back to reading the raw docs.
 
-Command shape (illustrative, values-as-data per [ADR-006](../../decisions/ADR-006-flow-values-as-data.md); the actual command string is finalized during implementation):
+**Insertion points in the flow YAMLs** (confirmed by inspection):
+
+- `full.yaml`: change `readiness.on_result.approved` from `implement` to `context_pack`; the new `context_pack` step routes `on_success: implement` and `on_failure: implement`. `full.yaml` also loops back to `implement` from `bench_outcome`, `check_review_bench`, and `hardening` — those back-edges are LEFT UNCHANGED. Reason: on any re-entry to `implement` after the first pass, the pack file already exists on disk (dispatcher writes never invalidate it — the pack only invalidates when a `sources[]` file changes, and back-edges do not necessarily edit sources). Re-verifying freshness on every back-edge would either (a) rebuild on every mutation of proposal/design/tasks (fine but redundant) or (b) do nothing (waste). The `context_pack` phase runs ONCE per plan-approval; any staleness that develops during implementation is handled by the read-if-present fallback in the dispatcher wrapper.
+- `fast.yaml`: same insertion between `readiness` (line 100) and `implement` (line 113). Same back-edges, same reasoning.
+
+The `runs` step's command executes the freshness validator; on non-zero exit, it invokes the pack build script (which is also a node file under `governance/` — see §File structure below — so `$AIDAKIT_GOVERNANCE` reaches it cleanly). Both node invocations use double-quoted `$AIDAKIT_GOVERNANCE/<path>` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §Decision.
+
+Command shape (values-as-data per [ADR-006](../../decisions/ADR-006-flow-values-as-data.md); the exact string below is what the implementer writes into `full.yaml` and `fast.yaml`):
 
 ```
 node "$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js" \
   "docs/features/${context.select.change_id}/.context-pack.md" \
-  || node "$AIDAKIT_GOVERNANCE/skills/context-pack/build.js" \
+  || node "$AIDAKIT_GOVERNANCE/context-pack/build.js" \
        --change-id "${context.select.change_id}"
 ```
+
+Note the build script path: `$AIDAKIT_GOVERNANCE/context-pack/build.js` (i.e. `governance/context-pack/build.js`), NOT `$AIDAKIT_GOVERNANCE/skills/context-pack/build.js`. Reason: `$AIDAKIT_GOVERNANCE` points at the `governance/` directory itself ([ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)); `skills/` is a sibling of `governance/`, not a child, so the skills path is not reachable through the env contract. The skill (`skills/context-pack/SKILL.md`) remains the human/agent-facing contract that documents subcommands and discipline; the actual node script lives under `governance/context-pack/` so `runs` steps can call it directly.
 
 Routing:
 
 - `on_success: implement` — pack fresh OR successfully rebuilt.
 - `on_failure: implement` — build failed; the flow proceeds and dispatchers degrade gracefully. A build regression surfaces as a rollup finding in `evidence.md` via telemetry, not as a hard stop.
 
-### Dispatcher/reviewer integration: verify-then-inject as a stable prefix
+### Dispatcher/reviewer integration: read-if-present, freshness upstream
 
 Every dispatcher/reviewer named in the epic changes the same way, mechanically:
 
 1. On entry, resolve `docs/features/<change_id>/.context-pack.md`.
-2. If it exists and `check-context-pack-freshness.js` passes → read the pack and inject it as the stable prefix of the agent's context (before the diff/prompt/task). The agent is instructed via its SKILL/agent prompt to treat the pack as authoritative for durable context and to open the pointed-at files on demand only.
-3. If the pack is absent or stale → the dispatcher logs `pack_rebuilt: false` in telemetry, falls back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs the old way, and completes normally. This graceful-degradation path is what lets the change roll out one dispatcher at a time.
+2. **If the file exists → read it and inject it as the stable prefix of the agent's context** (before the diff/prompt/task). Agents/reviewers do NOT independently re-validate freshness. Freshness is guaranteed by the upstream `context_pack` flow phase — a `runs` step that DOES receive `$AIDAKIT_GOVERNANCE` — which runs immediately before every group of dispatcher/reviewer invocations. If the pack is stale at agent-read time, that is a flow-engine bug (the phase failed to fire before this group), not an agent responsibility. The agent is instructed via its SKILL/agent prompt to treat the pack as authoritative for durable context and to open the pointed-at files on demand only.
+3. **If the pack is absent → the dispatcher logs `pack_rebuilt: false` in telemetry, falls back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs the old way, and completes normally.** This graceful-degradation path is what lets the change roll out one dispatcher at a time; a change that hasn't run through the new flow phase (older changes, in-flight worktrees) still works.
+
+Rationale for the contract split — per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2, `$AIDAKIT_GOVERNANCE` is injected into the child env of `runs` steps ONLY. Agent/skill Bash sessions never receive it — the exact gap tracked as `agent-validator-paths` in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md), which remains OPEN and is explicitly out of scope for this change. Having agents shell out to `check-context-pack-freshness.js` would either require them to reinvent path resolution (violating the ADR-004 contract by design) or would fail at runtime in any repo where `governance/` is not co-located with `cwd`. The upstream `runs` phase sidesteps the whole class of problem: it validates once, in the one place where the env contract already works.
 
 Why the SAME bytes across dispatches: preserving whatever same-`subagent_type` cache reuse the SDK does grant. This is additive on top of the size-reduction win — no dispatcher depends on it.
 
@@ -127,7 +138,8 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 
 | Surface | Path | Role in this change |
 |---|---|---|
-| Skills | `skills/context-pack/` (new), `skills/learn/` (modify) | Author the pack; distill the rollup |
+| Skills | `skills/context-pack/SKILL.md` (new, contract only), `skills/learn/` (modify) | Document the pack skill contract; distill the rollup |
+| Governance code | `governance/context-pack/build.js` (new) | The deterministic build implementation, reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) |
 | Agents | `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md` | Verify-then-inject the pack |
 | Flow YAMLs | `governance/flows/full.yaml`, `governance/flows/fast.yaml` | Insert `context_pack` phase between `readiness` and `implement` |
 | Validators | `governance/validators/check-context-pack.js` (new), `governance/validators/check-context-pack-freshness.js` (new) | Byte-stability + hash-invalidation; separate from `check-doc-manifest.js` |
@@ -138,8 +150,8 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 
 **CREATE**
 
-- `skills/context-pack/SKILL.md` — the skill's authoritative spec: subcommands `build`, `verify`, `rebuild`; deterministic-build discipline; where the pack lives; how it discovers `sources[]`.
-- `skills/context-pack/build.js` — the build implementation (deterministic, LF, path-sorted, no wall-clock).
+- `skills/context-pack/SKILL.md` — the skill's authoritative (human/agent-facing) contract: subcommands `build`, `verify`, `rebuild`; deterministic-build discipline; where the pack lives; how it discovers `sources[]`. The SKILL.md documents that the underlying node script lives at `governance/context-pack/build.js` (Option A resolution — see §The new flow phase above), so `runs` steps can invoke it via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md).
+- `governance/context-pack/build.js` — the build implementation (deterministic, LF, path-sorted, no wall-clock, no PID, no tmp-path). Colocated under `governance/` so it is reachable from `runs` steps through the `$AIDAKIT_GOVERNANCE` env contract; `skills/context-pack/SKILL.md` remains the human-facing contract that documents it.
 - `governance/validators/check-context-pack.js` — byte-stability validator; contract identical to sibling validators (`AIDAKIT_GOVERNANCE`-invoked, JSON+stderr output, exit 0/1/2).
 - `governance/validators/check-context-pack-freshness.js` — hash-invalidation validator scoped to the pack's own `sources[]`; separate from `check-doc-manifest.js`.
 - `governance/__tests__/context-pack.test.mjs` — parser-style tests: byte-stability (rebuild produces identical bytes), fuzz-with-system-time (produces identical bytes even when the wall-clock advances), freshness pass/fail cases, separation from doc-manifest (a stale pack does not trip doc-manifest), telemetry-line JSON validity, `aidakit:learn` rollup writing, contract test per dispatcher/reviewer.
@@ -150,8 +162,8 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 
 - `governance/flows/full.yaml` — insert `context_pack` step between `readiness` (approved → `context_pack`) and `implement`; route `on_success` and `on_failure` to `implement`.
 - `governance/flows/fast.yaml` — same insertion between `readiness` and `implement`.
-- `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md` — extend the Protocol with a "Step 0.5 — Load the context pack" clause: read `docs/features/<change_id>/.context-pack.md` when it exists AND freshness passes; treat it as authoritative for durable context; open cited files only on demand; fall back to raw docs when absent.
-- `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — same verify-then-inject clause added to the Prerequisites section so the agents dispatched under these skills receive the pack via their invocation prompt.
+- `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md` — extend the Protocol with a "Step 0.5 — Load the context pack" clause: read `docs/features/<change_id>/.context-pack.md` when the file exists; treat it as authoritative for durable context; open cited files only on demand; fall back to raw docs (`proposal.md`/`design.md`/`tasks.md`/cited ADRs) when the pack is absent. Agents do NOT run `check-context-pack-freshness.js` — freshness is guaranteed upstream by the `context_pack` flow phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2 (agent Bash sessions do not receive `$AIDAKIT_GOVERNANCE`; the `agent-validator-paths` gap in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) remains out of scope for this change).
+- `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — same read-if-present clause added to the Prerequisites section so the agents dispatched under these skills receive the pack via their invocation prompt. No freshness invocation from these skills either — same ADR-004 reasoning.
 - `skills/learn/SKILL.md` — extend §4 (Record the scoped memory) or add a §4.5 that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl` and writes a rollup into `evidence.md`.
 - `docs/decisions/README.md` — add the ADR-010 index row and, if the thematic grouping applies, cite it under a "Context caching" bucket (or extend an existing bucket).
 
@@ -173,7 +185,7 @@ Recommendation: start from "Likely"; adjust if the SDK telemetry field discovery
 
 | Component | Hours | Type | Risk |
 |---|---|---|---|
-| `skills/context-pack/SKILL.md` + `build.js` (deterministic build) | 2 | Core | LOW |
+| `skills/context-pack/SKILL.md` (contract) + `governance/context-pack/build.js` (deterministic build) | 2 | Core | LOW |
 | `governance/validators/check-context-pack.js` (byte-stability) | 1 | Core | LOW |
 | `governance/validators/check-context-pack-freshness.js` (source-scoped hash-check) | 1 | Core | LOW |
 | `governance/__tests__/context-pack.test.mjs` (byte-stability fuzz + freshness cases + separation from doc-manifest + telemetry-line JSON + per-dispatcher contract test) | 2 | Testing | MEDIUM |

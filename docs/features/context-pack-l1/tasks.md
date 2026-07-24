@@ -52,15 +52,18 @@
 ### 4a. RED
 
 - [ ] N4a-i. Test §build-deterministic-twice: call `build` twice from identical sources; `diff -q pack1 pack2` returns nothing (byte-identical). (AC #4, #11)
-- [ ] N4a-ii. Test §build-deterministic-under-wall-clock-fuzz: mock `Date.now`/env `SOURCE_DATE_EPOCH` to advance across builds; output bytes remain identical. (AC #11)
+- [ ] N4a-ii. Test §build-deterministic-under-host-fuzz: broaden AC #11 (byte-stability) coverage by fuzzing every host-varying vector the pack schema forbids. Sub-bullets:
+  - **N4a-ii-a. Wall-clock fuzz** — mock `Date.now` and/or set env `SOURCE_DATE_EPOCH` to different values across two consecutive `build` invocations from identical sources; output bytes remain identical. (AC #11)
+  - **N4a-ii-b. PID fuzz** — run one `build` in the current process (PID A) and a second `build` in a forked/spawned subprocess (PID B, e.g. via `node:child_process.spawnSync`) from the same source tree; `diff -q` returns nothing. Alternative equivalent: inject a fake PID via env (e.g. `FAKE_PID=99999`) if the build helper reads a PID at all — the assertion is that no PID reaches the output regardless of vector. (AC #11)
+  - **N4a-ii-c. Tmp-cwd fuzz** — copy the source tree into `/tmp/build-a-<rand>` and `/tmp/build-b-<rand>` (byte-identical trees, different absolute paths), run `build` from each cwd, assert byte-identical pack output. Guarantees no absolute path from the build environment leaks into the pack (paths inside the pack must be repo-relative, not cwd-relative). (AC #11)
 - [ ] N4a-iii. Test §build-sources-path-sorted: input sources in random order → `sources[]` in the output is path-sorted lexicographically.
 - [ ] N4a-iv. Test §build-rebuild-refreshes-hashes: mutate a source, run `rebuild`; the pack's `sources[N].sha256` for that path updates and `built_at_source_hash` changes. (AC #7)
 - [ ] N4a-v. Test §verify-wraps-both-validators: `verify` returns non-zero if either byte-stability OR freshness fails. (AC #4)
 
 ### 4b. GREEN
 
-- [ ] N4b-i. Create `skills/context-pack/SKILL.md` with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no random IDs). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
-- [ ] N4b-ii. Create `skills/context-pack/build.js`: discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). (AC #1, #3, #4)
+- [ ] N4b-i. Create `skills/context-pack/SKILL.md` (contract only) with the three subcommands documented and the deterministic-build discipline stated as an inviolable rule (LF line endings, path-sorted, no wall-clock, no PID, no tmp-path, no random IDs). Document that the underlying node script lives at `governance/context-pack/build.js` (reachable from `runs` steps via `$AIDAKIT_GOVERNANCE/context-pack/build.js` per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Cite [ADR-010](../../decisions/ADR-010-context-pack-per-change.md). (AC #4)
+- [ ] N4b-ii. Create `governance/context-pack/build.js` (NOT under `skills/` — placement under `governance/` is what makes it reachable through `$AIDAKIT_GOVERNANCE`; `skills/` is a sibling of `governance/`, not a child, so a `skills/context-pack/build.js` node script would not be callable from a `runs` step): discover sources from the change dir (proposal/design/tasks + cited ADRs/specs), compute sha256, render the six sections with pointers-only content, write byte-stably. Support `build`, `rebuild` (=`build --force`), `verify` (runs both validators). Zero-dep node, mirrors the invocation contract of `governance/validators/check-doc-manifest.js`. (AC #1, #3, #4)
 
 ### 4c. REFACTOR
 
@@ -70,31 +73,33 @@
 
 ### 5a. RED
 
-- [ ] N5a-i. Test §flow-full-phase-inserted: load `full.yaml`; assert a `context_pack` step exists between `readiness` and `implement`; `readiness.on_result.approved === "context_pack"`; `context_pack.on_success === "implement"`; `context_pack.on_failure === "implement"` (best-effort). (AC #5)
-- [ ] N5a-ii. Test §flow-fast-phase-inserted: same assertions on `fast.yaml`. (AC #5)
-- [ ] N5a-iii. Test §flow-phase-uses-governance-env: the `context_pack.command` string contains `"$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js"` (invocation follows [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). (AC #5)
+- [ ] N5a-i. Test §flow-full-phase-inserted: load `full.yaml`; assert a `context_pack` step exists with `type: runs` (NOT `invoke` — the `$AIDAKIT_GOVERNANCE` env var only reaches `runs`-step children per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §Decision); asserts the wiring `readiness.on_result.approved === "context_pack"`, `context_pack.on_success === "implement"`, `context_pack.on_failure === "implement"` (best-effort, fail-safe). (AC #5)
+- [ ] N5a-ii. Test §flow-fast-phase-inserted: same assertions on `fast.yaml` — `type: runs`, inserted between `readiness` (currently at line 100) and `implement` (currently at line 113), same routing. (AC #5)
+- [ ] N5a-iii. Test §flow-phase-uses-governance-env: the `context_pack.command` string contains BOTH `"$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js"` AND `"$AIDAKIT_GOVERNANCE/context-pack/build.js"` (the build script lives under `governance/context-pack/`, not `governance/skills/context-pack/` — see §4b-ii and [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)). Both invocations are double-quoted. (AC #5)
 - [ ] N5a-iv. Test §flow-phase-interpolates-change-id: the command references `${context.select.change_id}` inside double quotes ([ADR-006](../../decisions/ADR-006-flow-values-as-data.md)). (AC #5)
+- [ ] N5a-v. Test §flow-back-edges-unchanged: assert that back-edges to `implement` from `check_implement_bench.on_failure`, `check_review_bench.on_failure` (which routes to `review_bench` in full.yaml, but the pattern applies to any flow with implement back-edges), `bench_outcome.on_failure`, `hardening.on_failure` are LEFT UNCHANGED (the `context_pack` phase runs ONCE per plan-approval, not on every back-edge into `implement`; back-edge staleness is handled by the dispatcher's read-if-present fallback). (AC #5)
 
 ### 5b. GREEN
 
-- [ ] N5b-i. Edit [`governance/flows/full.yaml`](../../../governance/flows/full.yaml): change `readiness.on_result.approved` from `implement` to `context_pack`; insert a `context_pack` `runs` step whose command runs the freshness validator and, on failure, invokes the `build` script; route `on_success: implement` and `on_failure: implement`. (AC #5)
-- [ ] N5b-ii. Edit [`governance/flows/fast.yaml`](../../../governance/flows/fast.yaml): identical insertion between `readiness` and `implement`. (AC #5)
+- [ ] N5b-i. Edit [`governance/flows/full.yaml`](../../../governance/flows/full.yaml): change `readiness.on_result.approved` from `implement` (line 157) to `context_pack`; insert a `context_pack` step with `type: runs` between `readiness` (lines 148-159) and `implement` (line 161). The step's `command` runs `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js" "docs/features/${context.select.change_id}/.context-pack.md"` and on non-zero exit invokes `node "$AIDAKIT_GOVERNANCE/context-pack/build.js" --change-id "${context.select.change_id}"` (chained via `||`, mirroring the shape shown in [design.md](design.md) §"The new flow phase"). Route `on_success: implement` and `on_failure: implement`. Do NOT touch the back-edges to `implement` from `check_implement_bench` (line 188), `bench_outcome` (line 222), or `hardening` (line 232). (AC #5)
+- [ ] N5b-ii. Edit [`governance/flows/fast.yaml`](../../../governance/flows/fast.yaml): identical insertion between `readiness` (line 100) and `implement` (line 113); same routing; same back-edge preservation.
 
 ### 5c. REFACTOR
 
 - [ ] N5c. Re-run §flow-* → green; run `node governance/__tests__/engine.test.mjs` → no regression.
 
-## 6. Dispatcher/reviewer wiring (verify-then-inject, graceful fallback)
+## 6. Dispatcher/reviewer wiring (read-if-present, graceful fallback — freshness upstream)
 
 ### 6a. RED — contract test per dispatcher
 
 - [ ] N6a-i. Test §dispatcher-reads-pack-when-present: for each of `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md`, `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — grep-assert the file contains the marker string `context pack` AND references `docs/features/<change_id>/.context-pack.md` (or the templated equivalent). (AC #8)
 - [ ] N6a-ii. Test §dispatcher-falls-back-when-absent: same files contain an explicit fallback clause (regex: `fall.?back.*raw|absent.*proposal|pack.*absent`). (AC #8)
+- [ ] N6a-iii. Test §dispatcher-does-not-invoke-freshness-validator: grep-assert that NONE of the ten files above shell out to `check-context-pack-freshness.js` (regex: `check-context-pack-freshness`). Freshness is guaranteed by the upstream `context_pack` `runs` phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2 — agent Bash sessions do not receive `$AIDAKIT_GOVERNANCE`, and the `agent-validator-paths` gap in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) is explicitly out of scope for this change. (AC #8)
 
 ### 6b. GREEN
 
-- [ ] N6b-i. Add a "Step 0.5 — Load the context pack" clause to each of the seven agent files listed above: read `docs/features/<change_id>/.context-pack.md` when it exists AND freshness passes; treat the pack as authoritative for durable context; open pointed-at files on demand; **fall back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs directly when the pack is absent or stale — never fail the dispatch**. (AC #8)
-- [ ] N6b-ii. Add the equivalent clause to `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` under Prerequisites so their invocation prompt injects the pack. (AC #8)
+- [ ] N6b-i. Add a "Step 0.5 — Load the context pack" clause to each of the seven agent files listed above: **read `docs/features/<change_id>/.context-pack.md` when the file exists** (no freshness re-check — freshness is guaranteed by the upstream `context_pack` flow phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)); treat the pack as authoritative for durable context; open pointed-at files on demand; **fall back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs directly when the pack is absent — never fail the dispatch**. Do NOT instruct the agent to invoke `check-context-pack-freshness.js` — that validator is called only from the `context_pack` `runs` step, never from an agent/skill Bash session. (AC #8)
+- [ ] N6b-ii. Add the equivalent read-if-present clause to `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` under Prerequisites so their invocation prompt injects the pack. Same no-freshness-invocation rule. (AC #8)
 
 ### 6c. REFACTOR
 
@@ -150,7 +155,7 @@
 
 ## 10. Dogfood: build the pack for THIS change
 
-- [ ] N10. Run `node skills/context-pack/build.js --change-id context-pack-l1` → writes `docs/features/context-pack-l1/.context-pack.md`. Validate:
+- [ ] N10. Run `node governance/context-pack/build.js --change-id context-pack-l1` → writes `docs/features/context-pack-l1/.context-pack.md`. Validate:
   - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #1, #3, #11)
   - `node "$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js" docs/features/context-pack-l1/.context-pack.md` → exit 0. (AC #2, #6, #12)
   - Re-run `build` → produces byte-identical output (`diff -q` returns nothing). (AC #4)
