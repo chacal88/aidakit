@@ -1,6 +1,6 @@
 # aidakit
 
-Pre-[aida](../ai-dev-assistant/) development kit: while aida isn't ready, this plugin brings the full process to any project — guided architecture design, a spec-driven execution pipeline, document doctrine and governance with an active hook, and a searchable tool catalog.
+Pre-aida development kit: while aida isn't ready, this plugin brings the full process to any project — guided architecture design, a spec-driven execution pipeline, document doctrine and governance with an active hook, and a searchable tool catalog.
 
 > 📖 **New here? Read the [field guide / overview](docs/OVERVIEW.md)** — the whole kit on one page (a visual version is at [`docs/overview.html`](docs/overview.html)).
 

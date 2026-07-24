@@ -11,9 +11,14 @@
 // A link is "internal" if it doesn't start with http(s):// or mailto:. Anchors (#...) and
 // query (?...) are stripped before resolving the path. A link to a directory resolves
 // if the directory exists. It does NOT follow the external link (that's network — out of scope).
+//
+// The directory walk skips node_modules, .git*, .claude/ (nested worktree checkouts are
+// other branches' files, same skip as check-plugin-version.js) and docs/archive/ (WORM
+// jurisprudence — an archived doc's links reflect the tree at archive time, not today's).
+// Exclusions apply to the walk only; a file passed explicitly is always checked.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve, dirname, join } from "node:path";
+import { resolve, dirname, basename, join } from "node:path";
 
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 
@@ -26,6 +31,8 @@ function collectMd(paths) {
     if (st.isDirectory()) {
       for (const name of readdirSync(p)) {
         if (name === "node_modules" || name.startsWith(".git")) continue;
+        if (name === ".claude") continue; // nested worktree checkouts
+        if (name === "archive" && basename(p) === "docs") continue; // WORM archive
         walk(join(p, name));
       }
     } else if (p.endsWith(".md")) {
