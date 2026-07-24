@@ -350,6 +350,19 @@ function makeBuildProject(changeId = "fixture-build-change") {
   ok(before !== after && beforeTop !== afterTop, "§build-rebuild-refreshes-hashes: mutated source → sources[].sha256 and built_at_source_hash both change");
 }
 
+// REGRESSION (found during dogfood, N10): check-links.js resolves a markdown
+// link relative to the FILE's own directory (docs/features/<id>/), not the
+// repo root — so an ADR link rendered as a bare repo-relative href would be
+// reported broken. The ADRs section must emit a pack-relative link.
+{
+  const { root, changeId } = makeBuildProject("link-relative-change");
+  const { content } = buildPackContent({ root, changeId });
+  const packPath = join(root, "docs", "features", changeId, ".context-pack.md");
+  writeFileSync(packPath, content);
+  const r = run(join(GOV, "validators", "check-links.js"), [packPath]);
+  ok(r.code === 0 && r.json.ok, "§build-adr-links-resolve-from-pack-location: check-links.js sees no broken links in the built pack");
+}
+
 // N4a-v: verify returns non-zero if EITHER validator fails (byte-stability OR freshness).
 // (build.js's own subcommand token must come FIRST — it is not a validator, so it
 // does not take the shared `--json`-prefixed `run()` helper's argument shape.)

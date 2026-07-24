@@ -29,7 +29,7 @@
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { resolve, dirname, join } from "node:path";
+import { resolve, dirname, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import { findProjectRoot } from "../engine/project-root.js";
 
@@ -158,14 +158,24 @@ function renderDecisions(designText) {
   return headings.map((h) => `- design.md:${h.line} — ${h.text}`).join("\n");
 }
 
-function renderAdrs(adrPaths) {
+/** check-links.js resolves a markdown link relative to the FILE's own
+ * directory, not the repo root — the pack lives at
+ * docs/features/<changeId>/.context-pack.md, so a bare repo-relative href
+ * (e.g. "docs/decisions/ADR-004-....md") would resolve to a nonexistent
+ * nested path from there. Compute the link relative to the pack's own dir. */
+function linkFromPack(changeId, repoRelativeTarget) {
+  const packDir = join("docs", "features", changeId);
+  return relative(packDir, repoRelativeTarget).split("\\").join("/");
+}
+
+function renderAdrs(adrPaths, changeId) {
   if (adrPaths.length === 0) return "- (no ADRs cited)";
   return [...adrPaths]
     .sort()
     .map((p) => {
       const m = /ADR-(\d+)-([a-z0-9-]+)\.md$/.exec(p);
       const label = m ? `ADR-${m[1]}` : p;
-      return `- [${label}](${p}) — cited in this change's plan`;
+      return `- [${label}](${linkFromPack(changeId, p)}) — cited in this change's plan`;
     })
     .join("\n");
 }
@@ -234,7 +244,7 @@ export function buildPackContent({ root, changeId }) {
   const sections = [
     ["identity", renderIdentity(proposalText)],
     ["decisions", renderDecisions(designText)],
-    ["ADRs", renderAdrs(adrPaths)],
+    ["ADRs", renderAdrs(adrPaths, changeId)],
     ["specs", renderSpecs(specPaths)],
     ["code-map-pointers", renderCodeMapPointers(designText)],
     ["DoD", renderDoD(proposalText)],

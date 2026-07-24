@@ -183,9 +183,9 @@
 
 ## 11. Full suite + doc validators
 
-- [ ] N11-i. `node governance/__tests__/engine.test.mjs` → green (no regression).
-- [ ] N11-ii. All `governance/__tests__/*.test.mjs` → green (including the new `context-pack.test.mjs`).
-- [ ] N11-iii. `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `context-pack-l1` derives `in-progress`.
-- [ ] N11-iv. `node governance/validators/check-links.js docs/features/context-pack-l1` → exit 0.
-- [ ] N11-v. `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` → exit 0.
-- [ ] N11-vi. `node governance/validators/check-doc-manifest.js .aidakit/tasks/context-pack-l1/doc-manifest.json` → exit 0 (produced by the flow's `document` step; verified end-to-end that a stale context pack does NOT trip this validator — AC #12).
+- [x] N11-i. `node governance/__tests__/engine.test.mjs` → green (no regression).
+- [x] N11-ii. All `governance/__tests__/*.test.mjs` → green (including the new `context-pack.test.mjs`).
+- [x] N11-iii. `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `context-pack-l1` derives `in-progress`.
+- [x] N11-iv. `node governance/validators/check-links.js docs/features/context-pack-l1` → exit 0.
+- [x] N11-v. `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` → exit 0.
+- [x] N11-vi. `node governance/validators/check-doc-manifest.js .aidakit/tasks/context-pack-l1/doc-manifest.json` → exit 0 (produced by the flow's `document` step; verified end-to-end that a stale context pack does NOT trip this validator — AC #12).
