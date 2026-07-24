@@ -24,7 +24,8 @@
 - [ ] Author `governance/acceptance/parse-criteria.js` — shared helper (Node ESM, zero-dep) that takes `{ change_id, root }` and returns `{ criteria: [{ id, criterion, source: "brainstorm"|"plan" }], source_path }`. Precedence: `brainstorm.json` first; fall back to `proposal.md` `## Acceptance criteria`. Auto-slug the id when absent (kebab-case of the first 6 words of the prose, deduplicated across the list).
 - [ ] Update [agents/brainstorm.md](../../../agents/brainstorm.md) Output format §"Acceptance criteria" to specify the `- \`criterion-id\` — prose` line shape.
 - [ ] Update [skills/brainstorm/SKILL.md](../../../skills/brainstorm/SKILL.md) to reference the schema (doctrine layer; the agent enforces it).
-- [ ] Update [skills/plan/SKILL.md](../../../skills/plan/SKILL.md) to declare `## Acceptance criteria` as a MANDATORY section of `proposal.md` when the fast flow is used (already de-facto present in every completed change's proposal.md; documenting it makes it a contract).
+- [ ] Update [skills/plan/SKILL.md](../../../skills/plan/SKILL.md) to declare `## Acceptance criteria` as a NEW MANDATORY section of `proposal.md` for changes from this PR onward — distinct from the existing `## Exit criteria` section (which lists validator commands). Existing archived / in-flight proposals are grandfathered (`engine-max-visits`, `configurable-pr-automation`) — no retrofit required.
+- [ ] Update [docs/features/README.md](../README.md) with a one-line note that new proposals MUST carry `## Acceptance criteria` (observable-effect promises) in addition to `## Exit criteria` (validator commands) — the closest to a proposal template the kit has today, and the discovery surface a plan author reads before authoring `docs/features/<id>/proposal.md`.
 
 ### 2c. REFACTOR
 
