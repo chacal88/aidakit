@@ -4,10 +4,6 @@
 
 ## Now (in-progress / in-review)
 
-### Experiência de linha de comando dos flows — **in-progress**
-
-- Agrupamento de comandos + inputs — `command-grouping-and-inputs` → in-progress
-
 ### Coleiras mecânicas do flow engine — **in-progress**
 
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → in-progress
@@ -18,7 +14,7 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Experiência de linha de comando dos flows — **in-progress**
+### Experiência de linha de comando dos flows — **backlog**
 
 - Tabela de progresso do flow — `flow-run-progress-table` → backlog
 - Sumários de passo do flow — `flow-step-summaries` → backlog
@@ -33,6 +29,10 @@ _(nada planejado)_
 - Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → backlog
 
 ## Done
+
+### Experiência de linha de comando dos flows
+
+- Agrupamento de comandos + inputs — `command-grouping-and-inputs` → done (2026-07-24)
 
 ### Coleiras mecânicas do flow engine
 
