@@ -161,6 +161,10 @@ function validateSteps(steps, where, errs) {
       }
     }
     if (s.type === "runs" && typeof s.command !== "string") errs.push(`${at}: runs step requires 'command' (string)`);
+    // Optional per-step narrative template (flow-step-summaries): permissive —
+    // any step type may declare it; only type + emptiness are checked here.
+    // Runtime emission is gated separately (invoke/human_gate/human_handoff only).
+    if (s.summary !== undefined && typeof s.summary !== "string") errs.push(`${at}: 'summary' must be a string when present`);
     // Back-edge visit cap: max_visits must be a positive integer; on_max_visits
     // must accompany it (fail-closed — an unbounded loop is worse than a hard stop).
     if (s.max_visits !== undefined) {

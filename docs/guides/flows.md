@@ -80,13 +80,14 @@ This way the engine is the **deterministic spine** (order, gates, state that sur
 
 ## 5. The CLI commands
 
-`node governance/cli.js <command>` — five commands:
+`node governance/cli.js <command>` — six commands:
 
 | Command | Does |
 |---|---|
 | `start <flow> [key=value …]` | Starts a flow, passing the `inputs` via `key=value`. |
 | `resume <flow_id> <outcome> [key=value …]` | Resumes a paused flow with the outcome (the value of an `invoke`, the option of a `human_gate`, the free text of a `human_handoff`). The `key=value` tokens carry an invoke step's declared structured outputs (e.g. `change_id=<id>` on `select`). |
 | `status <flow_id>` | Shows the state, the current step, and where it's paused. |
+| `summaries <flow_id>` | Prints the ordered per-step narrative log (`[<step_id>#<visit_n> <outcome>] <text>`) — the step's optional `summary:` template, rendered after it resolves. See [governance/README.md](../../governance/README.md#per-step-summaries-the-narrative-layer). |
 | `abort <flow_id> [reason]` | Aborts a flow in flight. |
 | `list` | Lists the available flows (project + the plugin default). |
 

@@ -9,6 +9,8 @@
 //                                                           step's declared structured
 //                                                           outputs (e.g. change_id=...)
 //   node governance/cli.js status <flow_id>                 shows the current state
+//   node governance/cli.js summaries <flow_id>              prints the ordered per-step
+//                                                           narrative log (state.summaries)
 //   node governance/cli.js abort <flow_id> [reason]         aborts a flow
 //   node governance/cli.js list                             lists available flows
 //
@@ -102,6 +104,21 @@ function cmdStatus(argv) {
   if (!errors.length) process.stdout.write(`\n${renderProgressTable(flow.steps, state)}`);
 }
 
+function cmdSummaries(argv) {
+  const flowId = argv[0];
+  if (!flowId) fail("usage: summaries <flow_id>");
+  const state = loadState(flowId);
+  if (!state) fail(`flow not found: ${flowId}`);
+  const summaries = state.summaries ?? [];
+  if (!summaries.length) {
+    process.stdout.write(`no summaries recorded for ${flowId}\n`);
+    return;
+  }
+  for (const s of summaries) {
+    process.stdout.write(`[${s.step_id}#${s.visit_n} ${s.outcome}] ${s.text}\n`);
+  }
+}
+
 function cmdAbort(argv) {
   const state = loadState(argv[0]);
   if (!state) fail(`flow not found: ${argv[0]}`);
@@ -123,9 +140,10 @@ switch (cmd) {
   case "start": cmdStart(argv); break;
   case "resume": cmdResume(argv); break;
   case "status": cmdStatus(argv); break;
+  case "summaries": cmdSummaries(argv); break;
   case "abort": cmdAbort(argv); break;
   case "list": cmdList(); break;
   default:
-    process.stdout.write("Usage: node governance/cli.js <start|resume|status|abort|list> ...\n");
+    process.stdout.write("Usage: node governance/cli.js <start|resume|status|summaries|abort|list> ...\n");
     process.exit(cmd ? 2 : 0);
 }
