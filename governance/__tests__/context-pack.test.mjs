@@ -506,6 +506,87 @@ const { appendTelemetry, telemetryPathFor } = await import("../telemetry/append.
   ok(firstLine === ".aidakit/", "§telemetry-gitignored: .gitignore's first non-comment line is .aidakit/");
 }
 
+// ── §7d-f telemetry: engine resume-kwargs extension (live write-site) ────
+
+const cliJs = join(GOV, "cli.js");
+
+function runCli(args, root) {
+  try {
+    const out = execFileSync("node", [cliJs, ...args], { encoding: "utf8", env: { ...process.env, AIDAKIT_PROJECT_ROOT: root } });
+    return { code: 0, out };
+  } catch (e) {
+    return { code: e.status, out: (e.stdout || "") + (e.stderr || "") };
+  }
+}
+
+function startFastToSelect(root) {
+  mkdirSync(root, { recursive: true });
+  const startOut = runCli(["start", "fast", "request=telemetry probe"], root).out;
+  const m = /\[(fast-\S+)\]/.exec(startOut);
+  if (!m) throw new Error(`could not find flow_id in start output:\n${startOut}`);
+  return m[1];
+}
+
+function telemetryFileFor(root, changeId) {
+  return join(root, ".aidakit", "tasks", changeId, ".telemetry.jsonl");
+}
+
+// N7d-i: resume with the full telemetry kwarg set parses without error; a malformed
+// kwarg errors out BEFORE any state is touched (the flow stays paused at `select`).
+{
+  const root = mkdtempSync(join(tmpdir(), "telemetry-resume-"));
+  const flowId = startFastToSelect(root);
+  const r = runCli(["resume", flowId, "success", "change_id=telemetry-cli-change",
+    "--tokens-cache-read=18320", "--tokens-cache-creation=1240", "--tokens-output=512",
+    "--duration-ms=11530", "--pack-rebuilt=false"], root);
+  ok(r.code === 0, "§resume-parses-telemetry-kwargs: full kwarg set parses without error");
+
+  // A second, independent flow: a malformed kwarg must error BEFORE any state changes.
+  const flowId2 = startFastToSelect(root);
+  const bad = runCli(["resume", flowId2, "success", "change_id=x", "--duration-ms=not-a-number"], root);
+  ok(bad.code !== 0, "§resume-parses-telemetry-kwargs: malformed kwarg (non-integer) → usage error");
+  const statusAfter = runCli(["status", flowId2], root).out;
+  ok(/paused at: select/.test(statusAfter), "§resume-parses-telemetry-kwargs: malformed kwarg leaves the flow still paused at select (state untouched)");
+}
+
+// N7d-ii: the resume handler forwards the kwargs to governance/telemetry/append.js —
+// one JSONL line appended with subagent=step.invoke_target, pack_size from the
+// on-disk pack (0 here — absent), and a ts field.
+{
+  const root = mkdtempSync(join(tmpdir(), "telemetry-forward-"));
+  const changeId = "telemetry-forward-change";
+  const flowId = startFastToSelect(root);
+  runCli(["resume", flowId, "success", `change_id=${changeId}`,
+    "--tokens-cache-read=100", "--tokens-cache-creation=50", "--tokens-output=20",
+    "--duration-ms=999", "--pack-rebuilt=true"], root);
+  const telemetryPath = telemetryFileFor(root, changeId);
+  ok(existsSync(telemetryPath), "§invoke-forwards-kwargs-to-helper: telemetry JSONL was written");
+  const line = JSON.parse(readFileSync(telemetryPath, "utf8").trim().split("\n")[0]);
+  ok(line.subagent === "aidakit:orchestrator", "§invoke-forwards-kwargs-to-helper: subagent derived from step.invoke_target");
+  ok(line.pack_size === 0, "§invoke-forwards-kwargs-to-helper: pack_size is 0 (no pack on disk for this change)");
+  ok(line.cache_read === 100 && line.cache_creation === 50 && line.duration_ms === 999 && line.pack_rebuilt === true,
+    "§invoke-forwards-kwargs-to-helper: numeric/boolean fields forwarded correctly");
+  ok(typeof line.ts === "string" && /^\d{4}-\d{2}-\d{2}T/.test(line.ts), "§invoke-forwards-kwargs-to-helper: ts is a real ISO-8601 timestamp");
+}
+
+// N7d-iii: resume WITHOUT telemetry kwargs → no telemetry line written; flow proceeds unaffected.
+{
+  const root = mkdtempSync(join(tmpdir(), "telemetry-none-"));
+  const changeId = "telemetry-none-change";
+  const flowId = startFastToSelect(root);
+  const r = runCli(["resume", flowId, "success", `change_id=${changeId}`], root);
+  ok(r.code === 0, "§resume-without-kwargs-writes-nothing: plain resume (no telemetry) still succeeds");
+  ok(!existsSync(telemetryFileFor(root, changeId)), "§resume-without-kwargs-writes-nothing: no telemetry file is created");
+}
+
+// N7d-iv: the full engine test suite (which drives invoke.js through many resume
+// paths) stays green — no code change to the test file itself.
+{
+  const out = execFileSync("node", [join(GOV, "__tests__", "engine.test.mjs")], { encoding: "utf8" });
+  ok(/149 passed, 0 failed/.test(out) || /passed, 0 failed/.test(out),
+    "§engine-test-still-green: governance/__tests__/engine.test.mjs still green after the additive extension");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
