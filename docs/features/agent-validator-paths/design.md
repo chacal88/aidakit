@@ -101,7 +101,7 @@ Result of `grep -rE 'node +governance/(validators|cli|engine)' agents/ skills/ c
 | [`commands/flow-design.md`](../../../commands/flow-design.md) | 24 | verb mapping | `node governance/cli.js list` | `node "$AIDAKIT_GOVERNANCE/cli.js" list` |
 | [`commands/flow-design.md`](../../../commands/flow-design.md) | 30 | resume prose | `node governance/cli.js resume <flow_id> <outcome>` | `node "$AIDAKIT_GOVERNANCE/cli.js" resume <flow_id> <outcome>` |
 
-**17 hits total** (3 in agents/skills as the roadmap acceptance already named, 14 in commands surfaced by the brainstorm). Every hit is a command Claude executes verbatim in a Bash tool call — the mapping between the SlashCommand verb and the Bash line is literal in `flow-build.md` / `flow-design.md`; a wrong path there is a wrong path Claude will type.
+**18 in-scope hits total** (3 in agents/skills as the roadmap acceptance already named — `agents/orchestrator.md:50`, `agents/doc-planner.md:155`, `skills/roadmap/SKILL.md:64`; 15 in commands surfaced by the brainstorm — 8 in `commands/flow-build.md` + 7 in `commands/flow-design.md`, as the inventory table above lists row-by-row). The raw `grep -rnE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/` returns 20 lines today: the 18 in-scope hits plus the 2 descriptive-prose exceptions (`skills/catalog/INDEX.md:48`, `skills/review/SKILL.md:114`) that §"Out of scope — same rule as the predecessor" declares must not be rewritten. Every in-scope hit is a command Claude executes verbatim in a Bash tool call — the mapping between the SlashCommand verb and the Bash line is literal in `flow-build.md` / `flow-design.md`; a wrong path there is a wrong path Claude will type.
 
 ### Out of scope — same rule as the predecessor
 
@@ -140,6 +140,16 @@ The rule applied: **executed commands are rewritten; source-file links, release-
 - **Alternatives considered:** lift the 4-row table from this design's §Alternatives.
 - **Registered** in [`docs/decisions/README.md`](../../decisions/README.md) with an index row and (if the file has thematic groupings) placed in the "Flow engine" group next to ADR-004.
 
+**Bidirectional link — append `## Amendments` to ADR-004.** DOCS.md §2 rule 2 mandates the reverse pointer, and the repo's own precedent is [`docs/decisions/ADR-002-roadmap-status-derived-from-disk.md:42-44`](../../decisions/ADR-002-roadmap-status-derived-from-disk.md) — an `## Amendments` block appended at the tail after ADR-007 amended it. This change appends the mirror block to the tail of ADR-004, exact shape:
+
+```md
+## Amendments
+
+- [ADR-010](ADR-010-aidakit-governance-session-wide.md) (2026-07-24) — amends the injection surface of `AIDAKIT_GOVERNANCE` from `runs`-child-only to **session-wide** via a `SessionStart` hook. The variable name, value semantics, and precedence rule are preserved; the hook is additive to the `runs.js` injection, so every Bash tool call (engine-spawned `runs` children and direct-invocation call sites from agents/skills/commands) now sees the same value. Closes the `Mitigated` bullet of §Consequences.
+```
+
+WORM is preserved: `## Context`, `## Decision`, `## Consequences`, `### Review trigger`, and `## Alternatives considered` are not edited. The append is a metadata-only surface for the bidirectional link — exactly the shape ADR-002 uses.
+
 ## Doc alignment
 
 The three prose surfaces that currently describe `AIDAKIT_GOVERNANCE` as `runs`-only get an update — small, targeted, keep the doctrinal tone of the source:
@@ -156,7 +166,7 @@ New file [`governance/__tests__/agent-validator-paths.test.mjs`](../../../govern
 
 1. **Guard fails loud with `AIDAKIT_GOVERNANCE` unset.** Spawn `bash -lc '<the guard one-liner>; node "$AIDAKIT_GOVERNANCE/validators/derive-roadmap-status.js" --root .'` with an env that explicitly deletes `AIDAKIT_GOVERNANCE`; assert exit code ≠ 0 AND stderr contains the string `AIDAKIT_GOVERNANCE not set` AND stderr contains `agent-validator-paths` (naming the change so the diagnostic is traceable).
 2. **Guard passes silently when set.** Same command with `AIDAKIT_GOVERNANCE` pointed at the real `governance/`; assert exit 0 (or the validator's own exit code, distinguished from a guard failure).
-3. **Grep discipline (AC1).** Assert `grep -rE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/` produces zero lines. This is the "lint" version of AC1 — a future regression that reintroduces a relative path is caught here.
+3. **Grep discipline (AC1).** Assert the filtered sweep — `grep -rnE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/ | grep -vE '^skills/(catalog/INDEX|review/SKILL)\.md:'` — produces zero lines. The pipe excludes the two known descriptive-prose lines (`skills/catalog/INDEX.md:48`, `skills/review/SKILL.md:114`) declared out of scope in §"Out of scope — same rule as the predecessor"; any regression reintroducing an executable `node governance/…` call in an unfiltered path is still caught. If someone later adds a NEW executable call inside either excluded file, the test won't catch it — but that would itself be a §Out-of-scope escalation, flagged at review.
 4. **Manifest discipline.** Parse [`hooks/hooks.json`](../../../hooks/hooks.json), assert the `SessionStart` key exists with at least one hook whose command references `hooks/session-start.js` and `${CLAUDE_PLUGIN_ROOT}`.
 
 **Mutation proof** (recorded in [evidence.md](evidence.md)): after implementation, temporarily reintroduce a relative-path hit in one command file, run the suite, confirm case 3 goes RED; revert, confirm GREEN.
@@ -179,7 +189,7 @@ The critic step of the flow decides between the primary design and a fallback ba
 
 ## Rollback
 
-Revert the single commit that lands this change: `hooks/hooks.json` loses the `SessionStart` block, `hooks/session-start.js` is deleted, the 17 call sites revert to relative paths, the test file is removed, ADR-010 is deleted, `docs/decisions/README.md` loses its ADR-010 row, `governance/README.md`/`flows.md` revert. The behavior returns to the pre-change reality (relative paths that only resolve inside the kit repo). Then Fallback A/B/C are open.
+Revert the single commit that lands this change: `hooks/hooks.json` loses the `SessionStart` block, `hooks/session-start.js` is deleted, the 18 in-scope call sites revert to relative paths, the test file is removed, ADR-010 is deleted, ADR-004's appended `## Amendments` section is removed, `docs/decisions/README.md` loses its ADR-010 row, `governance/README.md`/`flows.md` revert, and `docs/roadmap/epics/EPIC-flow-engine-leashes.md` line 25-26 reverts to its pre-change Aceite wording. The behavior returns to the pre-change reality (relative paths that only resolve inside the kit repo). Then Fallback A/B/C are open.
 
 ## Conventions and evidence location
 

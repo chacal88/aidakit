@@ -97,12 +97,27 @@ rm -rf "$tmp"
 
 ### AC1 lint
 
-Command: `grep -rE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/`
+Pass/fail command (filtered sweep):
 
-*Intended:* empty stdout, exit 1. Records the "zero relative-path hits in agent/skill/command surfaces" invariant.
+```bash
+grep -rnE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/ \
+  | grep -vE '^skills/(catalog/INDEX|review/SKILL)\.md:'
+```
+
+*Intended:* empty stdout, exit 1 (from the trailing `grep -v` finding nothing). Records the "zero executable relative-path hits in agent/skill/command surfaces" invariant. The pipe excludes the two known descriptive-prose exceptions declared in [design.md](design.md) §"Out of scope — same rule as the predecessor" (`skills/catalog/INDEX.md:48` and `skills/review/SKILL.md:114`), so the lint can honestly hit zero.
 
 ```
-(to be filled at implement time — empty output + exit code)
+(to be filled at implement time — empty output + exit code from the filtered pipe)
+```
+
+Baseline command (unfiltered inventory — must remain exactly 2 lines after the fix, no more no less):
+
+```bash
+grep -rnE 'node +governance/(validators|cli|engine)' agents/ skills/ commands/
+```
+
+```
+(to be filled at implement time — the exact 2 out-of-scope lines: skills/catalog/INDEX.md:48 and skills/review/SKILL.md:114)
 ```
 
 ### AC2 — session env visible to Bash tool
@@ -130,7 +145,9 @@ Command: `node governance/validators/check-links.js docs/features/agent-validato
 ```
 $ git status --porcelain
  M docs/decisions/README.md
+ M docs/decisions/ADR-004-aidakit-governance-env-contract.md
  M docs/guides/flows.md
+ M docs/roadmap/epics/EPIC-flow-engine-leashes.md
  M governance/README.md
  M hooks/hooks.json
  M agents/orchestrator.md
@@ -147,9 +164,20 @@ $ git diff --stat
 (to be filled at implement time)
 ```
 
-Matches the scope declared in [proposal.md](proposal.md): 1 new hook manifest edit + 1 new hook script + 5 markdown rewrites (2 agents + 1 skill + 2 commands) + 3 doc edits (flows.md, governance/README.md, decisions/README.md) + 1 new ADR + 1 new test file + this change directory.
+Matches the scope declared in [proposal.md](proposal.md): 1 new hook manifest edit + 1 new hook script + 5 markdown rewrites (2 agents + 1 skill + 2 commands) + 4 doc edits (flows.md, governance/README.md, decisions/README.md, ADR-004 `## Amendments` append) + 1 roadmap Aceite edit (`EPIC-flow-engine-leashes.md`) + 1 new ADR + 1 new test file + this change directory. The ADR-004 modification is a strict **append** of a new `## Amendments` section at the tail; the pre-existing Context/Decision/Consequences/Review-trigger/Alternatives content is byte-identical (grep-verifiable via `git diff docs/decisions/ADR-004-aidakit-governance-env-contract.md` — the diff should show only added lines at file tail).
 
 ## Unresolved Deviations
+
+### AC4 reconciliation — literal "in-place amend" vs WORM
+
+The brainstorm distillate at [`.aidakit/tasks/agent-validator-paths/events.ndjson`](../../../.aidakit/tasks/agent-validator-paths/events.ndjson) records AC4 literally as "ADR-004 is amended **in-place** (kind:amend, not superseded)". Read literally, "in-place" contradicts [DOCS.md](../../../DOCS.md) §2 rule 2 (WORM: never edit a past decision's body — a changed mind lands as a new ADR that supersedes or amends). This plan satisfies AC4 via the ADR-007→ADR-002 **amendment pattern** (which is also what ADR-004's own §Review trigger authorized), not via a literal edit of ADR-004's Context/Decision/Consequences/Alternatives:
+
+- A new ADR ([ADR-010](../../decisions/ADR-010-aidakit-governance-session-wide.md)) is written with `Status: accepted (amends [ADR-004](ADR-004-aidakit-governance-env-contract.md))` — same shape as [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md).
+- A `## Amendments` back-link section is appended to the tail of ADR-004 — same shape as [`docs/decisions/ADR-002-roadmap-status-derived-from-disk.md:42-44`](../../decisions/ADR-002-roadmap-status-derived-from-disk.md). The append is a metadata-only surface (bidirectional pointer per DOCS.md §2 rule 2); ADR-004's Context/Decision/Consequences/Review-trigger/Alternatives bodies are not touched.
+
+**Reading AC4 as this ADR-007-style pattern is the reconciliation**; a future audit reading the literal brainstorm word "in-place" should be pointed here to see that (a) the mechanism is the repo's own established amendment pattern, (b) WORM stays intact, (c) the bidirectional linking DOCS.md requires is satisfied. This note stands even if all other Unresolved Deviations resolve to `None`.
+
+### Other deviations
 
 *To be filled at implement time.* If step 1c reveals the SessionStart-env assumption fails, name here the fallback taken (A/B/C from [design.md](design.md) §Contingency), the extra scope it introduces, and any additional review round it triggers.
 
