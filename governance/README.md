@@ -8,7 +8,7 @@ Declarative flow engine + (under construction) validators, ported and slimmed do
 
 - **`engine/`** — the engine: runs a YAML flow step by step, with gates, persisted state, and inversion of control.
 - **`flows/`** — default flows: `fast.yaml` (Margi style) and `full.yaml` (codeflow style). A project can have its own in `.aidakit/flows/`.
-- **`cli.js`** — `node governance/cli.js <start|resume|status|abort|list>`.
+- **`cli.js`** — `node governance/cli.js <start|resume|status|abort|list>`. `start`/`resume`/`status` each print a **progress table** first: every step declared in the flow's YAML, tagged `done`/`current`/`pending` (`engine/progress-table.js`) — a structural map of the whole run, not just the local pause/prompt.
 - **`__tests__/`** — Node table tests (no framework): `node governance/__tests__/engine.test.mjs`.
 
 ## How a flow works
@@ -66,3 +66,4 @@ Brought over: the type contract, the loop with IoC, pause/resume, the `max`/`unt
 
 <!-- aidakit v0.3 — flow engine, Milestone 1, 2026-07-17 — translated to EN -->
 <!-- aidakit v0.6 — ADR-006: structured invoke outputs (change_id) + runs values passed as env data, 2026-07-24 -->
+<!-- aidakit v0.7 — flow-run-progress-table: read-only progress table (done/current/pending) at start/resume/status, 2026-07-24 -->
