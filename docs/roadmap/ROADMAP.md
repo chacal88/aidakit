@@ -4,7 +4,19 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em execução)_
+### Cacheamento de contexto por change — **in-progress**
+
+- Context pack por change (L1) — `context-pack-l1` → in-progress
+
+### Experiência de linha de comando dos flows — **in-progress**
+
+- Sumários de passo do flow — `flow-step-summaries` → in-progress
+
+### Coleiras mecânicas do flow engine — **in-progress**
+
+- Retry com memória — `retry-memory` → in-progress
+- `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → in-progress
+- Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → in-progress
 
 ## Next (planned)
 
@@ -12,21 +24,16 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Cacheamento de contexto por change — **backlog**
-
-- Context pack por change (L1) — `context-pack-l1` → backlog
-
-### Experiência de linha de comando dos flows — **backlog**
-
-- Sumários de passo do flow — `flow-step-summaries` → backlog
-
 ### Coleiras mecânicas do flow engine — **backlog**
 
-- Coleira das metas — `acceptance-leash` → backlog
-- Retry com memória — `retry-memory` → backlog
 - Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
-- `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → backlog
-- Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → backlog
+
+### Endurecimento da disciplina do próprio kit — **backlog**
+
+- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → backlog
+- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → backlog
+- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → backlog
+- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → backlog
 
 ## Done
 
@@ -42,6 +49,7 @@ _(nada planejado)_
 ### Coleiras mecânicas do flow engine
 
 - Cap mecânico de retries — `engine-max-visits` → done (2026-07-24)
+- Coleira das metas — `acceptance-leash` → done (2026-07-24)
 - Registro diferido no build (débito) — `add-debit` → done (2026-07-22)
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
 - Request livre vs change-id nos flows — `flow-request-vs-change-id` → done (2026-07-24)
