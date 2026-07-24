@@ -109,18 +109,18 @@
 
 ### 7a. RED
 
-- [ ] N7a-i. Test §telemetry-lines-valid-json: write a synthetic telemetry file with three dispatches; every line parses as JSON and carries the six declared fields (`subagent`, `cache_creation`, `cache_read`, `pack_size`, `duration_ms`, `pack_rebuilt`) plus `ts`. (AC #9)
-- [ ] N7a-ii. Test §telemetry-append-only: append a fourth dispatch; the file contains four lines in the original order (no truncation, no rewrite of prior lines). (AC #9)
-- [ ] N7a-iii. Test §telemetry-gitignored: assert `.aidakit/` line is present in [`.gitignore`](../../../.gitignore) so `.aidakit/tasks/<id>/.telemetry.jsonl` is transitively ignored. (AC #9)
+- [x] N7a-i. Test §telemetry-lines-valid-json: write a synthetic telemetry file with three dispatches; every line parses as JSON and carries the six declared fields (`subagent`, `cache_creation`, `cache_read`, `pack_size`, `duration_ms`, `pack_rebuilt`) plus `ts`. (AC #9)
+- [x] N7a-ii. Test §telemetry-append-only: append a fourth dispatch; the file contains four lines in the original order (no truncation, no rewrite of prior lines). (AC #9)
+- [x] N7a-iii. Test §telemetry-gitignored: assert `.aidakit/` line is present in [`.gitignore`](../../../.gitignore) so `.aidakit/tasks/<id>/.telemetry.jsonl` is transitively ignored. (AC #9)
 
 ### 7b. GREEN
 
-- [ ] N7b-i. Create `governance/telemetry/append.js` — the JSONL-append helper. Zero-dep node, resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via `findProjectRoot`/`AIDAKIT_PROJECT_ROOT` (same convention as `check-doc-manifest.js`), opens the file in append mode, writes one JSON object per invocation, never rewrites prior content. (AC #9)
-- [ ] N7b-ii. Confirm [`.gitignore`](../../../.gitignore) already covers `.aidakit/` (line 1) — no edit required; document in `evidence.md`. (AC #9)
+- [x] N7b-i. Create `governance/telemetry/append.js` — the JSONL-append helper. Zero-dep node, resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via `findProjectRoot`/`AIDAKIT_PROJECT_ROOT` (same convention as `check-doc-manifest.js`), opens the file in append mode, writes one JSON object per invocation, never rewrites prior content. (AC #9)
+- [x] N7b-ii. Confirm [`.gitignore`](../../../.gitignore) already covers `.aidakit/` (line 1) — no edit required; document in `evidence.md`. (AC #9)
 
 ### 7c. REFACTOR
 
-- [ ] N7c. Re-run §telemetry-* → green.
+- [x] N7c. Re-run §telemetry-* → green.
 
 ### 7d. RED — engine extension for the live write-site
 

@@ -462,6 +462,50 @@ for (const rel of DISPATCHER_FILES) {
     `§dispatcher-does-not-invoke-freshness-validator (${rel}): never shells out to check-context-pack-freshness.js`);
 }
 
+// ── §7 telemetry: JSONL append helper ─────────────────────────────────────
+
+const { appendTelemetry, telemetryPathFor } = await import("../telemetry/append.js");
+
+// N7a-i: every appended line parses as JSON and carries the six declared fields + ts.
+{
+  const root = mkdtempSync(join(tmpdir(), "telemetry-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  const changeId = "telemetry-change";
+  for (const subagent of ["aidakit:reviewer-quality", "aidakit:reviewer-security", "aidakit:tester"]) {
+    appendTelemetry({ root, changeId, subagent, cache_creation: 100, cache_read: 200, pack_size: 300, duration_ms: 400, pack_rebuilt: false });
+  }
+  const path = telemetryPathFor(changeId, root);
+  const lines = readFileSync(path, "utf8").trim().split("\n");
+  ok(lines.length === 3, "§telemetry-lines-valid-json: three dispatches → three lines");
+  const REQUIRED = ["ts", "subagent", "cache_creation", "cache_read", "pack_size", "duration_ms", "pack_rebuilt"];
+  ok(lines.every((l) => {
+    const parsed = JSON.parse(l); // throws (test fails loudly) if a line isn't valid JSON
+    return REQUIRED.every((k) => k in parsed);
+  }), "§telemetry-lines-valid-json: every line parses as JSON and carries the six fields + ts");
+}
+
+// N7a-ii: append-only — a fourth dispatch does not truncate/rewrite the prior three.
+{
+  const root = mkdtempSync(join(tmpdir(), "telemetry-append-"));
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+  const changeId = "telemetry-append-change";
+  appendTelemetry({ root, changeId, subagent: "aidakit:tester", cache_read: 1 });
+  appendTelemetry({ root, changeId, subagent: "aidakit:adr-reviewer", cache_read: 2 });
+  appendTelemetry({ root, changeId, subagent: "aidakit:spec-reviewer", cache_read: 3 });
+  appendTelemetry({ root, changeId, subagent: "aidakit:reviewer-architecture", cache_read: 4 });
+  const path = telemetryPathFor(changeId, root);
+  const lines = readFileSync(path, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  ok(lines.length === 4 && lines.map((l) => l.subagent).join(",") === "aidakit:tester,aidakit:adr-reviewer,aidakit:spec-reviewer,aidakit:reviewer-architecture",
+    "§telemetry-append-only: four dispatches → four lines, original order, no rewrite");
+}
+
+// N7a-iii: `.aidakit/` is gitignored (line 1), so `.aidakit/tasks/<id>/.telemetry.jsonl` is transitively ignored.
+{
+  const gitignore = readFileSync(join(REPO, ".gitignore"), "utf8");
+  const firstLine = gitignore.split(/\r?\n/).find((l) => l.trim() !== "" && !l.trim().startsWith("#"));
+  ok(firstLine === ".aidakit/", "§telemetry-gitignored: .gitignore's first non-comment line is .aidakit/");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
