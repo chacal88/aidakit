@@ -17,6 +17,8 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 const { buildPackContent } = await import("../context-pack/build.js");
+const { loadFlow } = await import("../engine/parser.js");
+function findStep(flow, id) { return flow.steps.find((s) => s.id === id); }
 
 let pass = 0, fail = 0;
 function ok(c, n) { if (c) pass++; else { fail++; console.log(`FAIL ${n}`); } }
@@ -370,6 +372,68 @@ function runBuildCli(args) {
   const staleResult = runBuildCli(["verify", "--change-id", changeId, "--root", root]);
   ok(staleResult.code !== 0 && staleResult.json && staleResult.json.ok === false,
     "§verify-wraps-both-validators: stale pack (freshness fails) → verify non-zero");
+}
+
+// ── §5 flow phase `context_pack` in full.yaml / fast.yaml ────────────────
+
+// N5a-i: full.yaml — context_pack step exists, type runs, wired between readiness and implement.
+{
+  const { flow, errors } = loadFlow("full");
+  ok(errors.length === 0, "full.yaml parses without errors");
+  const readiness = findStep(flow, "readiness");
+  const ctxPack = findStep(flow, "context_pack");
+  ok(!!ctxPack && ctxPack.type === "runs", "§flow-full-phase-inserted: context_pack step exists with type: runs");
+  ok(readiness && readiness.on_result && readiness.on_result.approved === "context_pack",
+    "§flow-full-phase-inserted: readiness.on_result.approved === context_pack");
+  ok(ctxPack && ctxPack.on_success === "implement" && ctxPack.on_failure === "implement",
+    "§flow-full-phase-inserted: context_pack routes both on_success and on_failure to implement");
+}
+
+// N5a-ii: fast.yaml — same shape.
+{
+  const { flow, errors } = loadFlow("fast");
+  ok(errors.length === 0, "fast.yaml parses without errors");
+  const readiness = findStep(flow, "readiness");
+  const ctxPack = findStep(flow, "context_pack");
+  ok(!!ctxPack && ctxPack.type === "runs", "§flow-fast-phase-inserted: context_pack step exists with type: runs");
+  ok(readiness && readiness.on_result && readiness.on_result.approved === "context_pack",
+    "§flow-fast-phase-inserted: readiness.on_result.approved === context_pack");
+  ok(ctxPack && ctxPack.on_success === "implement" && ctxPack.on_failure === "implement",
+    "§flow-fast-phase-inserted: context_pack routes both on_success and on_failure to implement");
+}
+
+// N5a-iii: the command references BOTH the freshness validator AND the build script, double-quoted.
+for (const flowName of ["full", "fast"]) {
+  const { flow } = loadFlow(flowName);
+  const ctxPack = findStep(flow, "context_pack");
+  const cmd = ctxPack ? ctxPack.command : "";
+  ok(/"\$AIDAKIT_GOVERNANCE\/validators\/check-context-pack-freshness\.js"/.test(cmd),
+    `§flow-phase-uses-governance-env (${flowName}): command double-quotes $AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js`);
+  ok(/"\$AIDAKIT_GOVERNANCE\/context-pack\/build\.js"/.test(cmd),
+    `§flow-phase-uses-governance-env (${flowName}): command double-quotes $AIDAKIT_GOVERNANCE/context-pack/build.js`);
+}
+
+// N5a-iv: the command interpolates ${context.select.change_id} inside double quotes.
+for (const flowName of ["full", "fast"]) {
+  const { flow } = loadFlow(flowName);
+  const ctxPack = findStep(flow, "context_pack");
+  const cmd = ctxPack ? ctxPack.command : "";
+  ok(/"[^"]*\$\{context\.select\.change_id\}[^"]*"/.test(cmd),
+    `§flow-phase-interpolates-change-id (${flowName}): \${context.select.change_id} appears inside double quotes`);
+}
+
+// N5a-v: pre-existing back-edges into `implement` are left unchanged.
+{
+  const { flow } = loadFlow("full");
+  ok(findStep(flow, "check_implement_bench").on_failure === "implement", "§flow-back-edges-unchanged (full): check_implement_bench.on_failure === implement");
+  ok(findStep(flow, "check_review_bench").on_failure === "review_bench", "§flow-back-edges-unchanged (full): check_review_bench.on_failure === review_bench (unchanged)");
+  ok(findStep(flow, "bench_outcome").on_failure === "implement", "§flow-back-edges-unchanged (full): bench_outcome.on_failure === implement");
+  ok(findStep(flow, "hardening").on_failure === "implement", "§flow-back-edges-unchanged (full): hardening.on_failure === implement");
+}
+{
+  const { flow } = loadFlow("fast");
+  ok(findStep(flow, "check_implement_bench").on_failure === "implement", "§flow-back-edges-unchanged (fast): check_implement_bench.on_failure === implement");
+  ok(findStep(flow, "review_outcome").on_failure === "implement", "§flow-back-edges-unchanged (fast): review_outcome.on_failure === implement");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
