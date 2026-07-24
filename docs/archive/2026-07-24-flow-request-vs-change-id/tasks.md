@@ -59,4 +59,4 @@
 
 ## 8. Ship (separate step — out of scope for the implementer)
 
-- [ ] Ship: conventional commit on the worktree branch, PR `fix(engine): key flow task paths to the reported change-id, pass runs values as data (ADR-006)` to main, **stop at the URL** — the merge is the human's (GOVERNANCE.md §1).
+- [x] Ship: shipped in [PR #18](https://github.com/chacal88/aidakit/pull/18) `fix(engine): key flow task paths to the reported change-id; pass runs values as data (ADR-005)` (merged 2026-07-24; ADR renumbered ADR-005→ADR-006 during the merge with `command-grouping-and-inputs` which took ADR-005 first). Archive of the package tracked separately.

@@ -57,6 +57,11 @@ grep: .aidakit/tasks/estou: No such file or directory
 - `docs/features/flow-request-vs-change-id/{proposal,design,tasks,evidence}.md` (this package)
 - `.claude-plugin/plugin.json` (→ `0.6.1`)
 
+## Ship
+
+- Shipped in [PR #18](https://github.com/chacal88/aidakit/pull/18) `fix(engine): key flow task paths to the reported change-id; pass runs values as data (ADR-005)` (merged 2026-07-24; commit `c43205f`). The ADR was renumbered `ADR-005` → `ADR-006` in the merge with `command-grouping-and-inputs` (which took `ADR-005` first — global numbering, never recycled).
+- Package archive tracked separately (this PR): `git mv docs/features/flow-request-vs-change-id docs/archive/2026-07-24-flow-request-vs-change-id/` + roadmap regen.
+
 ## Unresolved Deviations
 
 - None in scope. Known adjacent debts stay declared on the roadmap, untouched: `engine-max-visits` (the retry cap that would have bounded the observed infinite loop) and `runs-error-routing` (infra-error vs verdict routing).
