@@ -653,6 +653,23 @@ function runRollupCli(args) {
   ok(/No telemetry captured for this run\./.test(evidence), "§learn-rollup-empty-or-absent: exact literal message when telemetry is absent");
 }
 
+// ── §9 ADR-010 conformance ────────────────────────────────────────────────
+
+// N9a-i: ADR-010 passes the format check.
+{
+  const adrPath = join(REPO, "docs", "decisions", "ADR-010-context-pack-per-change.md");
+  const adrVal = join(GOV, "validators", "check-adr-format.js");
+  const r = run(adrVal, [adrPath]);
+  ok(r.code === 0 && r.json.ok, "§adr-010-passes-format: check-adr-format.js exits 0 on ADR-010");
+}
+
+// N9a-ii: ADR-010 is indexed in docs/decisions/README.md (ID table row + thematic bucket mention).
+{
+  const readme = readFileSync(join(REPO, "docs", "decisions", "README.md"), "utf8");
+  ok(/\[ADR-010\]\(ADR-010-context-pack-per-change\.md\)/.test(readme), "§adr-010-indexed: ADR-010 row present in the index table");
+  ok((readme.match(/ADR-010/g) || []).length >= 2, "§adr-010-indexed: ADR-010 mentioned in both the ID table and a thematic bucket");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

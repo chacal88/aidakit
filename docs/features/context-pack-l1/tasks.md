@@ -162,17 +162,17 @@
 
 ### 9a. RED
 
-- [ ] N9a-i. Test §adr-010-passes-format: `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` exits 0. (AC #13)
-- [ ] N9a-ii. Test §adr-010-indexed: `docs/decisions/README.md` contains a row for `ADR-010` in the ID table AND a mention under a thematic bucket. (AC #13)
+- [x] N9a-i. Test §adr-010-passes-format: `node governance/validators/check-adr-format.js docs/decisions/ADR-010-context-pack-per-change.md` exits 0. (AC #13)
+- [x] N9a-ii. Test §adr-010-indexed: `docs/decisions/README.md` contains a row for `ADR-010` in the ID table AND a mention under a thematic bucket. (AC #13)
 
 ### 9b. GREEN
 
-- [ ] N9b-i. Create [`docs/decisions/ADR-010-context-pack-per-change.md`](../../decisions/ADR-010-context-pack-per-change.md) with the five sections (Status+Date · Context · Decision · Consequences · Alternatives considered) mirroring [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md). Status: `Proposed` at authoring time, moves to `accepted` in the same commit that merges this change. (AC #13)
-- [ ] N9b-ii. Edit [`docs/decisions/README.md`](../../decisions/README.md): add the ADR-010 row to the index table and a bullet under an appropriate thematic bucket (Context caching — new bucket, or extend Learning & memory). (AC #13)
+- [x] N9b-i. Create [`docs/decisions/ADR-010-context-pack-per-change.md`](../../decisions/ADR-010-context-pack-per-change.md) with the five sections (Status+Date · Context · Decision · Consequences · Alternatives considered) mirroring [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md). Status: `Proposed` at authoring time, moves to `accepted` in the same commit that merges this change. (AC #13)
+- [x] N9b-ii. Edit [`docs/decisions/README.md`](../../decisions/README.md): add the ADR-010 row to the index table and a bullet under an appropriate thematic bucket (Context caching — new bucket, or extend Learning & memory). (AC #13)
 
 ### 9c. REFACTOR
 
-- [ ] N9c. Re-run §adr-010-* → green; `node governance/validators/check-links.js docs/decisions` → exit 0.
+- [x] N9c. Re-run §adr-010-* → green; `node governance/validators/check-links.js docs/decisions` → exit 0.
 
 ## 10. Dogfood: build the pack for THIS change
 
