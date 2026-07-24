@@ -22,13 +22,13 @@ Replace `/path/to/aidakit` with wherever you cloned it.
 
 ## The 4 layers
 
-### 1. Architecture design — `/aidakit:design`
+### 1. Architecture design — `/aidakit:flow-design`
 
 A sequential 4-phase process with gates, inspired by "the domain drives the decisions; technology materializes them": **1 Business** (goals, processes, rules, ubiquitous language) → **2 DDD Modeling** (entities, value objects, aggregates, bounded contexts) → **3 Architecture** (APIs, events, integrations, data; decisions become ADRs in `docs/decisions/`) → **4 Implementation** (structure, stack, vertical changes — hands off the baton to the pipeline). Each phase is an interview (one question at a time), produces a document in `docs/design/`, and only advances with explicit approval. State lives in `docs/design/STATE.md` — you can close the session and resume weeks later.
 
 ### 2. Execution pipeline — `aidakit:*` skills
 
-Each change runs through the canonical cycle: `aidakit:build` (the 1st step picks the next ready change) → `aidakit:plan` (plan-only: proposal/design/tasks/evidence) → `aidakit:readiness` (gate 1) → implementation with TDD → `aidakit:test`/`aidakit:coverage` → `aidakit:review --diff` (gate 2) → commit/PR. **The kit stops at the PR URL; the human is the one who merges.** The skills delegate to 5 agents with separate roles (author ≠ reviewer ≠ shipper): `aidakit:orchestrator`, `aidakit:planner`, `aidakit:adr-reviewer`, `aidakit:spec-reviewer`, `aidakit:research`. Repos with OpenSpec use `openspec/changes/` and `openspec/specs/`; without OpenSpec, `docs/features/<change-id>/` and `docs/specs/`. Full cycle reference in [PROCESS.md](PROCESS.md).
+Each change runs through the canonical cycle: `aidakit:flow-build` (the 1st step picks the next ready change) → `aidakit:plan` (plan-only: proposal/design/tasks/evidence) → `aidakit:readiness` (gate 1) → implementation with TDD → `aidakit:test`/`aidakit:coverage` → `aidakit:review --diff` (gate 2) → commit/PR. **The kit stops at the PR URL; the human is the one who merges.** The skills delegate to 5 agents with separate roles (author ≠ reviewer ≠ shipper): `aidakit:orchestrator`, `aidakit:planner`, `aidakit:adr-reviewer`, `aidakit:spec-reviewer`, `aidakit:research`. Repos with OpenSpec use `openspec/changes/` and `openspec/specs/`; without OpenSpec, `docs/features/<change-id>/` and `docs/specs/`. Full cycle reference in [PROCESS.md](PROCESS.md).
 
 ### 3. Doctrine — [DOCS.md](DOCS.md) + [GOVERNANCE.md](GOVERNANCE.md)
 
@@ -45,8 +45,8 @@ A grouped index of everything you have: this plugin's skills, agents, hooks, doc
 
 | Skill | For what |
 |---|---|
-| `aidakit:design` | Start or resume the architecture design (4 phases with gates) |
-| `aidakit:build` | Build a change from plan to PR; the 1st step picks the next ready change and generates the self-contained prompt for a new session |
+| `aidakit:flow-design` | Start or resume the architecture design (4 phases with gates) |
+| `aidakit:flow-build` | Build a change from plan to PR; the 1st step picks the next ready change and generates the self-contained prompt for a new session |
 | `aidakit:plan` | Author a plan-only change via `aidakit:planner` (no product code); includes the implementation plan (architecture, risks, estimate) |
 | `aidakit:spec` | Read specs with discovery of related ones, ADRs, and validation commands |
 | `aidakit:readiness` | Readiness review of the planning package before coding |

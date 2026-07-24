@@ -11,7 +11,7 @@ description: Executor of the DOCS.md doctrine — deploys, audits, and maintains
 
 - **Use** when the user asks to: organize a project's docs; create or deploy the documentation structure; audit/verify docs conformance; archive a document or a completed change; update, rebuild, or sync the index.
 - **Use** for the quick question "where do I save this document?" — walk the placement decision tree (DOCS.md §3) in order and answer with the path; the first "yes" decides. No mode needs to be invoked for this.
-- **Do not use** to write document content: proposal/design/tasks is `aidakit:plan`, phase deliverables are `aidakit:design`, review is `aidakit:review`. This skill handles structure, placement, and lifecycle — not content.
+- **Do not use** to write document content: proposal/design/tasks is `aidakit:plan`, phase deliverables are `aidakit:flow-design`, review is `aidakit:review`. This skill handles structure, placement, and lifecycle — not content.
 - **Do not use** for execution rules, git, and agent roles — that is GOVERNANCE.md.
 
 ## Prerequisites
@@ -93,7 +93,7 @@ Check each rule of DOCS.md §2, plus the hygiene of §5, against the reality on 
 ## Related
 
 - `aidakit:governance` — the sister doctrine: HOW agents execute (git, PR, roles, escalations)
-- `aidakit:design` — produces the deliverables that live in `docs/design/`
+- `aidakit:flow-design` — produces the deliverables that live in `docs/design/`
 - `aidakit:plan` — creates the WORKING artifacts in `docs/features/<change-id>/` (or `openspec/changes/`)
 - `aidakit:review` — the review gate that precedes the promotion of a change
 - `aidakit:catalog` — index of the kit's pieces (`/aidakit:catalog`)

@@ -719,7 +719,7 @@ steps:
     { step_id: "report", input: { feature: "beta" } },
   ], "7a: loop var resolves in every pause input across resumes");
   // The `runs` command between the two pauses runs AFTER a resume — the loop
-  // var must reach the shell, not leak as a literal \${feature}. Since ADR-005
+  // var must reach the shell, not leak as a literal \${feature}. Since ADR-006
   // the value travels as env DATA ($AIDAKIT_VAR_n), so assert what bash saw:
   // the executed stdout and the recorded vars.
   const buildRuns = res.state.step_history.filter((h) => h.step_id === "build");
@@ -838,7 +838,7 @@ steps:
 // implement↔check loop). The `select` step now REPORTS the resolved change-id
 // as a structured output (change_id), every task path keys on
 // ${context.select.change_id}, and `runs` interpolation passes values to bash
-// as env DATA ($AIDAKIT_VAR_n), never as spliced shell text (ADR-005).
+// as env DATA ($AIDAKIT_VAR_n), never as spliced shell text (ADR-006).
 
 // (9a) A hostile multiline request drives the FULL flow to completion, keyed
 // to the change-id select reported — no shell breakage in any runs step.

@@ -3,7 +3,7 @@
 **Change ID:** `flow-request-vs-change-id`
 **Date:** `2026-07-24`
 **Owner:** `@chacal88`
-**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-005)`
+**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-006)`
 **PRD:** `n/a`
 **Tech Spec:** `n/a`
 
@@ -40,16 +40,16 @@
 
 ## 5. Documentation
 
-- [x] [ADR-005](../../decisions/ADR-005-flow-values-as-data.md) — the `runs` interpolation contract changed (condition for an ADR met); registered in [docs/decisions/README.md](../../decisions/README.md).
+- [x] [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) — the `runs` interpolation contract changed (condition for an ADR met); registered in [docs/decisions/README.md](../../decisions/README.md).
 - [x] `governance/README.md` (step table, expression convention, IoC resume grammar) + footer v0.6.
 - [x] `docs/guides/flows.md` §3 (data-passing + single-quote caveat), §4 (outputs), §5 (resume grammar, example) + footer v0.6.
-- [x] `commands/build.md` (resume grammar; report `change_id` on select) + footer v0.6.
+- [x] `commands/flow-build.md` (resume grammar; report `change_id` on select) + footer v0.6 — renamed from `build.md` by `command-grouping-and-inputs` (main), merged here.
 - [x] Roadmap: feature line in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md); `ROADMAP.md` regenerated (line derives `in-progress` from this directory).
 - [x] Change package complete (proposal, design, tasks, evidence).
 
 ## 6. Release
 
-- [x] `.claude-plugin/plugin.json` `0.5.1` → `0.6.0` (PROCESS.md §5); `node governance/validators/check-plugin-version.js .` → exit 0.
+- [x] `.claude-plugin/plugin.json` → `0.6.1` (PROCESS.md §5; `command-grouping-and-inputs` took `0.6.0` on main first); `node governance/validators/check-plugin-version.js .` → exit 0.
 
 ## 7. Validation
 
@@ -59,4 +59,4 @@
 
 ## 8. Ship (separate step — out of scope for the implementer)
 
-- [ ] Ship: conventional commit on the worktree branch, PR `fix(engine): key flow task paths to the reported change-id, pass runs values as data (ADR-005)` to main, **stop at the URL** — the merge is the human's (GOVERNANCE.md §1).
+- [ ] Ship: conventional commit on the worktree branch, PR `fix(engine): key flow task paths to the reported change-id, pass runs values as data (ADR-006)` to main, **stop at the URL** — the merge is the human's (GOVERNANCE.md §1).

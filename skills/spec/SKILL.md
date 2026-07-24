@@ -52,7 +52,7 @@ Before anything else, detect the target repo's spec layout:
 
    ```
    docs/
-     ├─ design/                 # aidakit:design phase deliverables + STATE.md
+     ├─ design/                 # aidakit:flow-design phase deliverables + STATE.md
      ├─ decisions/              # ADRs (ADR-NNN-slug.md) + README.md (authoritative index)
      ├─ specs/                  # canonical specs per capability — DURABLE life
      └─ features/<change-id>/   # change artifacts (proposal, design, tasks, evidence) — WORKING life
@@ -359,7 +359,7 @@ Try `/aidakit:spec --list` to see all available specs, or search by keyword: `/a
 
 - **DOCS.md** (kit root) — document placement, the two lives WORKING → DURABLE, dated archive; every doc creation obeys it.
 - **GOVERNANCE.md** (kit root) — authority model, escalations, roles author ≠ reviewer ≠ shipper.
-- **Skills:** `aidakit:plan` (plan the implementation from the spec), `aidakit:review` (review code against the spec), `aidakit:docs` (deploy/audit the doc structure), `aidakit:design` (architecture deliverables in `docs/design/`), `aidakit:catalog` (kit index).
+- **Skills:** `aidakit:plan` (plan the implementation from the spec), `aidakit:review` (review code against the spec), `aidakit:docs` (deploy/audit the doc structure), `aidakit:flow-design` (architecture deliverables in `docs/design/`), `aidakit:catalog` (kit index).
 - **Agents:** `aidakit:planner` (authors the proposal with this skill's template), `aidakit:orchestrator` (invokes the planner in planning), `aidakit:spec-reviewer` and `aidakit:adr-reviewer` (conformance), `aidakit:research` (investigates open questions).
 - The target repo's `CLAUDE.md` — the project's code style and architecture; `openspec/` — the OpenSpec config and schema, when the repo uses it.
 

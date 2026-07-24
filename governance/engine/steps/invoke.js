@@ -9,7 +9,7 @@
 // Outcomes are constrained to the step's `expects` list when present, otherwise to
 // ["success", "failure"].
 //
-// STRUCTURED OUTPUTS (ADR-005): a step may declare `outputs: {<outcome>: [key...]}`.
+// STRUCTURED OUTPUTS (ADR-006): a step may declare `outputs: {<outcome>: [key...]}`.
 // Resuming with that outcome then REQUIRES the declared keys as `key=value`
 // tokens after the outcome (safe single tokens — see resume-output.js); the
 // engine re-pauses until they arrive, and persists them into context[step.id]

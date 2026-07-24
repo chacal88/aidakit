@@ -58,7 +58,7 @@ There are **two grammars** for referencing state in the engine, and they **do no
 
   Here, the bare path (`command: validate inputs.change_id`) comes out **literal** — nothing is substituted.
 
-  **In a `runs` command, the value travels as data, not shell text** ([ADR-005](../decisions/ADR-005-flow-values-as-data.md)): each resolvable `${expr}` renders as a bash variable reference (`$AIDAKIT_VAR_n`) whose value is injected into the child env — bash expands it after parsing, so a multiline or metacharacter-laden value (a free-form `${inputs.request}`, say) can never break the command structure or inject commands. Two consequences: quote the interpolation site with **double** quotes (`".aidakit/tasks/${context.select.change_id}/…"`) to also prevent word-splitting, and never put an interpolation inside **single** quotes — `'${x}'` stops expanding and renders the literal text `$AIDAKIT_VAR_n`.
+  **In a `runs` command, the value travels as data, not shell text** ([ADR-006](../decisions/ADR-006-flow-values-as-data.md)): each resolvable `${expr}` renders as a bash variable reference (`$AIDAKIT_VAR_n`) whose value is injected into the child env — bash expands it after parsing, so a multiline or metacharacter-laden value (a free-form `${inputs.request}`, say) can never break the command structure or inject commands. Two consequences: quote the interpolation site with **double** quotes (`".aidakit/tasks/${context.select.change_id}/…"`) to also prevent word-splitting, and never put an interpolation inside **single** quotes — `'${x}'` stops expanding and renders the literal text `$AIDAKIT_VAR_n`.
 
 **Rule of thumb:** `over`/`until` = the whole value is the expression → bare. `command`/`prompt`/`input` = the expression is **embedded** in a string → `${...}`.
 
@@ -74,7 +74,7 @@ The engine **never dispatches a subagent** — that's Claude's job. When the eng
 2. The **operator-Claude** runs the skill/subagent.
 3. Claude calls `resume <flow_id> <outcome> [key=value ...]`, and the engine advances.
 
-The `key=value` tokens are the step's **structured outputs** ([ADR-005](../decisions/ADR-005-flow-values-as-data.md)): an invoke step may declare `outputs: {<outcome>: [key, ...]}`, and resuming with that outcome then *requires* those keys as safe single tokens (`[A-Za-z0-9._:@/-]+` — ids, branches, URLs; never prose). They persist into `context.<step_id>.<key>` for downstream interpolation — this is how `select` reports the resolved change-id (`resume … success change_id=<id>`) and every task path keys on `${context.select.change_id}` instead of the free-form request.
+The `key=value` tokens are the step's **structured outputs** ([ADR-006](../decisions/ADR-006-flow-values-as-data.md)): an invoke step may declare `outputs: {<outcome>: [key, ...]}`, and resuming with that outcome then *requires* those keys as safe single tokens (`[A-Za-z0-9._:@/-]+` — ids, branches, URLs; never prose). They persist into `context.<step_id>.<key>` for downstream interpolation — this is how `select` reports the resolved change-id (`resume … success change_id=<id>`) and every task path keys on `${context.select.change_id}` instead of the free-form request.
 
 This way the engine is the **deterministic spine** (order, gates, state that survives the session) and Claude is the **intelligence engine**. Each does what the other does poorly. If the outcome isn't in `expects` — or a declared output is missing or unsafe — the engine **re-pauses** instead of killing the run — an invalid resume does not destroy work already done. Source: [governance/engine/steps/invoke.js](../../governance/engine/steps/invoke.js).
 
@@ -147,7 +147,7 @@ For the step-by-step of the process the `fast` flow enacts, see the [change-flow
 
 ### Register mode — deferring a request as a debit
 
-`fast.yaml` also carries a `mode` input (`build` | `register`, default `build`). `start … mode=register` skips straight past `select`/`plan`/`implement` and **parks** at a named human gate instead — for "just remember this for later" (`/aidakit:build register "<free-form request>"`, `commands/build.md`):
+`fast.yaml` also carries a `mode` input (`build` | `register`, default `build`). `start … mode=register` skips straight past `select`/`plan`/`implement` and **parks** at a named human gate instead — for "just remember this for later" (`/aidakit:flow-build register "<free-form request>"`, `commands/flow-build.md`):
 
 ```console
 $ node governance/cli.js start fast request=add-a-date-filter mode=register
@@ -208,4 +208,4 @@ Back to the [guides index](README.md) or the [master index](../INDEX.md).
 <!-- aidakit v0.3 — guide to the executable flows layer, created on 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 register-mode subsection: route_mode → check_registered → parked (add-debit), 2026-07-22 -->
 <!-- aidakit v0.5 — AIDAKIT_GOVERNANCE for consumer flows calling kit validators (§3, §5, §6), 2026-07-23 -->
-<!-- aidakit v0.6 — ADR-005: runs values as env data (§3) + structured resume outputs / change_id (§4, §5), 2026-07-24 -->
+<!-- aidakit v0.6 — ADR-006: runs values as env data (§3) + structured resume outputs / change_id (§4, §5), 2026-07-24 -->

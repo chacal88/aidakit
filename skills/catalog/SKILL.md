@@ -30,7 +30,7 @@ description: Searchable index of all the user's tools — skills, commands, agen
 
 1. Read the `INDEX.md` in this same directory.
 2. Search the need by category/design phase (process, business, DDD, architecture, implementation, quality, security, data, AI, DevOps, meta).
-3. Answer with **name, where it is, and how to invoke it** — kit skills always by the qualified name (`aidakit:<name>`; slash commands like `/aidakit:design`, `/aidakit:catalog`).
+3. Answer with **name, where it is, and how to invoke it** — kit skills always by the qualified name (`aidakit:<name>`; slash commands like `/aidakit:flow-design`, `/aidakit:catalog`).
 4. Before recommending an item from the **on-demand corpus**, check that the path still exists; instruct to read the `SKILL.md` at the indicated path and follow its instructions.
 5. If nothing in the index covers the need, say so **explicitly** and suggest creating a new skill (`skill-creator`) instead of improvising.
 
@@ -47,7 +47,7 @@ No artifact is created — the output is the answer in the chat (name, layer, ho
 
 ## Related
 
-- `aidakit:design` — the conductor of the 4 phases; the catalog groups tools by its phase.
+- `aidakit:flow-design` — the conductor of the 4 phases; the catalog groups tools by its phase.
 - `aidakit:docs` / `aidakit:governance` — deploy and verify the `DOCS.md` and `GOVERNANCE.md` doctrines.
 - `aidakit:skill-scanner` — a mandatory audit before adopting a third-party skill.
 - `skill-creator` (built-in) — create a new skill when nothing in the index covers the need.

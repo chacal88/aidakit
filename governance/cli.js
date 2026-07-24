@@ -23,7 +23,7 @@ import { loadState, saveState } from "./engine/persistence.js";
 import { parseResumeOutput } from "./engine/resume-output.js";
 
 function fail(msg) {
-  process.stderr.write(`aidakit:build — error: ${msg}\n`);
+  process.stderr.write(`aidakit — error: ${msg}\n`);
   process.exit(2);
 }
 

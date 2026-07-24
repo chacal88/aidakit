@@ -3,7 +3,7 @@
 **Change ID:** `flow-request-vs-change-id`
 **Date:** `2026-07-24`
 **Owner:** `@chacal88`
-**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-005)`
+**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-006)`
 **PRD:** `n/a`
 **Tech Spec:** `n/a`
 
@@ -14,14 +14,14 @@ The live failure (`full-260724-ca264a`) composes two independent gaps, and each 
 1. **No channel for the change-id.** The orchestrator resolves it at `select`, but `executeInvoke` persisted only `{outcome, invoke_target}`. The flow yaml *had* to reach for `${inputs.request}` — there was nothing else. → **Structured invoke outputs.**
 2. **Interpolated values are re-parsed as shell.** `interpolateString` splices raw text into `command`, and `bash -lc` parses the result — any value with newlines/metacharacters becomes command structure. → **Values as env data.**
 
-Fixing only (1) leaves the landmine armed for the next flow that naively interpolates prose into a command; fixing only (2) still paths bench/doc-manifest files under a request-shaped directory name. Both land together under [ADR-005](../../decisions/ADR-005-flow-values-as-data.md).
+Fixing only (1) leaves the landmine armed for the next flow that naively interpolates prose into a command; fixing only (2) still paths bench/doc-manifest files under a request-shaped directory name. Both land together under [ADR-006](../../decisions/ADR-006-flow-values-as-data.md).
 
 ## Half 1 — structured invoke outputs (the fail-closed leash)
 
 - **Declaration** (yaml, validated at LOAD by `parser.js`): `outputs: {<outcome>: [key, ...]}` on an invoke step; every declared outcome must appear in `expects`, every key must be an identifier and not reserved. A malformed declaration is a load error, same doctrine as a nonexistent routing target.
 - **Transport**: CLI `resume <flow_id> <outcome> [key=value ...]` → `parseResumeOutput` (`resume-output.js`) rejects malformed tokens with a usage error BEFORE any state is touched; the engine API mirrors it as `resumeFlow({…, resumeOutput})`, threaded single-shot through `drive()` exactly like `resumeValue`.
 - **Enforcement** (`invoke.js`): a valid outcome whose declared keys are missing or unsafe **re-pauses** the step with the exact `resume … change_id=<value>` line to run — the preserve-the-run doctrine already used for invalid outcomes (whose broken prompt template, printing empty `""` placeholders, is fixed in passing). Supplied keys merge into `context[step.id]` before `outcome`/`invoke_target` are set, so the engine-owned fields can never be overridden; `__proto__`-shaped keys are rejected at both boundaries.
-- **Value shape**: `^[A-Za-z0-9._:@/-]+$`, single line. Ids, branch names, paths and URLs fit; prose deliberately does not — these values exist to be interpolated into commands and paths. Widening is a deliberate future ADR (review trigger in ADR-005), not a regex tweak.
+- **Value shape**: `^[A-Za-z0-9._:@/-]+$`, single line. Ids, branch names, paths and URLs fit; prose deliberately does not — these values exist to be interpolated into commands and paths. Widening is a deliberate future ADR (review trigger in ADR-006), not a regex tweak.
 - **Why outcome-scoped** (`outputs.success`, not a flat list): `select` on `failure` routes to `aborted` — demanding a change-id there would force the operator to invent one. The map scopes the requirement to the outcomes that actually feed downstream paths.
 
 ## Half 2 — `runs` values as env data
@@ -49,4 +49,4 @@ Fixing only (1) leaves the landmine armed for the next flow that naively interpo
 
 ## Rejected shapes
 
-Recorded with pros/cons in [ADR-005 — Alternatives considered](../../decisions/ADR-005-flow-values-as-data.md): in-place shell-escaping (breaks the flows' existing quoting idioms), flows-only fix (leaves the landmine for future/consumer flows), failing residual `${`, mutating `inputs.request` after select (audit loss, re-conflates the two meanings), free-form JSON resume payload (invites prose back into context).
+Recorded with pros/cons in [ADR-006 — Alternatives considered](../../decisions/ADR-006-flow-values-as-data.md): in-place shell-escaping (breaks the flows' existing quoting idioms), flows-only fix (leaves the landmine for future/consumer flows), failing residual `${`, mutating `inputs.request` after select (audit loss, re-conflates the two meanings), free-form JSON resume payload (invites prose back into context).

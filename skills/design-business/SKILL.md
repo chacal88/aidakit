@@ -12,7 +12,7 @@ description: Phase 1 of design — Business. Runs the interview that understands
 - **Use** when the `design` flow (`governance/flows/design.yaml`) dispatches this phase — it is **phase 1** of the architecture design journey, the first step before Modeling, Architecture and Implementation.
 - **Use** when starting a new project (there is no business deliverable yet) or when resuming an in-progress Phase 1 (there is a `docs/design/STATE.md` pointing to the Business phase).
 - **Do not use** for the later phases — DDD Modeling, Architecture and Implementation have their own skills that the flow dispatches after this one.
-- **Do not use** to build an already-planned change — that is the execution cycle (`/aidakit:build`). Do not use for pointed changes in an existing system that do not call for redefining the architecture.
+- **Do not use** to build an already-planned change — that is the execution cycle (`/aidakit:flow-build`). Do not use for pointed changes in an existing system that do not call for redefining the architecture.
 - **Do not run the approval here.** Approving the deliverable is a `human_gate` of the flow, immediately AFTER this skill returns `ready`. This skill runs the phase and signals that it is ready; who decides "approved" is the owner, at the flow's gate.
 
 ## Prerequisites

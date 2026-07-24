@@ -11,7 +11,7 @@
 ├── CLAUDE.md                  # working contract for AI: points to ADRs, NEVER duplicates them
 └── docs/
     ├── INDEX.md               # master index: numbered reading order + description of each folder + "where to look for what"
-    ├── design/                # deliverables of the 4 phases of aidakit:design + STATE.md
+    ├── design/                # deliverables of the 4 phases of aidakit:flow-design + STATE.md
     ├── decisions/             # ADRs — the only place for decisions
     │   ├── README.md          # AUTHORITATIVE index: ID/title/status table, thematic grouping, format rules
     │   ├── DECISION_INDEX.md  # DISCOVERY index (create when ≥15 ADRs): decision trees, tours by role, search tips
@@ -75,7 +75,7 @@ Documentation that depends on the model "remembering to write" gets lost: it van
 
 The manifest exists at two levels, distinguished by the `level` field:
 
-- **Project** — `.aidakit/doc-manifest-project.json` (`level: "project"`, `change_id: "PROJECT"`). Lists the durable design deliverables: the documents a project **must have** to exist with governance (INDEX.md, ARCHITECTURE.md, the decisions README, the `aidakit:design` phase deliverables). It is the leash of the structural corpus — the spine of DOCS.md §1 becomes a checkable list.
+- **Project** — `.aidakit/doc-manifest-project.json` (`level: "project"`, `change_id: "PROJECT"`). Lists the durable design deliverables: the documents a project **must have** to exist with governance (INDEX.md, ARCHITECTURE.md, the decisions README, the `aidakit:flow-design` phase deliverables). It is the leash of the structural corpus — the spine of DOCS.md §1 becomes a checkable list.
 - **Change** — `.aidakit/tasks/<change-id>/doc-manifest.json` (`level: "change"`, `change_id: "<change-id>"`). Lists the mandatory WORKING artifacts of that change: `proposal`, `tasks`, and the `spec-delta` (when the change touches a capability). It is the per-change leash — no change closes the documentation gate without the artifacts the reviewers need to read.
 
 Both use the **same format** and the **same validator**; what changes is the scope of the list and where the file lives. The single key from §2.7 (change-id = branch = PR suffix = archive directory) extends to the manifest: `<change-id>` in the manifest path is the same one as the change directory.

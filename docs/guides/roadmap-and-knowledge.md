@@ -57,7 +57,7 @@ What happens:
 3. **Decompose** — it breaks the feature into **vertical changes** (each cutting UI → API → domain → data), ordered by risk + value, each with an acceptance criterion, grouped into features and the epic. Each change gets a `change-id`.
 4. **Propose, then write** — it shows you the proposed epic (features + ordered changes + criteria) as a short summary; on your approval it writes `docs/roadmap/epics/EPIC-<slug>.md`.
 
-The generated changes start as **backlog** — declared, not started. You run `/aidakit:plan <change-id>` to author each one when you get to it (which flips it to in-progress). For a **brand-new project**, `/aidakit:design` is the deeper front door: its Phase 4 already interviews and emits the backlog as epics here — same generator.
+The generated changes start as **backlog** — declared, not started. You run `/aidakit:plan <change-id>` to author each one when you get to it (which flips it to in-progress). For a **brand-new project**, `/aidakit:flow-design` is the deeper front door: its Phase 4 already interviews and emits the backlog as epics here — same generator.
 
 ### The other commands
 

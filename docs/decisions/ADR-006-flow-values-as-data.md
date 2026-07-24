@@ -1,7 +1,7 @@
-<!-- File: docs/decisions/ADR-005-flow-values-as-data.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
+<!-- File: docs/decisions/ADR-006-flow-values-as-data.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
 <!-- An ADR is WORM: never edit a past decision. Changed your mind → a new ADR that supersedes or amends this one. -->
 
-# ADR-005: Flow values are data — env-passed `runs` interpolation and structured invoke outputs
+# ADR-006: Flow values are data — env-passed `runs` interpolation and structured invoke outputs
 
 - **Status:** accepted
 - **Date:** 2026-07-24

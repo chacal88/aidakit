@@ -122,6 +122,6 @@ Invocation forms:
 - `aidakit:adr-reviewer`, `aidakit:spec-reviewer` — the base bench (always); `aidakit:reviewer-quality`, `aidakit:reviewer-security`, `aidakit:reviewer-architecture`, `aidakit:tester` — the flag-based agents dispatched here.
 - `aidakit:spec` — targeted reading of the canonical specs.
 - `aidakit:test` and `aidakit:coverage` — complementary code gates (the `aidakit:tester` covers the behavioral lens inside the bench).
-- `/aidakit:build` — the execution flow decides the next step after a verdict (the `aidakit:orchestrator` at the 1st step, logic previously exposed as `aidakit:orchestrator` (1st step of `/aidakit:build`)).
+- `/aidakit:flow-build` — the execution flow decides the next step after a verdict (the `aidakit:orchestrator` at the 1st step, logic previously exposed as `aidakit:orchestrator` (1st step of `/aidakit:flow-build`)).
 
 <!-- aidakit v0.3 — the summon matrix dispatches the bench of concrete agents (adr/spec/quality/security/architecture/tester) in parallel; mx base + adversarial bench (codeflow/psim) 2026-07-17 — translated to EN -->

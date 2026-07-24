@@ -20,10 +20,10 @@ A Claude Code plugin that carries a full engineering process into any repo: guid
 
 Everything in the kit belongs to one of four layers.
 
-### Layer 1 — Architecture design · `/aidakit:design`
+### Layer 1 — Architecture design · `/aidakit:flow-design`
 A sequential 4-phase interview with gates: **1 Business** → **2 DDD Modeling** → **3 Architecture** (decisions become ADRs) → **4 Implementation** (hands the baton to the pipeline and emits the backlog as roadmap epics). One question at a time; each phase yields a document in `docs/design/` and only advances on explicit approval. State lives in `docs/design/STATE.md` — close the session, resume weeks later.
 
-### Layer 2 — Execution pipeline · `/aidakit:build`
+### Layer 2 — Execution pipeline · `/aidakit:flow-build`
 Each change runs the canonical cycle from plan to PR. Skills delegate to agents with **separated roles** — author ≠ reviewer ≠ shipper. The kit stops at the PR URL; **the human merges.** Change artifacts live in `docs/features/<change-id>/`. One key ties it all: **change-id = branch = PR suffix = archive dir**.
 
 ### Layer 3 — Document & execution doctrine · `/aidakit:docs` · `/aidakit:governance`
@@ -143,10 +143,10 @@ Planning and shared knowledge without an external tool. Both live in `docs/`, ve
 ## 7 · How to use it
 
 1. **Install in any repo** (see the [README](../README.md)).
-2. **New project → design first.** Run `/aidakit:design` and answer the 4-phase interview. It writes `docs/design/` + ADRs and, at phase 4, emits the change backlog as roadmap epics.
+2. **New project → design first.** Run `/aidakit:flow-design` and answer the 4-phase interview. It writes `docs/design/` + ADRs and, at phase 4, emits the change backlog as roadmap epics.
 3. **New feature on an existing project → describe it.** Run `aidakit:roadmap from "<description>"` — it interviews you and generates the epic → features → changes.
 4. **Existing repo → adopt the structure.** Run `/aidakit:docs` (init) to deploy the canonical `docs/` tree without steamrolling what's there.
-5. **Execute a change.** Run `/aidakit:build` — it picks the next ready change (roadmap gives the order) and drives the cycle. You approve the gates; the kit stops at the PR URL.
+5. **Execute a change.** Run `/aidakit:flow-build` — it picks the next ready change (roadmap gives the order) and drives the cycle. You approve the gates; the kit stops at the PR URL.
 6. **You merge.** Then `aidakit:docs` archives the change (it flips to *done* on the roadmap on its own) and `aidakit:learn` proposes any DNA or knowledge to promote.
 7. **Check status anytime.** `aidakit:roadmap` for Now/Next/Later, `/aidakit:catalog` to find a tool, `/aidakit:governance` when a command was blocked and you want to know why.
 

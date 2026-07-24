@@ -1,12 +1,12 @@
 # New project flow — from zero to the first change
 
-> **Precedence:** this guide narrates the process; the law is in the skill and the doctrine. If this guide diverges from [aidakit:design](../../commands/design.md), [DOCS.md](../../DOCS.md), [GOVERNANCE.md](../../GOVERNANCE.md), or [PROCESS.md](../../PROCESS.md), the other wins and this file is corrected.
+> **Precedence:** this guide narrates the process; the law is in the skill and the doctrine. If this guide diverges from [aidakit:flow-design](../../commands/flow-design.md), [DOCS.md](../../DOCS.md), [GOVERNANCE.md](../../GOVERNANCE.md), or [PROCESS.md](../../PROCESS.md), the other wins and this file is corrected.
 
-This guide follows the birth of **razor** — a scheduling SaaS for barbershops (NestJS + React + PostgreSQL/Neon + Prisma) — through the kit's architecture design: `/aidakit:design`, 4 sequential phases with gates, one interview per phase, one approved document per phase. Golden rule: **the domain drives the decisions; technology materializes them**. The guide ends where the [change execution flow](change-flow.md) begins.
+This guide follows the birth of **razor** — a scheduling SaaS for barbershops (NestJS + React + PostgreSQL/Neon + Prisma) — through the kit's architecture design: `/aidakit:flow-design`, 4 sequential phases with gates, one interview per phase, one approved document per phase. Golden rule: **the domain drives the decisions; technology materializes them**. The guide ends where the [change execution flow](change-flow.md) begins.
 
 ## Before Phase 1 — the `docs/` structure is born first
 
-On the first run in a project, the design requires the standard document structure before any deliverable ([aidakit:design › Prerequisites](../../commands/design.md)). It runs [aidakit:docs](../../skills/docs/SKILL.md) in **init** mode, which creates only what's missing, without overwriting anything (canonical structure: [DOCS.md §1](../../DOCS.md)):
+On the first run in a project, the design requires the standard document structure before any deliverable ([aidakit:flow-design › Prerequisites](../../commands/flow-design.md)). It runs [aidakit:docs](../../skills/docs/SKILL.md) in **init** mode, which creates only what's missing, without overwriting anything (canonical structure: [DOCS.md §1](../../DOCS.md)):
 
 ```
 razor/
@@ -118,7 +118,7 @@ The change-id is the single end-to-end key ([DOCS.md §2](../../DOCS.md), rule 7
 
 ## The handoff
 
-From here, each change follows the kit's execution cycle ([PROCESS.md §2](../../PROCESS.md)); [GOVERNANCE.md](../../GOVERNANCE.md) applies in full — everything via a short branch + PR, and **the merge is always the human's**. The entry point is `/aidakit:build`: the 1st step of the flow runs the `aidakit:orchestrator`, which picks the next ready change (dependencies shipped) and returns a self-contained prompt for a new session (logic previously exposed as a separate command, now absorbed into build). When `feature-appointment-cancellation` is next in line, it is the one the sibling guide follows from the prompt to the PR URL and the archive: **[change-flow.md](change-flow.md)**.
+From here, each change follows the kit's execution cycle ([PROCESS.md §2](../../PROCESS.md)); [GOVERNANCE.md](../../GOVERNANCE.md) applies in full — everything via a short branch + PR, and **the merge is always the human's**. The entry point is `/aidakit:flow-build`: the 1st step of the flow runs the `aidakit:orchestrator`, which picks the next ready change (dependencies shipped) and returns a self-contained prompt for a new session (logic previously exposed as a separate command, now absorbed into build). When `feature-appointment-cancellation` is next in line, it is the one the sibling guide follows from the prompt to the PR URL and the archive: **[change-flow.md](change-flow.md)**.
 
 The design remains the owner of the state: at the end of each change, `STATE.md` records the completed change and the next one.
 

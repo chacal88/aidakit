@@ -22,7 +22,7 @@ const AIDAKIT_GOVERNANCE = resolve(dirname(fileURLToPath(import.meta.url)), ".."
  */
 export function executeRuns(step, ctx) {
   // ${...} values are handed to bash as environment DATA ($AIDAKIT_VAR_n),
-  // never spliced as shell text (ADR-005): a multiline/metacharacter value
+  // never spliced as shell text (ADR-006): a multiline/metacharacter value
   // cannot break the command structure or inject commands.
   const { command, vars } = interpolateCommand(step.command, ctx);
   const cwd = step.cwd ? interpolateString(step.cwd, ctx) : projectRoot();

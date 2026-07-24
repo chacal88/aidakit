@@ -35,7 +35,7 @@
  * @property {Object.<string,string>} [on_result]
  */
 
-/** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[], outputs?:Object.<string,string[]>}} InvokeStep — dispatches the skill/agent named in `invoke_target`. `outputs` maps an outcome to the structured output keys a resume with that outcome MUST supply (safe single tokens, persisted into context[step.id] — ADR-005). */
+/** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[], outputs?:Object.<string,string[]>}} InvokeStep — dispatches the skill/agent named in `invoke_target`. `outputs` maps an outcome to the structured output keys a resume with that outcome MUST supply (safe single tokens, persisted into context[step.id] — ADR-006). */
 /** @typedef {BaseStep & {type:"runs", command:string, cwd?:string, env?:Object.<string,string>}} RunsStep */
 /** @typedef {BaseStep & {type:"human_handoff", prompt:string}} HumanHandoffStep */
 /** @typedef {BaseStep & {type:"human_gate", prompt:string, options:string[]}} HumanGateStep */

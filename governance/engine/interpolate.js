@@ -26,7 +26,7 @@ export function interpolateString(input, ctx) {
 }
 
 /**
- * Shell-safe rendering of a `runs` command (ADR-005). Each resolvable ${expr}
+ * Shell-safe rendering of a `runs` command (ADR-006). Each resolvable ${expr}
  * is replaced by a bash variable reference ($AIDAKIT_VAR_n) and its value is
  * handed to the child through the environment — bash expands it at runtime as
  * DATA, never re-parsing it as shell syntax. A multiline or metacharacter-laden

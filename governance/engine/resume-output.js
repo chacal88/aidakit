@@ -1,5 +1,5 @@
 // Structured resume output — the channel that carries data (not just an
-// outcome) from the operator-Claude back into the flow state (ADR-005).
+// outcome) from the operator-Claude back into the flow state (ADR-006).
 //
 // An `invoke` step may declare `outputs: {<outcome>: [key, ...]}` in the YAML.
 // When the operator resumes with that outcome, the declared keys must arrive as

@@ -3,7 +3,7 @@
 **Change ID:** `flow-request-vs-change-id`
 **Date:** `2026-07-24`
 **Owner:** `@chacal88`
-**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-005)`
+**Phase / Package:** `engine + flows (governance/) — bugfix with contract change (ADR-006)`
 **PRD:** `n/a`
 **Tech Spec:** `n/a`
 
@@ -41,21 +41,21 @@ grep: .aidakit/tasks/estou: No such file or directory
     vars: { "AIDAKIT_VAR_0": "smoke-change" }
     stderr: ""
     ```
-- [x] `node governance/validators/check-adr-format.js docs/decisions/ADR-005-flow-values-as-data.md` → `OK — 1 ADR(s), valid format.` (exit 0)
-- [x] `node governance/validators/check-plugin-version.js .` → `OK — manifest 0.6.0 covers the highest footer (v0.6), 228 file(s).` (exit 0)
+- [x] `node governance/validators/check-adr-format.js docs/decisions/ADR-006-flow-values-as-data.md` → `OK — 1 ADR(s), valid format.` (exit 0; renumbered ADR-005→ADR-006 in the merge with main, which minted ADR-005-command-namespacing first — numbering is global, never recycled)
+- [x] `node governance/validators/check-plugin-version.js .` → exit 0 with manifest `0.6.1` (post-merge; main's `command-grouping-and-inputs` took `0.6.0`).
 - [x] `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `flow-request-vs-change-id` derives **in-progress** (this plan directory, via `hasInFlightArtifacts`); `ROADMAP.md` regenerated accordingly (one line added to Now; no other line touched).
-- [x] `node governance/validators/check-links.js docs/features/flow-request-vs-change-id docs/decisions docs/guides governance/README.md commands/build.md` → exit 0 across all touched doc surfaces.
+- [x] `node governance/validators/check-links.js docs/features/flow-request-vs-change-id docs/decisions docs/guides governance/README.md commands/flow-build.md` → exit 0 across all touched doc surfaces.
 
 ## Files Touched
 
 - `governance/engine/resume-output.js` (new) · `interpolate.js` · `steps/runs.js` · `steps/invoke.js` · `engine.js` · `parser.js` · `types.js` · `governance/cli.js`
 - `governance/flows/full.yaml` · `governance/flows/fast.yaml` (`docs-onboarding.yaml` audited, unchanged — no command interpolates an input)
 - `governance/__tests__/engine.test.mjs`
-- `docs/decisions/ADR-005-flow-values-as-data.md` (new) · `docs/decisions/README.md`
-- `governance/README.md` · `docs/guides/flows.md` · `commands/build.md` (footers → v0.6)
+- `docs/decisions/ADR-006-flow-values-as-data.md` (new) · `docs/decisions/README.md`
+- `governance/README.md` · `docs/guides/flows.md` · `commands/flow-build.md` (footers → v0.6)
 - `docs/roadmap/epics/EPIC-flow-engine-leashes.md` · `docs/roadmap/ROADMAP.md`
 - `docs/features/flow-request-vs-change-id/{proposal,design,tasks,evidence}.md` (this package)
-- `.claude-plugin/plugin.json` (`0.5.1` → `0.6.0`)
+- `.claude-plugin/plugin.json` (→ `0.6.1`)
 
 ## Unresolved Deviations
 
