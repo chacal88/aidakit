@@ -9,25 +9,25 @@
 
 ## 1. Setup
 
-- [ ] N1. Re-read [design.md](design.md) against live code: confirm the flow YAML shapes ([full.yaml:148-161](../../../governance/flows/full.yaml), [fast.yaml:100-113](../../../governance/flows/fast.yaml)), the validator invocation convention ([check-doc-manifest.js](../../../governance/validators/check-doc-manifest.js), [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)), the current dispatcher agent files ([agents/adr-reviewer.md](../../../agents/adr-reviewer.md) ... [agents/tester.md](../../../agents/tester.md)), and the `.gitignore` `.aidakit/` line. No divergence found → proceed. Divergence found → STOP and report.
+- [x] N1. Re-read [design.md](design.md) against live code: confirm the flow YAML shapes ([full.yaml:148-161](../../../governance/flows/full.yaml), [fast.yaml:100-113](../../../governance/flows/fast.yaml)), the validator invocation convention ([check-doc-manifest.js](../../../governance/validators/check-doc-manifest.js), [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)), the current dispatcher agent files ([agents/adr-reviewer.md](../../../agents/adr-reviewer.md) ... [agents/tester.md](../../../agents/tester.md)), and the `.gitignore` `.aidakit/` line. No divergence found → proceed. Divergence found → STOP and report.
 
 ## 2. Pack schema + `check-context-pack.js` (byte-stability validator)
 
 ### 2a. RED
 
-- [ ] N2a-i. Test §pack-byte-stability-empty-sources: write a pack with an empty `sources[]`; `check-context-pack.js` exits 0 (an empty pack is well-formed).
-- [ ] N2a-ii. Test §pack-byte-stability-wall-clock-rejected: write a pack whose frontmatter contains an ISO-8601 timestamp field not covered by the schema (`built_at: 2026-07-25T…`); validator exits 1 with an error naming the offending field. (AC #11)
-- [ ] N2a-iii. Test §pack-byte-stability-random-id-rejected: write a pack containing a UUID/tmp-path in the body sections; validator exits 1 naming the pattern. (AC #11)
-- [ ] N2a-iv. Test §pack-schema-missing-section: write a pack missing one of the six required sections; validator exits 1 naming the missing section. (AC #3)
-- [ ] N2a-v. Test §pack-schema-excerpt-forbidden: write a pack whose `code-map-pointers` section contains a fenced code block; validator exits 1 with `pointers-only rule violated`. (AC #3)
+- [x] N2a-i. Test §pack-byte-stability-empty-sources: write a pack with an empty `sources[]`; `check-context-pack.js` exits 0 (an empty pack is well-formed).
+- [x] N2a-ii. Test §pack-byte-stability-wall-clock-rejected: write a pack whose frontmatter contains an ISO-8601 timestamp field not covered by the schema (`built_at: 2026-07-25T…`); validator exits 1 with an error naming the offending field. (AC #11)
+- [x] N2a-iii. Test §pack-byte-stability-random-id-rejected: write a pack containing a UUID/tmp-path in the body sections; validator exits 1 naming the pattern. (AC #11)
+- [x] N2a-iv. Test §pack-schema-missing-section: write a pack missing one of the six required sections; validator exits 1 naming the missing section. (AC #3)
+- [x] N2a-v. Test §pack-schema-excerpt-forbidden: write a pack whose `code-map-pointers` section contains a fenced code block; validator exits 1 with `pointers-only rule violated`. (AC #3)
 
 ### 2b. GREEN
 
-- [ ] N2b-i. Create `governance/validators/check-context-pack.js` — zero-dep, exit codes 0/1/2, JSON+stderr contract mirroring `check-doc-manifest.js`. Enforce: frontmatter fields (`change_id`, `built_at_source_hash`, `pack_version`, `sources[]`); six required `##` sections in fixed order; ban ISO timestamps outside the schema, UUIDs, `/tmp/…` and other wall-clock/host-varying patterns; ban fenced code blocks under `## code-map-pointers` and `## specs`. (AC #3, #11)
+- [x] N2b-i. Create `governance/validators/check-context-pack.js` — zero-dep, exit codes 0/1/2, JSON+stderr contract mirroring `check-doc-manifest.js`. Enforce: frontmatter fields (`change_id`, `built_at_source_hash`, `pack_version`, `sources[]`); six required `##` sections in fixed order; ban ISO timestamps outside the schema, UUIDs, `/tmp/…` and other wall-clock/host-varying patterns; ban fenced code blocks under `## code-map-pointers` and `## specs`. (AC #3, #11)
 
 ### 2c. REFACTOR
 
-- [ ] N2c. Re-run §pack-byte-stability-* and §pack-schema-* → green; full governance suite → no regression.
+- [x] N2c. Re-run §pack-byte-stability-* and §pack-schema-* → green; full governance suite → no regression.
 
 ## 3. Freshness validator (`check-context-pack-freshness.js`)
 
