@@ -9,7 +9,7 @@ Origem: análise de gaps sobre `governance/flows/*.yaml` + `governance/engine/` 
 - **Feature:** Cap mecânico de retries — changes: engine-max-visits
   - Aceite: uma aresta de retorno visitada >N vezes cai em `human_gate` de escalação ("N rounds sem consenso: intervir ou abortar?"), nunca em loop infinito; N configurável por step no YAML. Hoje o "capped rounds" vive só no texto do skill `aidakit:review`.
 - **Feature:** Coleira das metas — changes: acceptance-leash
-  - Aceite: o brainstorm emite `acceptance-manifest.json` (meta → como verificar) e `check-acceptance.js` trava o step `pr` enquanto houver critério sem teste/evidência mapeada — mesmo tratamento do doc-leash (`check-doc-manifest.js`).
+  - Aceite: o brainstorm emite `acceptance-manifest.json` (meta → como verificar) e `check-acceptance.js` trava o step `pr` enquanto houver critério sem teste/evidência mapeada — mesmo tratamento do doc-leash (`check-doc-manifest.js`). **Entregue** — PR #36 (novo agente `aidakit:acceptance-planner`, validador `check-acceptance.js` com cross-validação contra `parseCriteria()`, wiring nos dois flows com `max_visits: 3` no back-edge, ADR-010); dogfooded no próprio PR — o step novo gateou a si mesmo, exit 0.
 - **Feature:** Retry com memória — changes: retry-memory
   - Aceite: ao voltar para `implement`, o agente recebe histórico estruturado das tentativas (round, causa da falha em cada uma); os eventos de correção alimentam `aidakit:learn` como matéria-prima de DNA (erro recorrente ≥3x). **Entregue** — `governance/__tests__/retry-memory.test.mjs` 87/87, `engine.test.mjs` 149/149 (ver [evidence.md](../../features/retry-memory/evidence.md)); PR de merge para `main` ainda em aberto.
 - **Feature:** Fate do `type: parallel` do engine — changes: engine-parallel-fate
