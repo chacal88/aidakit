@@ -6,9 +6,13 @@
 //   exit 0 = derived cleanly · exit 1 = declared change-id nowhere on disk (a gap) · exit 2 = usage
 //   stdout = JSON { validator, ok, epics[...], orphans[] } · stderr = the Now/Next/Later view
 //
-// It uses git ONLY as a heuristic for "has an open PR / branch" and degrades
-// gracefully to disk-only (features/ vs archive/) when git is unavailable — a
-// change with no git signal simply never resolves to in-review, never an error.
+// It derives from the SHARED git state (ADR-007 amends ADR-002): the artifact
+// dirs COMMITTED on any branch (docs/features/<id>/, docs/archive/<date>-<id>/),
+// plus git/gh heuristics for open PR / branch. Worktrees share one .git, so this
+// answer is single-valued no matter which working tree you run it in — a change
+// planned in another worktree is visible here once committed. It degrades
+// gracefully to disk-only (the local working tree) when git is unavailable — a
+// change with no git signal simply falls back to the local tree, never an error.
 //
 // Usage:
 //   node derive-roadmap-status.js [--root <dir>] [--json] [--strict]
@@ -44,6 +48,46 @@ function ghOpenPrChangeIds(root) {
   return new Set(res.stdout.split("\n").map((s) => s.trim()).filter(Boolean).map((n) => n.split("/").pop()));
 }
 
+/**
+ * Reads the SHARED git state — the artifact dirs committed on ANY branch (local or
+ * remote-tracking). This is what makes the derived status single-valued across
+ * worktrees (ADR-007): worktrees share one .git, so a docs/features/<id>/ committed
+ * on any branch is visible from EVERY working tree — not only the one that authored
+ * it. The cost is O(branches), not O(worktrees): one `git ls-tree` per ref, each a
+ * few ms; we never walk a worktree's filesystem. Degrades to empty sets (disk-only)
+ * when git is absent or errors — never throws.
+ * @returns {{gitFeatureIds:Set<string>, gitArchiveDirs:Set<string>}}
+ */
+function gitCommittedDirs(root) {
+  const gitFeatureIds = new Set();
+  const gitArchiveDirs = new Set();
+  const refsRes = spawnSync(
+    "git",
+    ["-C", root, "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"],
+    { encoding: "utf8" },
+  );
+  if (refsRes.status !== 0 || !refsRes.stdout) return { gitFeatureIds, gitArchiveDirs };
+  const refs = refsRes.stdout
+    .split("\n").map((s) => s.trim())
+    .filter((r) => r && !r.endsWith("/HEAD")); // skip the symbolic origin/HEAD
+  for (const ref of refs) {
+    // One call lists the change-id dirs committed under both paths on this ref;
+    // a path absent on the ref just yields no lines (exit 0, no error).
+    const res = spawnSync(
+      "git",
+      ["-C", root, "ls-tree", "-d", "--name-only", ref, "docs/features/", "docs/archive/"],
+      { encoding: "utf8" },
+    );
+    if (res.status !== 0 || !res.stdout) continue;
+    for (const line of res.stdout.split("\n").map((s) => s.trim()).filter(Boolean)) {
+      const base = line.split("/").pop();
+      if (line.startsWith("docs/features/")) gitFeatureIds.add(base);
+      else if (line.startsWith("docs/archive/")) gitArchiveDirs.add(base);
+    }
+  }
+  return { gitFeatureIds, gitArchiveDirs };
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const jsonOnly = argv.includes("--json");
@@ -75,7 +119,8 @@ function main() {
 
   const branchChangeIds = gitBranchChangeIds(root);
   const prChangeIds = ghOpenPrChangeIds(root);
-  const { epics } = deriveRoadmap({ root, prChangeIds, branchChangeIds });
+  const { gitFeatureIds, gitArchiveDirs } = gitCommittedDirs(root);
+  const { epics } = deriveRoadmap({ root, prChangeIds, branchChangeIds, gitFeatureIds, gitArchiveDirs });
 
   // Orphans: declared change-ids that resolve to "backlog" with no artifact AND no git
   // signal — i.e. pure intent. In --strict, that's a gap worth flagging.

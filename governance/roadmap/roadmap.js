@@ -1,10 +1,19 @@
 // aidakit roadmap — parse the declared intent (epics → features → changes) and
-// DERIVE each item's status from the disk. No hand-written status: the roadmap
-// never lies, same discipline as the doc leash (the truth is the disk).
+// DERIVE each item's status from the SHARED git state. No hand-written status: the
+// roadmap never lies, same discipline as the doc leash (the truth is reality).
 //
 // The declared file (an epic) says only WHAT we want and HOW it groups — the
 // status comes from reality: is the change-id an in-flight artifact, does it have
 // a PR, is it archived? Epics/features aggregate the status of their changes.
+//
+// Single status across worktrees (ADR-007 amends ADR-002): worktrees share ONE
+// .git but each has its OWN working tree (and its own gitignored .aidakit/). A
+// change planned in one worktree is invisible to a deriver run in another if we
+// only stat the local working tree — so the answer would depend on WHERE you ask.
+// The fix: derive from what all worktrees share — the git refs. The CLI injects
+// gitFeatureIds/gitArchiveDirs (change-ids with a docs/features|archive dir
+// COMMITTED on any branch); this module stays pure and unions those shared signals
+// with the local working tree (which still catches your own uncommitted work).
 //
 // Pure Node, zero-dep (like the validators). No new state; a pure read + derive.
 
@@ -28,48 +37,58 @@ const EPIC_NAME = /^EPIC-[a-z0-9-]+\.md$/;
 const FEATURE_RE = /^\s*[-*]\s*\*\*Feature:\*\*\s*(.+?)\s*(?:—|--|-)\s*changes:\s*(.+?)\s*$/i;
 
 /**
- * Derives the status of ONE change-id from the disk (and optional git signal).
+ * Derives the status of ONE change-id from the shared git state + local disk.
  * The order of checks is strongest-evidence-first:
  *   archived                          → done
  *   has an open PR / branch (gitInfo) → in-review
  *   in-flight artifact dir exists     → in-progress
  *   declared but no artifact anywhere → backlog
+ * Each disk check unions a SHARED git signal (a dir committed on any branch — the
+ * single-status fix, ADR-007) with the LOCAL working tree (your own, possibly
+ * uncommitted, work). With no git signals injected it degrades to disk-only —
+ * exactly the pre-ADR-007 behavior, never an error.
  * @param {string} changeId
- * @param {{root:string, prChangeIds?:Set<string>, branchChangeIds?:Set<string>}} ctx
+ * @param {{root:string, prChangeIds?:Set<string>, branchChangeIds?:Set<string>, gitFeatureIds?:Set<string>, gitArchiveDirs?:Set<string>}} ctx
  * @returns {"done"|"in-review"|"in-progress"|"backlog"}
  */
 export function deriveChangeStatus(changeId, ctx) {
-  const { root, prChangeIds, branchChangeIds } = ctx;
+  const { root, prChangeIds, branchChangeIds, gitFeatureIds, gitArchiveDirs } = ctx;
   // Archived: docs/archive/YYYY-MM-DD-<change-id>/ OR openspec/changes/archive/<change-id>/.
-  if (isArchived(root, changeId)) return "done";
+  if (isArchived(root, changeId, gitArchiveDirs)) return "done";
   // Open PR for this change-id → in-review (a merged PR would already show as archived).
   if (prChangeIds && prChangeIds.has(changeId)) return "in-review";
   // In-flight artifact dir: docs/features/<id>/ or openspec/changes/<id>/.
-  if (hasInFlightArtifacts(root, changeId)) return "in-progress";
+  if (hasInFlightArtifacts(root, changeId, gitFeatureIds)) return "in-progress";
   // A branch exists but no artifacts yet → planned (work started, not documented).
   if (branchChangeIds && branchChangeIds.has(changeId)) return "planned";
   return "backlog";
 }
 
-function hasInFlightArtifacts(root, changeId) {
+function hasInFlightArtifacts(root, changeId, gitFeatureIds) {
+  // Shared: a docs/features/<id>/ committed on ANY branch (visible from every
+  // worktree/clone that shares this .git) — the single-status signal.
+  if (gitFeatureIds && gitFeatureIds.has(changeId)) return true;
+  // Local: your own working tree (catches uncommitted, not-yet-shared work).
   return existsSync(join(root, "docs", "features", changeId)) ||
     existsSync(join(root, "openspec", "changes", changeId));
 }
 
-function isArchived(root, changeId) {
-  // docs/archive/<YYYY-MM-DD>-<change-id>/  (the archive dir carries the date + id)
+function isArchived(root, changeId, gitArchiveDirs) {
+  // Shared: an archive dir (docs/archive/<date>-<id>/) committed on ANY branch.
+  if (gitArchiveDirs && matchesArchiveDir(gitArchiveDirs, changeId)) return true;
+  // Local working tree — docs/archive/<YYYY-MM-DD>-<change-id>/ (date + id).
   const docsArchive = join(root, "docs", "archive");
-  if (existsSync(docsArchive)) {
-    for (const name of safeReaddir(docsArchive)) {
-      if (name.endsWith(`-${changeId}`) || name === changeId) return true;
-    }
-  }
+  if (existsSync(docsArchive) && matchesArchiveDir(safeReaddir(docsArchive), changeId)) return true;
   // openspec/changes/archive/<change-id>/
   const openspecArchive = join(root, "openspec", "changes", "archive");
-  if (existsSync(openspecArchive)) {
-    for (const name of safeReaddir(openspecArchive)) {
-      if (name === changeId || name.endsWith(`-${changeId}`)) return true;
-    }
+  if (existsSync(openspecArchive) && matchesArchiveDir(safeReaddir(openspecArchive), changeId)) return true;
+  return false;
+}
+
+/** An archive dir names a change when it IS the id or ends with `-<id>` (date prefix). */
+function matchesArchiveDir(names, changeId) {
+  for (const name of names) {
+    if (name === changeId || name.endsWith(`-${changeId}`)) return true;
   }
   return false;
 }
@@ -144,12 +163,18 @@ export function findDeclaredChange(changeId, root = projectRoot()) {
 /**
  * Builds the full derived roadmap: every epic with its features, each feature with
  * its changes and derived statuses, aggregated up to the epic. Pure read.
- * @param {{root?:string, prChangeIds?:Set<string>, branchChangeIds?:Set<string>}} [opts]
+ * @param {{root?:string, prChangeIds?:Set<string>, branchChangeIds?:Set<string>, gitFeatureIds?:Set<string>, gitArchiveDirs?:Set<string>}} [opts]
  * @returns {{epics:Array, generatedFromDisk:boolean}}
  */
 export function deriveRoadmap(opts = {}) {
   const root = opts.root || projectRoot();
-  const ctx = { root, prChangeIds: opts.prChangeIds, branchChangeIds: opts.branchChangeIds };
+  const ctx = {
+    root,
+    prChangeIds: opts.prChangeIds,
+    branchChangeIds: opts.branchChangeIds,
+    gitFeatureIds: opts.gitFeatureIds,
+    gitArchiveDirs: opts.gitArchiveDirs,
+  };
   const epics = collectEpics(root).map((file) => {
     const epic = parseEpic(file);
     const features = epic.features.map((f) => {

@@ -38,3 +38,7 @@ Teams asking for a status the disk cannot express (e.g. "in QA", "blocked on des
 | Hand-written `status:` field per item | Simple; any state expressible | The Jira drift problem in-repo: the field lies the moment someone forgets to update it | medium |
 | A single flat backlog file (no epic/feature hierarchy) | Minimal | No grouping; can't answer "what's the status of Payments"; doesn't scale past a handful of changes | low |
 | Derive status but store it back into the files (cache) | Fast reads | A cache that can go stale reintroduces drift; the derive is already cheap (a disk walk) | medium |
+
+## Amendments
+
+- [ADR-007](ADR-007-roadmap-status-from-shared-git.md) (2026-07-24) — amends the source of the derivation. This ADR's `in-progress`/`done` checks read the **local working tree** (`existsSync(docs/features/<id>/)`), which assumes one disk; under git worktrees that makes the status depend on *which* tree asks. ADR-007 keeps the derive-never-write principle intact but derives from the **shared git refs** (dirs committed on any branch), unioned with the local tree, so the status is single-valued across worktrees and clones.

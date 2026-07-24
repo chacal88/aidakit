@@ -47,6 +47,18 @@ ok(deriveChangeStatus("feature-unknown", ctx) === "backlog", "nowhere → backlo
 // branch-only (no artifacts, no PR) → planned
 ok(deriveChangeStatus("feature-branchonly", { root: tmp, branchChangeIds: new Set(["feature-branchonly"]) }) === "planned", "branch only → planned");
 
+// --- ADR-007: shared git state (committed on another worktree/branch) is single-valued ---
+// A change planned in ANOTHER worktree has no dir in THIS working tree, but its
+// docs/features/<id>/ is committed on a branch we share via .git → in-progress here too.
+ok(deriveChangeStatus("feature-in-worktree", { root: tmp, gitFeatureIds: new Set(["feature-in-worktree"]) }) === "in-progress",
+  "committed feature dir on a shared branch (another worktree) → in-progress");
+// Same for an archive dir committed on a branch (docs/archive/<date>-<id>/) → done.
+ok(deriveChangeStatus("feature-arch-git", { root: tmp, gitArchiveDirs: new Set(["2026-07-01-feature-arch-git"]) }) === "done",
+  "committed archive dir on a shared branch → done");
+// The git signal wins even when the local working tree knows nothing.
+ok(deriveChangeStatus("feature-nolocal", { root: tmp }) === "backlog",
+  "no git signal + nothing in local tree → backlog (degrades to disk-only, pre-ADR-007 behavior)");
+
 // --- aggregateStatus ---
 ok(aggregateStatus([]) === "backlog", "no children → backlog");
 ok(aggregateStatus(["done", "done"]) === "done", "all done → done");
