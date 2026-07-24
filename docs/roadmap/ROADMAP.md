@@ -12,6 +12,10 @@
 
 - Cap mecânico de retries — `engine-max-visits` → in-progress
 
+### Experiência de linha de comando dos flows — **in-progress**
+
+- Sumários de passo do flow — `flow-step-summaries` → in-progress
+
 ## Next (planned)
 
 _(nada planejado)_
@@ -21,10 +25,6 @@ _(nada planejado)_
 ### Cacheamento de contexto por change — **backlog**
 
 - Context pack por change (L1) — `context-pack-l1` → backlog
-
-### Experiência de linha de comando dos flows — **backlog**
-
-- Sumários de passo do flow — `flow-step-summaries` → backlog
 
 ### Coleiras mecânicas do flow engine — **in-progress**
 

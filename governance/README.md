@@ -8,7 +8,7 @@ Declarative flow engine + (under construction) validators, ported and slimmed do
 
 - **`engine/`** — the engine: runs a YAML flow step by step, with gates, persisted state, and inversion of control.
 - **`flows/`** — default flows: `fast.yaml` (Margi style) and `full.yaml` (codeflow style). A project can have its own in `.aidakit/flows/`.
-- **`cli.js`** — `node governance/cli.js <start|resume|status|abort|list>`. `start`/`resume`/`status` each print a **progress table** first: every step declared in the flow's YAML, tagged `done`/`current`/`pending` (`engine/progress-table.js`) — a structural map of the whole run, not just the local pause/prompt.
+- **`cli.js`** — `node governance/cli.js <start|resume|status|summaries|abort|list>`. `start`/`resume`/`status` each print a **progress table** first: every step declared in the flow's YAML, tagged `done`/`current`/`pending` (`engine/progress-table.js`) — a structural map of the whole run, not just the local pause/prompt. Any step that has emitted a per-step summary (see below) gets a second, indented `↳ <text>` line under its `done` row — the **narrative** layered under the **position**. `summaries <flow_id>` prints the full ordered narrative log on its own, one line per entry (`[<step_id>#<visit_n> <outcome>] <text>`), including back-edge history.
 - **`__tests__/`** — Node table tests (no framework): `node governance/__tests__/engine.test.mjs`.
 
 ## How a flow works
@@ -37,6 +37,29 @@ Two grammars for referencing state, **do not mix them**:
 Available expressions: `${inputs.x}`, `${context.<step>.<field>}`, `${flow_id}`, `${item}`/`${as}` (inside a loop).
 
 In a `runs` **command**, each resolvable `${...}` renders as a bash env-var reference (`$AIDAKIT_VAR_n`) whose value travels through the child environment — data, not shell text ([ADR-006](../docs/decisions/ADR-006-flow-values-as-data.md)). Interpolation sites in commands must therefore be bare or double-quoted, never inside single quotes (a single-quoted `'${x}'` stops expanding).
+
+## Per-step summaries (the narrative layer)
+
+Any `invoke`/`human_gate`/`human_handoff` step may declare an optional `summary:` string template — a one-line, human-readable narrative rendered after the step resolves (never on the initial pause) and appended to `state.summaries[]`. `runs`/`loop`/`parallel`/`terminal` never emit (a `runs` result is already machine-parseable under `context[step.id]`; the others are structural, not semantic pauses).
+
+```yaml
+  - id: select
+    type: invoke
+    invoke_target: aidakit:orchestrator
+    outputs:
+      success:
+        - change_id
+    summary: "resolved change_id={change_id}"     # ← optional; falls back to "{outcome}"
+    on_success: classify
+```
+
+- **Grammar: single-brace `{key}`** — deliberately not the engine's `${...}` interpolation above; a summary template is already scoped to the ONE step's `context[step.id]` bag, so `{key}` (not `${context.<step>.<key>}`) is enough. `{outcome}` always resolves (synthesized from the step's resolved outcome, regardless of which fields the executor itself wrote); any other key falls back to the step's declared outputs (`{change_id}`, `{choice}`, `{response}`, …). An unset key renders as a visible `<unset:key>` marker — never throws.
+- **Absent `summary:`** → the engine falls back to the default template `"{outcome}"`.
+- **200-char cap, engine-side, at ingest** — a rendered text longer than 200 chars is truncated with `…` as the last character; newlines are collapsed to spaces. `state.summaries[i].text.length` is always ≤ 200.
+- **Back-edge append, never overwrite** — a re-entered step gets a NEW entry with `visit_n` incremented (`select#1`, `select#2`, …); the array is append-only, in insertion order, and survives `abort`/`failure` routing.
+- **Non-breaking** — `state.summaries` is optional; a state file from before this field existed reads fine everywhere (`state.summaries ?? []`), and `summaries <flow_id>` prints `no summaries recorded for <flow_id>` instead of erroring.
+
+This is the **narrative** layer, distinct from the **position** layer (the progress table's `done`/`current`/`pending` row, unchanged by this): the row still shows only `id + marker`; the summary is a second, indented line UNDER a `done` row that has one.
 
 ## Inversion of control (the central point)
 
@@ -67,3 +90,4 @@ Brought over: the type contract, the loop with IoC, pause/resume, the `max`/`unt
 <!-- aidakit v0.3 — flow engine, Milestone 1, 2026-07-17 — translated to EN -->
 <!-- aidakit v0.6 — ADR-006: structured invoke outputs (change_id) + runs values passed as env data, 2026-07-24 -->
 <!-- aidakit v0.7 — flow-run-progress-table: read-only progress table (done/current/pending) at start/resume/status, 2026-07-24 -->
+<!-- aidakit v0.8 — flow-step-summaries: declarative per-step narrative (state.summaries[], summary: template, `summaries <flow_id>` CLI), 2026-07-24 -->
