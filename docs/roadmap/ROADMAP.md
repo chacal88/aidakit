@@ -16,7 +16,6 @@ _(nada planejado)_
 
 ### Experiência de linha de comando dos flows — **backlog**
 
-- Tabela de progresso do flow — `flow-run-progress-table` → backlog
 - Sumários de passo do flow — `flow-step-summaries` → backlog
 
 ### Coleiras mecânicas do flow engine — **in-progress**
@@ -33,6 +32,7 @@ _(nada planejado)_
 ### Experiência de linha de comando dos flows
 
 - Agrupamento de comandos + inputs — `command-grouping-and-inputs` → done (2026-07-24)
+- Tabela de progresso do flow — `flow-run-progress-table` → done (2026-07-24)
 
 ### Coleiras mecânicas do flow engine
 
