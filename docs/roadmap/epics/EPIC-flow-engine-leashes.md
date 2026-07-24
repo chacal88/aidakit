@@ -11,7 +11,7 @@ Origem: análise de gaps sobre `governance/flows/*.yaml` + `governance/engine/` 
 - **Feature:** Coleira das metas — changes: acceptance-leash
   - Aceite: o brainstorm emite `acceptance-manifest.json` (meta → como verificar) e `check-acceptance.js` trava o step `pr` enquanto houver critério sem teste/evidência mapeada — mesmo tratamento do doc-leash (`check-doc-manifest.js`).
 - **Feature:** Retry com memória — changes: retry-memory
-  - Aceite: ao voltar para `implement`, o agente recebe histórico estruturado das tentativas (round, causa da falha em cada uma); os eventos de correção alimentam `aidakit:learn` como matéria-prima de DNA (erro recorrente ≥3x).
+  - Aceite: ao voltar para `implement`, o agente recebe histórico estruturado das tentativas (round, causa da falha em cada uma); os eventos de correção alimentam `aidakit:learn` como matéria-prima de DNA (erro recorrente ≥3x). **Entregue** — `governance/__tests__/retry-memory.test.mjs` 87/87, `engine.test.mjs` 149/149 (ver [evidence.md](../../features/retry-memory/evidence.md)); PR de merge para `main` ainda em aberto.
 - **Feature:** Bench paralelo estrutural — changes: flow-parallel-bench
   - Aceite: o dispatch do bench de review é expresso como `type: parallel` no YAML do flow (step type hoje dormente no engine), tornando o paralelismo estrutural; `check-bench.js` permanece como verificação a posteriori.
 - **Feature:** Registro diferido no build (débito) — changes: add-debit

@@ -7,14 +7,14 @@
 
 ## Tests
 
-- [ ] `node governance/__tests__/retry-memory.test.mjs` → **N passed, 0 failed** (fill in after implementation)
-  - [ ] §1 Append helper — 6 subtests (`1a` create, `1b` append, `1c` empty-arg no-op, `1d` invalid cause, `1e` atomic write, `1f` round from state)
-  - [ ] §2 Resume-output extension — 3 subtests (`2a` parser accept, `2b` re-pause, `2c` context populated)
-  - [ ] §3 `full.yaml` schema — 4 subtests (`3a` input path, `3b` outputs shape, `3c` record steps exist, `3d` back-edges wired)
-  - [ ] §4 End-to-end drive — 3 subtests (`4a` single revise round, `4b` learn correction event, `4c` exhaustion → escalation)
-  - [ ] §env AIDAKIT_FLOW_ID surface in runs children — 1 subtest
-- [ ] `node governance/__tests__/engine.test.mjs` → **149 passed, 0 failed** (unchanged — engine core untouched save the one-line `AIDAKIT_FLOW_ID` addition covered by §env)
-- [ ] Full suite — per-file counts:
+- [x] `node governance/__tests__/retry-memory.test.mjs` → **87 passed, 0 failed**
+  - [x] §1 Append helper — 1a–1f + 1f-anti-drift (missing dir/file create, existing-file append/order, empty change_id/cause no-op, invalid cause exit 1, atomic write incl. stale `.tmp` overwrite, round from mock state incl. missing-state → null, anti-drift pin against `persistence.statePath`)
+  - [x] §2-env — `AIDAKIT_FLOW_ID` surfaced to `runs` step children (a synthetic flow echoes it, asserted equal to `state.flow_id`)
+  - [x] §2a–2c Resume-output extension on invoke — parser accepts `outputs: {revise: [cause]}` (compat guard, no code changed), re-pause without `cause=`, `context.<step>.cause` populated on a valid resume
+  - [x] §3a–3d `full.yaml` schema — `retry_history_path` wired into `specify`/`implement`/`learn` inputs, `critic`/`readiness` `outputs` shape, the five `record_*_cause` runs steps exist with `on_success === on_failure === <target>`, back-edges route through them (no leftover direct edge)
+  - [x] §4a–4c End-to-end drive — round-1 `critic: revise cause=critic-reject` writes the record and re-enters `specify`; round-2 `critic: ok` leaves the file unchanged; drive continues to `learn` and asserts `pause.input.retry_history_path`; the correction-event bridge (`events.ndjson` + `recordError`) is simulated and `deriveCandidates(..., {threshold:1})` finds it; a 3-round exhaustion asserts 3 accumulated records and the unchanged `specify_escalation` → `abort` semantic
+- [x] `node governance/__tests__/engine.test.mjs` → **149 passed, 0 failed** (see "Deviations" — test `10d` was adapted, not left untouched, but the assertion COUNT and the escalation semantic it pins are unchanged)
+- [x] Full suite — per-file counts (all green, no regressions):
   ```
   candidates.test.mjs       :: 8 passed, 0 failed
   check-adr-format.test.mjs :: 8 passed, 0 failed
@@ -28,35 +28,30 @@
   plugin-version.test.mjs   :: 12 passed, 0 failed
   pr-automation.test.mjs    :: 161 passed, 0 failed
   progress-table.test.mjs   :: 30 passed, 0 failed
-  retry-memory.test.mjs     :: N passed, 0 failed   (this change)
+  retry-memory.test.mjs     :: 87 passed, 0 failed   (this change, NEW file)
   roadmap.test.mjs          :: 28 passed, 0 failed
   yaml-min.test.mjs         :: 17 passed, 0 failed
   ```
-  Fill in `N` after implementation. Any regression in another file blocks the change.
 
 ## Manual verification
 
-- [ ] Drive `full` locally for a throwaway change-id:
-  1. Start the flow, reach `critic`, resume with `resume <flow_id> revise cause=critic-reject`.
-  2. Confirm `docs/features/<change-id>/retry-history.json` exists on disk with one record `{round:1, step_id:"specify", cause:"critic-reject"}`.
-  3. Re-enter `specify` and confirm the invoke pause carries `input.retry_history_path` (visible in the pause prompt).
-  4. Simulate a `specify` success then `critic: ok`; confirm the file is unchanged (no bookkeeping on success).
-- [ ] Drive to `learn`; simulate `aidakit:learn` emitting the correction event; confirm `deriveCandidates(<change-id>, {threshold:1})` returns the expected candidate (via a small ad-hoc `node -e` snippet).
+- [x] Covered end-to-end by §4a–4c of `retry-memory.test.mjs` (drives the real `full.yaml` through the engine, not a mock) — a manual CLI drive was not additionally performed; the automated e2e exercises the same seam (`startFlow`/`resumeFlow` against the real flow file, real `append-retry-history.js` subprocess via `runs`).
 
 ## Docs/ADR updates
 
-- [ ] No new ADR — mechanism is fully expressible with existing decisions ([ADR-006](../../decisions/ADR-006-flow-values-as-data.md), [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md), [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)). Reasoning captured in [proposal.md #Non-goals](proposal.md#non-goals) item 5.
-- [ ] Skill updates: [skills/implement/SKILL.md](../../../skills/implement/SKILL.md), [skills/plan/SKILL.md](../../../skills/plan/SKILL.md), [skills/learn/SKILL.md](../../../skills/learn/SKILL.md) — each gains one paragraph on the retry-history read (§7 of [tasks.md](tasks.md)).
-- [ ] Cause-key registry lives in [design.md #Cause-key registry](design.md#cause-key-registry). Growth rule (doc-only PR) documented; no code-level enforcement (see [proposal.md #Non-goals](proposal.md#non-goals) item 6).
-- [ ] Spec-delta: this change proposes the FIRST canonical spec under `docs/specs/` (see [spec-delta.md](spec-delta.md)). Because `docs/specs/` does not yet exist in this repo, the delta doubles as a proposal for the spec's initial content, to be promoted at archive time per [DOCS.md §4](../../../DOCS.md).
+- [x] No new ADR — mechanism is fully expressible with existing decisions ([ADR-006](../../decisions/ADR-006-flow-values-as-data.md), [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md), [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)). Reasoning captured in [proposal.md #Non-goals](proposal.md#non-goals) item 5.
+- [x] Skill updates: [skills/implement/SKILL.md](../../../skills/implement/SKILL.md), [skills/plan/SKILL.md](../../../skills/plan/SKILL.md), [skills/learn/SKILL.md](../../../skills/learn/SKILL.md) — each gains the retry-history read (§7 of [tasks.md](tasks.md)). `implement`/`plan` needed the paragraph folded into their existing dispatch-prompt/prompt-building mechanics (not a bare standalone paragraph) to actually reach the downstream agent/session; `learn` got the literal Prerequisites bullet as specified.
+- [x] Cause-key registry lives in [design.md #Cause-key registry](design.md#cause-key-registry). Growth rule (doc-only PR) documented; no code-level enforcement (see [proposal.md #Non-goals](proposal.md#non-goals) item 6).
+- [x] Spec-delta: this change proposes the FIRST canonical spec under `docs/specs/` (see [spec-delta.md](spec-delta.md)). Because `docs/specs/` does not yet exist in this repo, the delta doubles as a proposal for the spec's initial content, to be promoted at archive time per [DOCS.md §4](../../../DOCS.md). **Known gap** (see Deviations): `check-links.js` flags the delta's forward reference to the not-yet-created `docs/specs/flow-retry-loop.md` as broken — this is intentional/self-documented in spec-delta.md's own "Merge instructions at archive time" section, not something introduced by this implementation.
 - [ ] Doc-manifest for this change (`.aidakit/tasks/retry-memory/doc-manifest.json`) is authored by the `document` step of the flow, not this task list.
 
 ## Roadmap impact
 
-- [ ] [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) — the `Feature: Retry com memória` acceptance is met (see [proposal.md #Why](proposal.md#why) — 1:1 mapping to the epic line).
-- [ ] `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `retry-memory` derives `in-progress` from the presence of `docs/features/retry-memory/` (committed early per [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)); moves to `done` at archive time.
+- [x] [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) — the `Feature: Retry com memória` acceptance is met (see [proposal.md #Why](proposal.md#why) — 1:1 mapping to the epic line).
+- [x] `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `retry-memory` derives `in-progress` from the presence of `docs/features/retry-memory/` (committed early per [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md)); moves to `done` at archive time.
 - [ ] Follow-up unblocked: wire `fast.yaml`'s `review → implement` back-edge with the same mechanism (Non-goal #4 in [proposal.md](proposal.md#non-goals)); refine `check-bench.js` and `hardening` cause granularity (design.md notes).
 
 ## Unresolved Deviations
 
-- [ ] (empty during planning; will list any deviations from the plan encountered at implementation time — same shape as [engine-max-visits/evidence.md #Deviations from the plan](../engine-max-visits/evidence.md#deviations-from-the-plan))
+1. **`governance/__tests__/engine.test.mjs` test `10d` required a mechanical adaptation** (not left untouched, contrary to design.md's Backwards-compatibility claim). `full.yaml`'s `critic.on_result.revise` now targets `record_critic_cause` and requires the `outputs: {revise: [cause]}` leash on every resume (design.md's own wiring diff, §`full.yaml` diff shape). Test `10d` (the max-visits cap E2E drive, added by `engine-max-visits`) resumed `critic` with a bare `"revise"` string — under the new wiring this re-pauses at `critic` requesting `cause=`, instead of advancing. Fixed by resuming with `{outcome: "revise", output: {cause: "critic-reject"}}` (the `resumeWith`-style structured answer the harness already supports). The assertion COUNT is unchanged (149/0 before and after) and the escalation semantic the test pins (3 dispatches, then `specify_escalation` → `abort`) is unchanged — only the resume payload for one branch was adapted to the new leash. Not an ADR conflict or scope escalation: it is a direct, foreseeable, minimal consequence of implementing the approved `full.yaml` wiring diff on a pre-existing test that exercises the same flow.
+2. **`check-links.js docs/features/retry-memory` exits 1** (tasks.md §8 expected exit 0), due to `spec-delta.md:94`'s link to `../specs/flow-retry-loop.md`, which does not exist yet by design (it is the archive-time promotion target, per spec-delta.md's own "Merge instructions at archive time" section). Implementer scope explicitly excludes editing `spec-delta.md`, and `check-links.js`'s exemption mechanism (`<!-- check-links: ignore -->`) would itself be an edit to that file. This is a pre-existing plan-internal inconsistency (between tasks.md's acceptance line and spec-delta.md's intentional forward reference), not introduced by this implementation and not a regression — flagged here for the caller to route (e.g., waive the check-links line for spec-delta forward-references, or have a human add the ignore marker).

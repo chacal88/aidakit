@@ -1203,7 +1203,9 @@ steps:
       case "classify": answer = "success"; break;
       case "brainstorm": answer = "done"; break;
       case "specify": specifyDispatches++; answer = "success"; break;
-      case "critic": answer = "revise"; break;
+      // retry-memory: critic's "revise" outcome now declares outputs: [cause]
+      // (ADR-006 §2) — the fail-closed leash requires it on every resume.
+      case "critic": answer = { outcome: "revise", output: { cause: "critic-reject" } }; break;
       case "specify_escalation": answer = "abort"; break;
       default: throw new Error(`unexpected pause "${p.step_id}"`);
     }
