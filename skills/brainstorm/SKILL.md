@@ -76,7 +76,7 @@ Invoke `subagent_type: "aidakit:brainstorm"` with a self-contained envelope carr
 
 ### 4. Integrate the verdict back
 The agent returns the verdict block. The skill:
-- **Passes the assumptions + acceptance criteria** on to spec generation ([aidakit:plan](../plan/SKILL.md)) as input.
+- **Passes the assumptions + acceptance criteria** on to spec generation ([aidakit:plan](../plan/SKILL.md)) as input. Each acceptance criterion carries a stable kebab-slug id (`- \`criterion-id\` — prose`, [agents/brainstorm.md](../../agents/brainstorm.md) output format), persisted into `.aidakit/tasks/<change-id>/brainstorm.json`'s `acceptance_criteria: [{ id, criterion }]` — the canonical shape [governance/acceptance/parse-criteria.js](../../governance/acceptance/parse-criteria.js) and `aidakit:acceptance-planner` (the goal-leash's author agent, invoked later in the flow at the `acceptance` step) consume. The id is the correlation key across plan revisions — a rewording of the prose does not orphan the manifest item that maps the criterion to its evidence.
 - **Propagates the `brainstorm-event`** to the flow state (or records it in `.aidakit/tasks/<slug>/events.ndjson` when outside a flow) — it is what satisfies the gate. Don't rewrite the event; propagate what the agent emitted.
 - **Don't implement and don't write the spec here.** Brainstorm is thinking; the spec belongs to another step.
 

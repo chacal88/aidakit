@@ -24,12 +24,13 @@
 | [ADR-007](ADR-007-roadmap-status-from-shared-git.md) | The roadmap derives status from the shared git state, so it is single-valued across worktrees (amends ADR-002) | accepted | 2026-07-24 |
 | [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) | Autonomous PR merge, opt-in per project — scoped supersession of GOVERNANCE.md §1 rule 1 | accepted | 2026-07-24 |
 | [ADR-009](ADR-009-flow-commits-plan-early.md) | The full flow commits the plan when it is authored, so in-progress derives from shared git (completes ADR-007) | accepted | 2026-07-24 |
+| [ADR-010](ADR-010-acceptance-leash.md) | The acceptance-leash mirrors the doc-leash — separate agent, weak-bar validator, both flows, max_visits from day one | accepted | 2026-07-24 |
 
 ## Thematic grouping
 
 - **Learning & memory:** [ADR-001](ADR-001-executable-dna-crystallization.md) — executable DNA crystallization; [ADR-003](ADR-003-shared-knowledge-in-docs.md) — durable knowledge in docs/knowledge/.
 - **Planning & tracking:** [ADR-002](ADR-002-roadmap-status-derived-from-disk.md) — roadmap with status derived from disk; [ADR-007](ADR-007-roadmap-status-from-shared-git.md) — amends it to derive from the shared git state (single-valued across worktrees); [ADR-009](ADR-009-flow-commits-plan-early.md) — completes it by committing the plan early so the shared signal is populated.
-- **Flow engine:** [ADR-004](ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract for validator resolution independent of cwd; [ADR-006](ADR-006-flow-values-as-data.md) — flow values are data (env-passed `runs` interpolation + structured invoke outputs); [ADR-009](ADR-009-flow-commits-plan-early.md) — the `full` flow's `commit_plan` step commits the authored plan.
+- **Flow engine:** [ADR-004](ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract for validator resolution independent of cwd; [ADR-006](ADR-006-flow-values-as-data.md) — flow values are data (env-passed `runs` interpolation + structured invoke outputs); [ADR-009](ADR-009-flow-commits-plan-early.md) — the `full` flow's `commit_plan` step commits the authored plan; [ADR-010](ADR-010-acceptance-leash.md) — the acceptance-leash mirrors the doc-leash (separate agent + weak-bar validator + both flows + `max_visits` from day one).
 - **Command surface:** [ADR-005](ADR-005-command-namespacing.md) — `flow` group prefix, mechanical grouping rule, and the locked `flow-<name>` naming syntax.
 - **Delivery & shipping governance:** [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) — autonomous PR merge, opt-in per project, as a scoped supersession of GOVERNANCE.md §1 rule 1.
 
