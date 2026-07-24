@@ -8,7 +8,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { interpolateString } from "../interpolate.js";
+import { interpolateString, interpolateCommand } from "../interpolate.js";
 import { projectRoot } from "../persistence.js";
 
 // governance/engine/steps/runs.js → up two levels lands ON governance/ (the kit's
@@ -21,9 +21,12 @@ const AIDAKIT_GOVERNANCE = resolve(dirname(fileURLToPath(import.meta.url)), ".."
  * @returns {import('../types.js').StepOutcome}
  */
 export function executeRuns(step, ctx) {
-  const command = interpolateString(step.command, ctx);
+  // ${...} values are handed to bash as environment DATA ($AIDAKIT_VAR_n),
+  // never spliced as shell text (ADR-006): a multiline/metacharacter value
+  // cannot break the command structure or inject commands.
+  const { command, vars } = interpolateCommand(step.command, ctx);
   const cwd = step.cwd ? interpolateString(step.cwd, ctx) : projectRoot();
-  const env = { ...process.env, AIDAKIT_GOVERNANCE };
+  const env = { ...process.env, ...vars, AIDAKIT_GOVERNANCE };
   if (step.env) {
     for (const [k, v] of Object.entries(step.env)) {
       env[k] = interpolateString(String(v), ctx);
@@ -37,6 +40,7 @@ export function executeRuns(step, ctx) {
   });
   const output = {
     command,
+    vars,
     cwd,
     exit_code: res.status ?? -1,
     stdout: (res.stdout ?? "").slice(-4000),

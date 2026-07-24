@@ -4,7 +4,9 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em andamento)_
+### Coleiras mecânicas do flow engine — **in-progress**
+
+- Request livre vs change-id nos flows — `flow-request-vs-change-id` → in-progress
 
 ## Next (planned)
 
@@ -17,7 +19,7 @@ _(nada planejado)_
 - Tabela de progresso do flow — `flow-run-progress-table` → backlog
 - Sumários de passo do flow — `flow-step-summaries` → backlog
 
-### Coleiras mecânicas do flow engine — **backlog**
+### Coleiras mecânicas do flow engine — **in-progress**
 
 - Cap mecânico de retries — `engine-max-visits` → backlog
 - Coleira das metas — `acceptance-leash` → backlog

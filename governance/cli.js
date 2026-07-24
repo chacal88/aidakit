@@ -3,7 +3,11 @@
 //
 // Usage (pure Node, no tsx):
 //   node governance/cli.js start <flow> [key=value ...]     starts a flow
-//   node governance/cli.js resume <flow_id> <outcome>       resumes a paused flow
+//   node governance/cli.js resume <flow_id> <outcome> [key=value ...]
+//                                                           resumes a paused flow; the
+//                                                           key=value tokens carry the
+//                                                           step's declared structured
+//                                                           outputs (e.g. change_id=...)
 //   node governance/cli.js status <flow_id>                 shows the current state
 //   node governance/cli.js abort <flow_id> [reason]         aborts a flow
 //   node governance/cli.js list                             lists available flows
@@ -16,6 +20,7 @@
 import { startFlow, resumeFlow } from "./engine/engine.js";
 import { loadFlow, listFlowNames } from "./engine/parser.js";
 import { loadState, saveState } from "./engine/persistence.js";
+import { parseResumeOutput } from "./engine/resume-output.js";
 
 function fail(msg) {
   process.stderr.write(`aidakit — error: ${msg}\n`);
@@ -29,7 +34,7 @@ function printPauseOrEnd(res) {
     process.stdout.write(`\n[${s.flow_id}] PAUSED at "${p.step_id}" (${p.step_type})\n\n`);
     process.stdout.write(p.prompt + "\n");
     if (p.options) process.stdout.write(`\nOptions: ${p.options.join(" | ")}\n`);
-    process.stdout.write(`\nTo continue: node governance/cli.js resume ${s.flow_id} <outcome>\n`);
+    process.stdout.write(`\nTo continue: node governance/cli.js resume ${s.flow_id} <outcome>${p.outputs ? " [key=value ...]" : ""}\n`);
   } else {
     process.stdout.write(`\n[${s.flow_id}] ${String(s.status).toUpperCase()}${s.outcome ? ` (${s.outcome})` : ""}\n`);
     const last = s.step_history[s.step_history.length - 1];
@@ -59,15 +64,23 @@ function cmdStart(argv) {
 
 function cmdResume(argv) {
   const flowId = argv[0];
-  const value = argv.slice(1).join(" ");
-  if (!flowId || value === "") fail("usage: resume <flow_id> <outcome>");
+  const value = argv[1];
+  if (!flowId || value === undefined || value === "") fail("usage: resume <flow_id> <outcome> [key=value ...]");
+  // key=value tokens after the outcome are structured outputs (resume-output.js);
+  // a malformed token is a usage error BEFORE any state is touched.
+  let resumeOutput;
+  try {
+    resumeOutput = argv.length > 2 ? parseResumeOutput(argv.slice(2)) : undefined;
+  } catch (err) {
+    fail(err.message);
+  }
   const state = loadState(flowId);
   if (!state) fail(`flow not found: ${flowId}`);
   const { flow, errors } = loadFlow(state.flow_name);
   if (errors.length) fail(errors.map((e) => e.message).join("\n"));
   let res;
   try {
-    res = resumeFlow({ state, flow, resumeValue: value });
+    res = resumeFlow({ state, flow, resumeValue: value, resumeOutput });
   } catch (err) {
     fail(err.message);
   }

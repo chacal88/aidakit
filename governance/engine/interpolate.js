@@ -26,6 +26,43 @@ export function interpolateString(input, ctx) {
 }
 
 /**
+ * Shell-safe rendering of a `runs` command (ADR-006). Each resolvable ${expr}
+ * is replaced by a bash variable reference ($AIDAKIT_VAR_n) and its value is
+ * handed to the child through the environment — bash expands it at runtime as
+ * DATA, never re-parsing it as shell syntax. A multiline or metacharacter-laden
+ * value (e.g. a free-form ${inputs.request}) can therefore never break the
+ * command structure or inject commands. Repeated expressions share one var.
+ * Unresolved expressions are left as-is, exactly like interpolateString.
+ *
+ * Caveat (flows.md §3): an engine expression inside SINGLE quotes stops
+ * expanding ('${x}' renders as the literal text $AIDAKIT_VAR_n) — interpolation
+ * sites in commands must be bare or double-quoted, as the shipped flows are.
+ * @param {string} input
+ * @param {import('./types.js').ExecutionContext} ctx
+ * @returns {{command:string, vars:Object.<string,string>}}
+ */
+export function interpolateCommand(input, ctx) {
+  /** @type {Object.<string,string>} */
+  const vars = {};
+  /** @type {Map<string,string>} */
+  const byExpr = new Map();
+  let n = 0;
+  const command = input.replace(EXPR_RE, (whole, expr) => {
+    const key = String(expr).trim();
+    const v = resolve(key, ctx);
+    if (v === undefined) return whole;
+    let name = byExpr.get(key);
+    if (name === undefined) {
+      name = `AIDAKIT_VAR_${n++}`;
+      byExpr.set(key, name);
+      vars[name] = String(v);
+    }
+    return `$${name}`;
+  });
+  return { command, vars };
+}
+
+/**
  * @param {unknown} value
  * @param {import('./types.js').ExecutionContext} ctx
  * @returns {unknown}
