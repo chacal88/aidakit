@@ -1,0 +1,26 @@
+# aidakit.config.yaml — aidakit's own repository
+#
+# This project (the kit itself) is written in English and has no domain
+# taxonomy or bespoke review matrix beyond the built-in defaults, so this
+# config declares only the one field the engine reads at runtime: pr.
+#
+# See aidakit.config.example.yaml for the full-shape example (language,
+# domains, review) and the exhaustive header comments explaining every
+# field. Everything omitted here uses the built-in default.
+
+# ── pr ────────────────────────────────────────────────────────────────────
+# Opt into ADR-008 autonomous PR merge for this repo (aidakit itself).
+# Read at runtime from this repo's TRUSTED BASE BRANCH — never from a PR's
+# own working tree/diff (anti self-grant, ADR-008 §Decision point 2). This
+# very PR — the one that FIRST introduces `auto_merge: true` — is merged
+# by a human; only PRs opened AFTER it lands on main see the opt-in.
+#
+# The autonomous merge only proceeds when the host declares the PR
+# mergeable; any doubt falls back to the human gate, never a silent
+# bypass. Uses `gh pr merge` respecting the host's own rules — no
+# `--admin`, no `--no-verify`, no `AIDAKIT_BYPASS`.
+#
+# Do not change this without reading ADR-008 in full
+# (docs/decisions/ADR-008-opt-in-autonomous-pr-merge.md).
+pr:
+  auto_merge: true
