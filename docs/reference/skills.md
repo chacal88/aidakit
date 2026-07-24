@@ -8,7 +8,7 @@
 
 | Skill | What it does | When it triggers |
 |---|---|---|
-| [aidakit:design](../../commands/design.md) | Plans the project — architecture design in 4 phases with gates (Business → DDD → Architecture → Implementation) | New project, or resuming via `docs/design/STATE.md` |
+| [`/aidakit:flow-design`](../../commands/flow-design.md) (command, not a skill) | Plans the project — architecture design in 4 phases with gates (Business → DDD → Architecture → Implementation) | New project, or resuming via `docs/design/STATE.md` |
 | [aidakit:identify-domain](../../skills/identify-domain/SKILL.md) | Classifies the change into domain × type × flags (fail-closed) to select ammunition and the review matrix | Step 1 of any new change, before the brainstorm |
 | [aidakit:brainstorm](../../skills/brainstorm/SKILL.md) | Default-on adversarial brainstorm that grills the owner with the project's ammunition before the spec | Start of a new change, idea exploration, 1st step of the flow |
 | [aidakit:plan](../../skills/plan/SKILL.md) | Generates the prompt for `aidakit:planner` to author a plan-only change (including the implementation plan from an existing spec) | Change/idea still without a spec, or the implementation plan before coding |
@@ -31,13 +31,13 @@
 
 The six **execution-cycle** skills (classify → grill → implement → deliver → reflect → consolidate) are grouped in the [Execution pipeline](#execution-pipeline) section; the others follow in order of use.
 
-### aidakit:design
+### aidakit:flow-design (command, not a skill)
 
-**Purpose:** plans the project — leads from understanding the business to the implementation plan across 4 sequential phases, each in interview mode (one question at a time), producing an approved document in `docs/design/`. (Previously called `aidakit:design`.)
-**Invocation:** `/aidakit:design` (starts or resumes from `docs/design/STATE.md`).
+**Purpose:** plans the project via the `/aidakit:flow-design` **command** — leads from understanding the business to the implementation plan across 4 sequential phases, each in interview mode (one question at a time), producing an approved document in `docs/design/`. (Previously called `aidakit:design`.)
+**Invocation:** `/aidakit:flow-design` (starts or resumes from `docs/design/STATE.md`).
 **Example (razor):** Phase 2 records `Appointment` as an aggregate with the R1 invariant ("a professional never has two overlapping appointments") in `2-domain-model.md`; Phase 3 generates `ADR-003-appointment-as-aggregate.md` in `docs/decisions/`.
 **Gates:** a phase only closes with a written deliverable + a satisfied checklist + explicit approval; the order never reverses (an off-schedule topic goes to the `STATE.md` Parking Lot); an ADR is WORM; requires `aidakit:docs` init on the first run.
-**Source of truth:** [skills/design/SKILL.md](../../commands/design.md).
+**Source of truth:** [commands/flow-design.md](../../commands/flow-design.md).
 
 ### aidakit:plan
 
@@ -161,7 +161,7 @@ The six skills that carry a change from start to finish, in flow order: **identi
 
 **Purpose:** the end-of-change learning loop — reads the diff, the correction events, and the ledgers, classifies each learning on 3 axes (kind × action × scope), and **PROPOSES** doc/rule updates as a literal diff (never writes blindly). Closes the error → learn → inform-the-next cycle and records scoped memory served back.
 **Invocation:** end of change (the checkpoint/learn phase, after review), or "what did we learn", "consolidate learnings", "retro".
-**Example (razor):** if the cancellation recurred as an already-mitigated bug (error-2), it proposes a `regression-gate` in `proposed-updates.md` and records 1 line in `.aidakit/memory/learnings.md` (project scope), read at the next `/aidakit:build` startup.
+**Example (razor):** if the cancellation recurred as an already-mitigated bug (error-2), it proposes a `regression-gate` in `proposed-updates.md` and records 1 line in `.aidakit/memory/learnings.md` (project scope), read at the next `/aidakit:flow-build` startup.
 **Gates:** PROPOSES, does not write (an inviolable principle — applying is a human decision); does not block the ship; a class, not raw content in memory; the narrowest scope on doubt.
 **Source of truth:** [skills/learn/SKILL.md](../../skills/learn/SKILL.md).
 
@@ -171,8 +171,8 @@ The six skills that carry a change from start to finish, in flow order: **identi
 
 | Command | What it does | Source |
 |---|---|---|
-| `/aidakit:design` | Invokes the `aidakit:design` skill following its protocol (locate `STATE.md`, load only the current phase, interview, gates), passing through the user's arguments | [commands/design.md](../../commands/design.md) |
-| `/aidakit:build` | Builds a change from plan to PR through the flow engine (`start`/`resume`/`status`/`abort`/`list`); the 1st step of the flow picks the ready change (logic previously exposed as a separate command, now absorbed) | [commands/build.md](../../commands/build.md) |
+| `/aidakit:flow-design` | Invokes the `aidakit:flow-design` skill following its protocol (locate `STATE.md`, load only the current phase, interview, gates), passing through the user's arguments | [commands/flow-design.md](../../commands/flow-design.md) |
+| `/aidakit:flow-build` | Builds a change from plan to PR through the flow engine (`start`/`resume`/`status`/`abort`/`list`); the 1st step of the flow picks the ready change (logic previously exposed as a separate command, now absorbed) | [commands/flow-build.md](../../commands/flow-build.md) |
 | `/aidakit:plan` | Starts the plan-only planning of a change — authors proposal/design/tasks with no product code | [commands/plan.md](../../commands/plan.md) |
 | `/aidakit:review` | Runs the pre-ship review gate — an adversarial bench of agents in parallel, aggregates verdicts, decides consensus | [commands/review.md](../../commands/review.md) |
 | `/aidakit:docs` | Deploys, audits, indexes, or archives the project's standardized document architecture (DOCS.md) | [commands/docs.md](../../commands/docs.md) |

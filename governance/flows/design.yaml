@@ -4,7 +4,7 @@ description: |
   (Business → Modeling → Architecture → Implementation), stops at each human gate
   and persists state. Each phase invokes the interview skill that drives the
   conversation; the engine guarantees no phase is skipped and no gate is bypassed.
-  At the end, the vertical changes are ready for /aidakit:build.
+  At the end, the vertical changes are ready for /aidakit:flow-build.
 version: 1
 
 inputs:
@@ -124,7 +124,7 @@ steps:
       Phase 4 (Implementation) complete — review docs/design/4-implementation-plan.md
       (vertical changes ordered by risk+value, each with an acceptance criterion).
       Approve? On approval, the design is complete and the first change is ready
-      for /aidakit:build.
+      for /aidakit:flow-build.
     options:
       - approve
       - revise
@@ -137,4 +137,4 @@ steps:
     outcome: completed
     message: |
       Design complete. The vertical changes are in docs/design/4-implementation-plan.md.
-      Run /aidakit:build to build the first change.
+      Run /aidakit:flow-build to build the first change.

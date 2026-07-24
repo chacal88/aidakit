@@ -9,7 +9,7 @@
 | File | What it is | When to read |
 |---|---|---|
 | [getting-started.md](getting-started.md) | 5-minute guide: install the plugin, what comes into effect (skills, commands, `pre-bash` hook), and how to confirm it's on | First contact with the kit, in any project |
-| [new-project-flow.md](new-project-flow.md) | From zero to the first change: the 4-phase architecture design with gates (Business → DDD → Architecture → Implementation) | Starting a new project with `/aidakit:design` |
+| [new-project-flow.md](new-project-flow.md) | From zero to the first change: the 4-phase architecture design with gates (Business → DDD → Architecture → Implementation) | Starting a new project with `/aidakit:flow-design` |
 | [change-flow.md](change-flow.md) | The canonical execution cycle end-to-end: plan → readiness (GATE 1) → TDD → test/coverage → review `--diff` (GATE 2) → PR → human merge → archive | Executing a change from the backlog through to the PR |
 | [existing-repo-flow.md](existing-repo-flow.md) | Adopt the kit in a repo with legacy code and docs: `docs init`/`audit`, governance onboarding, and the gradual-adoption ladder | Bringing the kit into a repository that already exists |
 | [governance-in-practice.md](governance-in-practice.md) | The doctrine lived: the 3 escalations live, the hook and the logged bypass, separated roles (author ≠ reviewer ≠ shipper), and FAQ | Understanding a hook block, a bypass, or an escalation |
