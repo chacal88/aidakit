@@ -115,7 +115,7 @@
 
 ### 7b. GREEN
 
-- [ ] N7b-i. Add a telemetry-writer helper (co-located with `skills/context-pack/build.js` or in a `governance/telemetry/` file — chosen at implementation time) that dispatchers call after each SDK response with the six fields. The helper opens the file in append mode; it never rewrites prior content. (AC #9)
+- [ ] N7b-i. Add a telemetry-writer helper (co-located with `governance/context-pack/build.js` or in a `governance/telemetry/` file) that dispatchers call after each SDK response with the six fields. The helper opens the file in append mode; it never rewrites prior content. (AC #9)
 - [ ] N7b-ii. Confirm [`.gitignore`](../../../.gitignore) already covers `.aidakit/` (line 1) — no edit required; document in `evidence.md`. (AC #9)
 
 ### 7c. REFACTOR
