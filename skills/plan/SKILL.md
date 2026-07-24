@@ -35,10 +35,13 @@ description: Generates the self-contained prompt for authoring a new change in p
 
 ## Process
 
+0. **Read `input.retry_history_path` when this skill is dispatched with one** (the `full` flow's `specify` step injects it — see [retry-memory/design.md](../../docs/features/retry-memory/design.md#read-side-injection--how-aidakitimplement-and-plan-learn-see-the-history)). It may be absent or empty — that's round-1 semantics, never a bug. When it resolves to a real file, read it and filter records where `step_id === "specify"`; if any remain, embed a preamble bullet in the generated prompt (step 1 below) with the prior rounds' `cause` list, e.g. `[{"round": 1, "step_id": "specify", "cause": "critic-reject"}]` → "Round 1 was rejected by the critic (`critic-reject`). Steer explicitly away from repeating that in this round's spec." — so the fresh session's `aidakit:planner` dispatch actually sees it, not just this session.
+
 1. Invoke the `aidakit:orchestrator` agent with this prompt:
 
    > Build the self-contained prompt the user pastes into a fresh execution session to author the change `<change-id-or-description>`. The prompt MUST embed:
    >
+   > - The prior rounds' `retry_history_path` preamble from step 0 above, when non-empty — so `aidakit:planner` steers away from the causes that already got this spec rejected
    > - The current commit hash on the default branch (`git log -1 --format=%H <default-branch>`)
    > - The list of already-completed changes (OpenSpec mode: `ls -t openspec/changes/archive/ | head -20`; kit mode: existing entries under `docs/features/` and archives under `docs/archive/`)
    > - The requested change-id or description, verbatim

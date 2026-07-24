@@ -36,9 +36,19 @@ These rules are **non-negotiable** and travel in the dispatch prompt — the age
 
 1. **Detect the target repo's tracking mode** (the agent also detects it, but cite the right path in the prompt): **OpenSpec mode** if `openspec/` exists (or the `openspec` CLI) — tasks in `openspec/changes/<change-id>/tasks.md`; **kit mode** otherwise — tasks in `docs/features/<change-id>/tasks.md` (DOCS.md).
 
-2. **Dispatch the `aidakit:implementer` agent** (one call of the `Agent` tool, `subagent_type: "aidakit:implementer"`) with the prompt:
+2. **Read `input.retry_history_path` when the dispatch carries one** (the `full` flow's `implement` step injects it — see [retry-memory/design.md](../../docs/features/retry-memory/design.md#read-side-injection--how-aidakitimplement-and-plan-learn-see-the-history)). It may be absent or empty — that's round-1 semantics, never a bug, never a reason to stop. When it resolves to a real file, read it and filter records where `step_id === "implement"`; PREAMBLE your work with the prior rounds' `cause` list and steer explicitly away from repeating those failure classes. Example:
+
+   ```json
+   [{"round": 1, "step_id": "implement", "cause": "bench-violation"}]
+   ```
+
+   → preamble: "Round 1 of `implement` failed with cause `bench-violation` (the parallelism leash rejected the dispatch). Steer explicitly away from repeating that failure class this round."
+
+3. **Dispatch the `aidakit:implementer` agent** (one call of the `Agent` tool, `subagent_type: "aidakit:implementer"`) with the prompt:
 
    > Implement the change `<change-id>` from the approved tasks in `<openspec/changes/<change-id>/tasks.md | docs/features/<change-id>/tasks.md>`, on the change's branch/worktree `<change branch>` (never `main`). Confirm first that the plan has `Status: APPROVED` from `aidakit:readiness`; without that gate, stop with `outcome: failure`.
+   >
+   > <if `input.retry_history_path` resolved to a non-empty history filtered to `step_id === "implement"`: the preamble built in step 2 — "Prior rounds of this step failed with: round N → `<cause>`, ... Steer explicitly away from repeating those failure classes.">
    >
    > The doctrine that governs this step (obey it; your `success` is only valid if all are met):
    > - **Anti-drift first** (GOVERNANCE.md §8): re-inspect the repo (`git log`, `git status`, the key files the plan touches) before writing any code. A plan premise changed → STOP and return `outcome: failure` with the reason; do not implement over stale reality, and do not fix the plan yourself.
@@ -51,7 +61,7 @@ These rules are **non-negotiable** and travel in the dispatch prompt — the age
    >
    > Return the machine-parseable verdict in your output format, with the line `Outcome: success | failure` last.
 
-3. **Hand the outcome back to the flow.** The agent returns the verdict; the last `Outcome:` line is the signal the flow consumes. Do not re-narrate the process or re-implement anything — the caller reads the agent's diff and verdict.
+4. **Hand the outcome back to the flow.** The agent returns the verdict; the last `Outcome:` line is the signal the flow consumes. Do not re-narrate the process or re-implement anything — the caller reads the agent's diff and verdict.
 
 ### Multi-surface change (parallel)
 
