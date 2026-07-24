@@ -92,18 +92,18 @@
 
 ### 6a. RED — contract test per dispatcher
 
-- [ ] N6a-i. Test §dispatcher-reads-pack-when-present: for each of `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md`, `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — grep-assert the file contains the marker string `context pack` AND references `docs/features/<change_id>/.context-pack.md` (or the templated equivalent). (AC #8)
-- [ ] N6a-ii. Test §dispatcher-falls-back-when-absent: same files contain an explicit fallback clause (regex: `fall.?back.*raw|absent.*proposal|pack.*absent`). (AC #8)
-- [ ] N6a-iii. Test §dispatcher-does-not-invoke-freshness-validator: grep-assert that NONE of the ten files above shell out to `check-context-pack-freshness.js` (regex: `check-context-pack-freshness`). Freshness is guaranteed by the upstream `context_pack` `runs` phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2 — agent Bash sessions do not receive `$AIDAKIT_GOVERNANCE`, and the `agent-validator-paths` gap in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) is explicitly out of scope for this change. (AC #8)
+- [x] N6a-i. Test §dispatcher-reads-pack-when-present: for each of `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md`, `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` — grep-assert the file contains the marker string `context pack` AND references `docs/features/<change_id>/.context-pack.md` (or the templated equivalent). (AC #8)
+- [x] N6a-ii. Test §dispatcher-falls-back-when-absent: same files contain an explicit fallback clause (regex: `fall.?back.*raw|absent.*proposal|pack.*absent`). (AC #8)
+- [x] N6a-iii. Test §dispatcher-does-not-invoke-freshness-validator: grep-assert that NONE of the ten files above shell out to `check-context-pack-freshness.js` (regex: `check-context-pack-freshness`). Freshness is guaranteed by the upstream `context_pack` `runs` phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) §negative-consequence-2 — agent Bash sessions do not receive `$AIDAKIT_GOVERNANCE`, and the `agent-validator-paths` gap in [EPIC-flow-engine-leashes](../../roadmap/epics/EPIC-flow-engine-leashes.md) is explicitly out of scope for this change. (AC #8)
 
 ### 6b. GREEN
 
-- [ ] N6b-i. Add a "Step 0.5 — Load the context pack" clause to each of the seven agent files listed above: **read `docs/features/<change_id>/.context-pack.md` when the file exists** (no freshness re-check — freshness is guaranteed by the upstream `context_pack` flow phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)); treat the pack as authoritative for durable context; open pointed-at files on demand; **fall back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs directly when the pack is absent — never fail the dispatch**. Do NOT instruct the agent to invoke `check-context-pack-freshness.js` — that validator is called only from the `context_pack` `runs` step, never from an agent/skill Bash session. (AC #8)
-- [ ] N6b-ii. Add the equivalent read-if-present clause to `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` under Prerequisites so their invocation prompt injects the pack. Same no-freshness-invocation rule. (AC #8)
+- [x] N6b-i. Add a "Step 0.5 — Load the context pack" clause to each of the seven agent files listed above: **read `docs/features/<change_id>/.context-pack.md` when the file exists** (no freshness re-check — freshness is guaranteed by the upstream `context_pack` flow phase per [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md)); treat the pack as authoritative for durable context; open pointed-at files on demand; **fall back to reading `proposal.md`/`design.md`/`tasks.md`/cited ADRs directly when the pack is absent — never fail the dispatch**. Do NOT instruct the agent to invoke `check-context-pack-freshness.js` — that validator is called only from the `context_pack` `runs` step, never from an agent/skill Bash session. (AC #8)
+- [x] N6b-ii. Add the equivalent read-if-present clause to `skills/implement/SKILL.md`, `skills/review/SKILL.md`, `skills/ship/SKILL.md` under Prerequisites so their invocation prompt injects the pack. Same no-freshness-invocation rule. (AC #8)
 
 ### 6c. REFACTOR
 
-- [ ] N6c. Re-run §dispatcher-* → green.
+- [x] N6c. Re-run §dispatcher-* → green.
 
 ## 7. Telemetry: JSONL file + engine write-site extension
 

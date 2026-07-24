@@ -436,6 +436,32 @@ for (const flowName of ["full", "fast"]) {
   ok(findStep(flow, "review_outcome").on_failure === "implement", "§flow-back-edges-unchanged (fast): review_outcome.on_failure === implement");
 }
 
+// ── §6 dispatcher/reviewer wiring (read-if-present, freshness upstream) ──
+
+const REPO = new URL("../..", import.meta.url).pathname;
+const DISPATCHER_FILES = [
+  "agents/adr-reviewer.md",
+  "agents/spec-reviewer.md",
+  "agents/reviewer-quality.md",
+  "agents/reviewer-security.md",
+  "agents/reviewer-architecture.md",
+  "agents/tester.md",
+  "agents/implementer.md",
+  "skills/implement/SKILL.md",
+  "skills/review/SKILL.md",
+  "skills/ship/SKILL.md",
+];
+
+for (const rel of DISPATCHER_FILES) {
+  const text = readFileSync(join(REPO, rel), "utf8");
+  ok(/context pack/i.test(text) && /\.context-pack\.md/.test(text),
+    `§dispatcher-reads-pack-when-present (${rel}): mentions "context pack" and the .context-pack.md path`);
+  ok(/fall.?back.*raw|absent.*proposal|pack.*absent/is.test(text),
+    `§dispatcher-falls-back-when-absent (${rel}): has an explicit fallback-when-absent clause`);
+  ok(!/check-context-pack-freshness/.test(text),
+    `§dispatcher-does-not-invoke-freshness-validator (${rel}): never shells out to check-context-pack-freshness.js`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);

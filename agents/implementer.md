@@ -26,6 +26,10 @@ Before anything else, detect which structure the target repo uses — never pres
 
 Everything below applies in both modes; the paths are the only thing that changes.
 
+### Step 0.5 — Load the context pack
+
+Before re-inspecting the repo by hand, resolve `docs/features/<change-id>/.context-pack.md` (kit mode) — or the OpenSpec-mode equivalent under `openspec/changes/<change-id>/` when that structure applies. **If it exists**, read it and treat it as authoritative for durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — open the pointed-at files on demand only, when the pack's pointer isn't enough. Freshness is guaranteed upstream by the flow's `context_pack` phase (a `runs` step that receives `$AIDAKIT_GOVERNANCE` per [ADR-004](../docs/decisions/ADR-004-aidakit-governance-env-contract.md)) — do NOT re-check freshness yourself — this agent never runs the pack's freshness validator itself (its Bash session never receives `$AIDAKIT_GOVERNANCE`; see [ADR-010](../docs/decisions/ADR-010-context-pack-per-change.md) §Decision-6). **If the pack is absent**, fall back to reading `proposal.md`/`design.md`/`tasks.md`/the cited ADRs directly, exactly as before — a missing pack never fails the dispatch.
+
 ### Step 1 — Anti-drift: re-inspect the real state of the repo (GOVERNANCE.md §8)
 
 Before writing a line of code:
