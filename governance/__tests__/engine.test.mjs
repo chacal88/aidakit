@@ -27,6 +27,24 @@ function seedSatisfiedManifest(request) {
   writeFileSync(p, JSON.stringify({ change_id: request, level: "change", required: [] }));
 }
 
+// THE ACCEPTANCE (GOAL) LEASH: full.yaml/fast.yaml's `check_acceptance` step is a
+// `runs` that fires check-acceptance.js against .aidakit/tasks/<request>/acceptance-manifest.json.
+function acceptanceManifestPathFor(request) {
+  return join(tmp, ".aidakit", "tasks", request, "acceptance-manifest.json");
+}
+// Seeds a SATISFIED acceptance-manifest: a single n/a item (with a condition,
+// so it doesn't trip manifest-invalid) keeps 'required' non-empty (required: []
+// is itself rejected as manifest-invalid, ADR-010/readiness nit) while the
+// post-filter required/resolved counts stay 0/0 ⇒ exit 0 ⇒ the gate releases.
+function seedSatisfiedAcceptanceManifest(request) {
+  const p = acceptanceManifestPathFor(request);
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, JSON.stringify({
+    change_id: request, level: "change",
+    required: [{ criterion_id: "seed", criterion: "test seed", evidence: { kind: "file", path: "README.md" }, status: "n/a", condition: "engine-test seed — no live criteria to verify in this drive" }],
+  }));
+}
+
 // docs-onboarding's `diff`/`check` steps gate on a PROJECT-level manifest at a
 // FIXED path (not per-change, unlike manifestPathFor above): .aidakit/doc-manifest-project.json.
 function projectManifestPath() {
@@ -132,14 +150,17 @@ function selectAnswer(changeId) {
 }
 
 // Happy path of fast: select→plan→readiness(approved)→implement→review(pass)
-//   →document→[check_docs=runs, exit 0]→pr→merge(merged)→done
+//   →document→[check_docs=runs, exit 0]→acceptance→[check_acceptance=runs, exit 0]→pr→merge(merged)→done
 // The leash sits between review and pr: `document` (invoke, PAUSES — appears in
 // visited) builds the manifest; `check_docs` (runs, does NOT pause — doesn't appear in
 // visited) checks and releases the gate. We seed the satisfied manifest first.
+// The acceptance-leash sits right after: `acceptance` (invoke, PAUSES) builds the
+// acceptance-manifest; `check_acceptance` (runs, does NOT pause) releases the gate.
 // The `request` here is the change-id (slug) that `select`/orchestrator already resolved —
 // the leash gate uses ${inputs.request} in the manifest path.
 {
   seedSatisfiedManifest("cancel-appointment");
+  seedSatisfiedAcceptanceManifest("cancel-appointment");
   seedSatisfiedBench("cancel-appointment");
   const { res, visited } = driveDry("fast", { request: "cancel-appointment" }, {
     select: selectAnswer("cancel-appointment"),
@@ -148,10 +169,11 @@ function selectAnswer(changeId) {
     implement: "success",
     review: "pass",
     document: "success",
+    acceptance: "success",
     pr: "success",
     merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"], "fast: pause order (happy path, with the leash)");
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "merge"], "fast: pause order (happy path, with both leashes)");
   eq(res.state.status, "completed", "fast: final status completed");
   eq(res.state.outcome, "completed", "fast: outcome completed");
 }
@@ -186,22 +208,24 @@ seedSatisfiedManifest("x");
   eq(visited1[idxReview1 + 1], "implement", "fast: review fail re-enters implement");
 
   seedSatisfiedManifest("x-round2");
+  seedSatisfiedAcceptanceManifest("x-round2");
   seedSatisfiedBench("x-round2", { round: 1, pass: true });
   const { res, visited } = driveDry("fast", { request: "x-round2" }, {
     select: selectAnswer("x-round2"), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success", merge: "merged",
+    document: "success", acceptance: "success", pr: "success", merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"], "fast: recovers and completes on the corrected round");
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "merge"], "fast: recovers and completes on the corrected round");
   eq(res.state.status, "completed", "fast: recovers and completes after correction");
 }
 
 // Human gate discard → aborts
 {
   seedSatisfiedManifest("x-discard");
+  seedSatisfiedAcceptanceManifest("x-discard");
   seedSatisfiedBench("x-discard");
   const { res } = driveDry("fast", { request: "x-discard" }, {
     select: selectAnswer("x-discard"), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success",
+    document: "success", acceptance: "success", pr: "success",
     merge: "discard",
   });
   eq(res.state.status, "aborted", "fast: merge=discard aborts");
@@ -224,6 +248,9 @@ seedSatisfiedManifest("x");
   const request = "leash-loop";
   // No manifest on disk: the gate is LOCKED.
   rmSync(manifestPathFor(request), { force: true });
+  // The acceptance-leash is satisfied from the start — this test isolates the
+  // doc-leash's loop, not the acceptance-leash's.
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { flow } = loadFlow("fast");
   let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "leash1", now: new Date("2026-07-17T00:00:00Z") } });
@@ -247,6 +274,7 @@ seedSatisfiedManifest("x");
         if (documentVisits === 3) seedSatisfiedManifest(request);
         answer = "success";
         break;
+      case "acceptance": answer = "success"; break;
       case "pr": answer = "success"; break;
       case "merge": answer = "merged"; break;
       default: throw new Error(`unexpected pause "${p.step_id}"`);
@@ -261,12 +289,14 @@ seedSatisfiedManifest("x");
   eq(res.state.status, "completed", "leash: gate released → flow completes through the merge");
 }
 
-// ── 2c. Leash in the full flow: learn → document → check_docs → pr ──
-// The full inserts the same trio between `learn` and `pr`. Happy path with the
-// satisfied manifest: the pause order now includes `document`.
+// ── 2c. Leash in the full flow: learn → document → check_docs → acceptance → check_acceptance → pr ──
+// The full inserts the doc-leash trio between `learn` and the acceptance-leash
+// trio, then `pr`. Happy path with both satisfied manifests: the pause order
+// now includes `document` and `acceptance`.
 {
   const request = "full-doc";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("full", { request }, {
     select: selectAnswer(request),
@@ -281,12 +311,13 @@ seedSatisfiedManifest("x");
     hardening: "success",
     learn: "success",
     document: "success",
+    acceptance: "success",
     pr: "success",
     merge: "merged",
   });
   eq(visited,
-    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "merge"],
-    "full: pause order with the leash (document between learn and pr)");
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "acceptance", "pr", "merge"],
+    "full: pause order with both leashes (document then acceptance, between learn and pr)");
   eq(res.state.status, "completed", "full: final status completed");
   eq(res.state.outcome, "completed", "full: outcome completed");
 }
@@ -422,12 +453,13 @@ seedSatisfiedManifest("x");
 // appear in `visited` (runs steps never pause).
 {
   seedSatisfiedManifest("register-regression-build");
+  seedSatisfiedAcceptanceManifest("register-regression-build");
   seedSatisfiedBench("register-regression-build");
   const { res, visited } = driveDry("fast", { request: "register-regression-build" }, {
     select: selectAnswer("register-regression-build"), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success", merge: "merged",
+    document: "success", acceptance: "success", pr: "success", merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"],
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "merge"],
     "register: build-mode (default, mode omitted) happy path unaffected by route_mode's addition");
   ok(!visited.includes("route_mode"), "register: route_mode (a runs step) never appears in visited");
   eq(res.state.status, "completed", "register: build-mode still completes");
@@ -526,12 +558,13 @@ steps:
 // (5a) Resume with an invalid value at a gate RE-PAUSES (doesn't destroy the run).
 {
   seedSatisfiedManifest("regression"); // leash gate released along the path
+  seedSatisfiedAcceptanceManifest("regression");
   seedSatisfiedBench("regression");
   const { flow } = loadFlow("fast");
   let res = startFlow({ flow, inputs: { request: "regression" }, startedBy: "test", idOpts: { rand: "reg5a", now: new Date("2026-07-17T00:00:00Z") } });
   // Advances to the merge gate. Pauses up to there: select, plan, readiness, implement,
-  // review, document, pr (check_docs is `runs`, runs inline without pausing).
-  for (const v of [selectAnswer("regression"), "success", "approved", "success", "pass", "success", "success"]) {
+  // review, document, acceptance, pr (check_docs/check_acceptance are `runs`, run inline without pausing).
+  for (const v of [selectAnswer("regression"), "success", "approved", "success", "pass", "success", "success", "success"]) {
     res = resumeWith(loadState(res.state.flow_id), flow, v);
   }
   eq(res.state.pause && res.state.pause.step_id, "merge", "5a: reached the merge gate");
@@ -851,6 +884,7 @@ steps:
     "test: too many arguments && exit 127",
   ].join("\n");
   seedSatisfiedManifest(changeId);
+  seedSatisfiedAcceptanceManifest(changeId);
   seedSatisfiedBench(changeId);
   const { res, visited } = driveDry("full", { request }, {
     select: selectAnswer(changeId),
@@ -865,13 +899,14 @@ steps:
     hardening: "success",
     learn: "success",
     document: "success",
+    acceptance: "success",
     pr: "success",
     merge: "merged",
   });
   eq(res.state.status, "completed", "9a: multiline free-form request completes the full flow");
   eq(res.state.context.select.change_id, changeId, "9a: context.select.change_id carries the id select reported");
   eq(visited,
-    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "merge"],
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "acceptance", "pr", "merge"],
     "9a: pause order identical to the slug-request happy path");
   const runsSteps = res.state.step_history.filter((h) => h.step_type === "runs");
   ok(runsSteps.length >= 4, "9a: the runs gates actually executed");
@@ -880,7 +915,7 @@ steps:
     "9a: no shell breakage in any runs stderr");
   ok(runsSteps.every((h) => !h.output.command.includes("estou tendo")),
     "9a: the raw request is never spliced into a command");
-  for (const gate of ["check_implement_bench", "check_review_bench", "bench_outcome", "check_docs"]) {
+  for (const gate of ["check_implement_bench", "check_review_bench", "bench_outcome", "check_docs", "check_acceptance"]) {
     const h = res.state.step_history.filter((x) => x.step_id === gate).pop();
     ok(h && h.output.exit_code === 0, `9a: ${gate} gate released (exit 0) against the change-id path`);
   }
@@ -1217,6 +1252,217 @@ steps:
   // specify_escalation follows immediately.
   const escIdx = visited.indexOf("specify_escalation");
   eq(visited[escIdx - 1], "critic", "10d: escalation lands right after the 3rd critic=revise (no 4th specify pause)");
+}
+
+// ── 11. THE ACCEPTANCE (GOAL) LEASH: acceptance + check_acceptance wiring ──
+// Mirrors §10's max_visits coverage, applied to the new acceptance-leash pair
+// this change adds between check_docs and pr in both full.yaml and fast.yaml
+// (design.md §Flow wiring).
+
+// (11a) Wiring in full.yaml and fast.yaml: check_docs routes to acceptance;
+// acceptance is an invoke targeting aidakit:acceptance-planner with the right
+// criteria_source per flow; check_acceptance carries max_visits=3 +
+// on_max_visits=acceptance_escalation and routes success→pr / failure→acceptance;
+// acceptance_escalation exists as a human_gate offering 'abort'→'aborted'.
+for (const [flowName, expectedSource] of [["full", "brainstorm"], ["fast", "plan"]]) {
+  const { flow } = loadFlow(flowName);
+  const checkDocs = flow.steps.find((s) => s.id === "check_docs");
+  eq(checkDocs.on_success, "acceptance", `11a: ${flowName}.yaml check_docs.on_success = acceptance`);
+
+  const acceptance = flow.steps.find((s) => s.id === "acceptance");
+  ok(acceptance, `11a: ${flowName}.yaml has an 'acceptance' step`);
+  eq(acceptance.type, "invoke", `11a: ${flowName}.yaml acceptance is type invoke`);
+  eq(acceptance.invoke_target, "aidakit:acceptance-planner", `11a: ${flowName}.yaml acceptance.invoke_target`);
+  eq(acceptance.input.change_id, "${context.select.change_id}", `11a: ${flowName}.yaml acceptance.input.change_id`);
+  eq(acceptance.input.criteria_source, expectedSource, `11a: ${flowName}.yaml acceptance.input.criteria_source = ${expectedSource}`);
+  ok(Array.isArray(acceptance.expects) && acceptance.expects.includes("success") && acceptance.expects.includes("failure"),
+    `11a: ${flowName}.yaml acceptance expects success|failure`);
+  eq(acceptance.on_success, "check_acceptance", `11a: ${flowName}.yaml acceptance.on_success = check_acceptance`);
+  eq(acceptance.on_failure, "aborted", `11a: ${flowName}.yaml acceptance.on_failure = aborted`);
+
+  const checkAcceptance = flow.steps.find((s) => s.id === "check_acceptance");
+  ok(checkAcceptance, `11a: ${flowName}.yaml has a 'check_acceptance' step`);
+  eq(checkAcceptance.type, "runs", `11a: ${flowName}.yaml check_acceptance is type runs`);
+  eq(checkAcceptance.command,
+    "node \"$AIDAKIT_GOVERNANCE/validators/check-acceptance.js\" \".aidakit/tasks/${context.select.change_id}/acceptance-manifest.json\"",
+    `11a: ${flowName}.yaml check_acceptance.command exact string`);
+  eq(checkAcceptance.max_visits, 3, `11a: ${flowName}.yaml check_acceptance.max_visits = 3`);
+  eq(checkAcceptance.on_max_visits, "acceptance_escalation", `11a: ${flowName}.yaml check_acceptance.on_max_visits`);
+  eq(checkAcceptance.on_success, "pr", `11a: ${flowName}.yaml check_acceptance.on_success = pr`);
+  eq(checkAcceptance.on_failure, "acceptance", `11a: ${flowName}.yaml check_acceptance.on_failure = acceptance`);
+
+  const esc = flow.steps.find((s) => s.id === "acceptance_escalation");
+  ok(esc && esc.type === "human_gate", `11a: ${flowName}.yaml acceptance_escalation exists as a human_gate`);
+  ok(esc && Array.isArray(esc.options) && esc.options.includes("abort"), `11a: ${flowName}.yaml acceptance_escalation offers 'abort'`);
+  eq(esc.on_result.abort, "aborted", `11a: ${flowName}.yaml acceptance_escalation routes abort → aborted`);
+}
+
+// Writes an acceptance-manifest whose single required item's evidence path
+// does NOT resolve — check_acceptance always fails (exit 1) against it, no
+// matter how many times the flow re-enters `acceptance`, modeling a broken
+// manifest that never converges.
+function seedBrokenAcceptanceManifest(request) {
+  const p = acceptanceManifestPathFor(request);
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, JSON.stringify({
+    change_id: request, level: "change",
+    required: [{ criterion_id: "unmapped", criterion: "never resolves", evidence: { kind: "file", path: "does/not/exist.md" }, status: "pending" }],
+  }));
+}
+
+// (11b) End-to-end happy path on `full`: acceptance/check_acceptance both
+// succeed on the first round, the flow reaches `pr` normally (dispatched once).
+{
+  const request = "acceptance-happy-full";
+  seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
+  seedSatisfiedBench(request);
+  const { res, visited } = driveDry("full", { request }, {
+    select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok",
+    pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus", hardening: "success",
+    learn: "success", document: "success", acceptance: "success", pr: "success", merge: "merged",
+  });
+  eq(visited.filter((s) => s === "acceptance").length, 1, "11b: full.yaml dispatches acceptance exactly once on the happy path");
+  ok(visited.indexOf("acceptance") > visited.indexOf("document") && visited.indexOf("pr") > visited.indexOf("acceptance"),
+    "11b: full.yaml acceptance sits between document and pr");
+  eq(res.state.status, "completed", "11b: full.yaml reaches pr/merge normally");
+}
+
+// (11c) End-to-end max_visits exhaustion on `full`: check_acceptance never
+// clears (broken manifest, evidence path never appears on disk) — the 4th
+// entry short-circuits to acceptance_escalation instead of dispatching
+// acceptance again; 'abort' terminates the flow.
+{
+  const request = "acceptance-cap-full";
+  seedSatisfiedManifest(request);
+  seedBrokenAcceptanceManifest(request);
+  seedSatisfiedBench(request);
+  const { flow } = loadFlow("full");
+  let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "cap11c", now: new Date("2026-07-17T00:00:00Z") } });
+  let acceptanceDispatches = 0;
+  const visited = [];
+  for (let i = 0; i < 40 && res.state.status === "paused"; i++) {
+    const p = res.state.pause;
+    visited.push(p.step_id);
+    let answer;
+    switch (p.step_id) {
+      case "select": answer = selectAnswer(request); break;
+      case "classify": answer = "success"; break;
+      case "brainstorm": answer = "done"; break;
+      case "specify": answer = "success"; break;
+      case "critic": answer = "ok"; break;
+      case "pre_apply": answer = "yes"; break;
+      case "readiness": answer = "approved"; break;
+      case "implement": answer = "success"; break;
+      case "review_bench": answer = "consensus"; break;
+      case "hardening": answer = "success"; break;
+      case "learn": answer = "success"; break;
+      case "document": answer = "success"; break;
+      case "acceptance": acceptanceDispatches++; answer = "success"; break;
+      case "acceptance_escalation": answer = "abort"; break;
+      default: throw new Error(`unexpected pause "${p.step_id}"`);
+    }
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
+  }
+  // max_visits sits on check_acceptance, not on acceptance (design.md §Why
+  // max_visits sits on check_acceptance): the cap check runs BEFORE dispatch, so
+  // `acceptance` (upstream of the check) is entered a 4th time before the cap
+  // blocks the 4th check_acceptance dispatch itself. check_acceptance's BODY
+  // only actually ran 3 times — the 4th entry short-circuits straight to the
+  // escalation without dispatching the validator command again.
+  eq(acceptanceDispatches, 4, "11c: full.yaml acceptance dispatched 4 times (the 4th routes straight into the capped check_acceptance)");
+  const checkAcceptanceRuns = res.state.step_history.filter((h) => h.step_id === "check_acceptance" && h.result !== "max_visits_exceeded");
+  eq(checkAcceptanceRuns.length, 3, "11c: full.yaml check_acceptance's body actually dispatched exactly 3 times (max_visits=3)");
+  ok(visited.includes("acceptance_escalation"), "11c: full.yaml routes to acceptance_escalation after 3 failed rounds");
+  eq(res.state.status, "aborted", "11c: acceptance_escalation → abort terminates the full flow");
+  const escIdx = visited.indexOf("acceptance_escalation");
+  eq(visited[escIdx - 1], "acceptance", "11c: escalation lands right after the 4th acceptance dispatch (no 4th check_acceptance pass-through)");
+}
+
+// (11d) Same max_visits exhaustion scenario on `fast` (no brainstorm/specify/
+// critic/hardening/learn steps — criteria_source is "plan").
+{
+  const request = "acceptance-cap-fast";
+  seedSatisfiedManifest(request);
+  seedBrokenAcceptanceManifest(request);
+  seedSatisfiedBench(request);
+  const { flow } = loadFlow("fast");
+  let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "cap11d", now: new Date("2026-07-17T00:00:00Z") } });
+  let acceptanceDispatches = 0;
+  const visited = [];
+  for (let i = 0; i < 40 && res.state.status === "paused"; i++) {
+    const p = res.state.pause;
+    visited.push(p.step_id);
+    let answer;
+    switch (p.step_id) {
+      case "select": answer = selectAnswer(request); break;
+      case "plan": answer = "success"; break;
+      case "readiness": answer = "approved"; break;
+      case "implement": answer = "success"; break;
+      case "review": answer = "pass"; break;
+      case "document": answer = "success"; break;
+      case "acceptance": acceptanceDispatches++; answer = "success"; break;
+      case "acceptance_escalation": answer = "abort"; break;
+      default: throw new Error(`unexpected pause "${p.step_id}"`);
+    }
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
+  }
+  eq(acceptanceDispatches, 4, "11d: fast.yaml acceptance dispatched 4 times (the 4th routes straight into the capped check_acceptance)");
+  const checkAcceptanceRuns = res.state.step_history.filter((h) => h.step_id === "check_acceptance" && h.result !== "max_visits_exceeded");
+  eq(checkAcceptanceRuns.length, 3, "11d: fast.yaml check_acceptance's body actually dispatched exactly 3 times (max_visits=3)");
+  ok(visited.includes("acceptance_escalation"), "11d: fast.yaml routes to acceptance_escalation after 3 failed rounds");
+  eq(res.state.status, "aborted", "11d: acceptance_escalation → abort terminates the fast flow");
+}
+
+// (11e) Recovery: check_acceptance fails on a broken manifest, the manifest is
+// fixed (a satisfied manifest is seeded) before the 2nd 'acceptance' round, and
+// the flow completes normally without exhausting max_visits — check_acceptance
+// dispatches < 3 times. (bench round 1, Finding D2)
+{
+  const request = "acceptance-recovery-full";
+  seedSatisfiedManifest(request);
+  seedBrokenAcceptanceManifest(request);
+  seedSatisfiedBench(request);
+  const { flow } = loadFlow("full");
+  let res = startFlow({ flow, inputs: { request }, startedBy: "test", idOpts: { rand: "recov11e", now: new Date("2026-07-17T00:00:00Z") } });
+  let acceptanceDispatches = 0;
+  const visited = [];
+  for (let i = 0; i < 40 && res.state.status === "paused"; i++) {
+    const p = res.state.pause;
+    visited.push(p.step_id);
+    let answer;
+    switch (p.step_id) {
+      case "select": answer = selectAnswer(request); break;
+      case "classify": answer = "success"; break;
+      case "brainstorm": answer = "done"; break;
+      case "specify": answer = "success"; break;
+      case "critic": answer = "ok"; break;
+      case "pre_apply": answer = "yes"; break;
+      case "readiness": answer = "approved"; break;
+      case "implement": answer = "success"; break;
+      case "review_bench": answer = "consensus"; break;
+      case "hardening": answer = "success"; break;
+      case "learn": answer = "success"; break;
+      case "document": answer = "success"; break;
+      case "acceptance":
+        acceptanceDispatches++;
+        // Fix the manifest right before the SECOND round's check_acceptance run —
+        // models a human/agent correction landing mid-flow (design.md's re-run
+        // semantics: the manifest is re-read fresh on every visit to the slot).
+        if (acceptanceDispatches === 2) seedSatisfiedAcceptanceManifest(request);
+        answer = "success";
+        break;
+      case "pr": answer = "success"; break;
+      case "merge": answer = "merged"; break;
+      default: throw new Error(`unexpected pause "${p.step_id}"`);
+    }
+    res = resumeWith(loadState(res.state.flow_id), flow, answer);
+  }
+  eq(acceptanceDispatches, 2, "11e: acceptance dispatched exactly twice (the broken round, then the fixed round)");
+  const checkAcceptanceRuns = res.state.step_history.filter((h) => h.step_id === "check_acceptance");
+  ok(checkAcceptanceRuns.length < 3, "11e: check_acceptance recovered before exhausting max_visits (visits < 3)");
+  ok(!visited.includes("acceptance_escalation"), "11e: the recovery never reaches acceptance_escalation");
+  eq(res.state.status, "completed", "11e: full.yaml completes normally once the manifest is fixed");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

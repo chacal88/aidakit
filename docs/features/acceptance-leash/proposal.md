@@ -94,5 +94,5 @@ Governance leashes (`governance/validators/check-acceptance.js` new; `governance
 
 ## Coordination (soft) with in-flight changes
 
-- **[context-pack-l1](../context-pack-l1/) (in-flight, paused at brainstorm).** Touches per-change context caching; no overlap with the acceptance surface. This change's `acceptance-planner` reads the plan artifacts and does not participate in the context-pack cache path.
+- **`context-pack-l1` (in-flight on a separate branch, paused at brainstorm — not present in this worktree, hence no relative link here).** Touches per-change context caching; no overlap with the acceptance surface. This change's `acceptance-planner` reads the plan artifacts and does not participate in the context-pack cache path.
 - No other in-flight change edits `governance/flows/*.yaml` at the same slot (the tail `check_docs → pr` is stable in `main` since ADR-009 landed).

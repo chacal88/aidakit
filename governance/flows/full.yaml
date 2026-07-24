@@ -309,11 +309,58 @@ steps:
     type: runs
     description: |
       LEASH GATE — check-doc-manifest checks item by item and LOCKS the flow until the
-      list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0 (incomplete) goes
-      back to document until the list closes.
+      list is 100%. exit 0 (gate released) proceeds to the acceptance-leash; exit≠0
+      (incomplete) goes back to document until the list closes.
     command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" \".aidakit/tasks/${context.select.change_id}/doc-manifest.json\""
-    on_success: pr
+    on_success: acceptance
     on_failure: document
+
+  - id: acceptance
+    type: invoke
+    description: |
+      aidakit:acceptance-planner — GOAL-LEASH author. Maps each acceptance criterion
+      (from .aidakit/tasks/<id>/brainstorm.json) to a concrete evidence path (test file,
+      evidence.md section, log capture) and writes acceptance-manifest.json. Re-runs on
+      every visit to this slot — a plan revised earlier in the flow gets a fresh manifest.
+    invoke_target: aidakit:acceptance-planner
+    input:
+      change_id: "${context.select.change_id}"
+      criteria_source: "brainstorm"
+    expects:
+      - success
+      - failure
+    on_success: check_acceptance
+    on_failure: aborted
+
+  - id: check_acceptance
+    type: runs
+    description: |
+      LEASH GATE — check-acceptance verifies each criterion's evidence path resolves on
+      disk (weak-bar; hardening already ran the suite). exit 0 proceeds to the PR; exit≠0
+      goes back to acceptance. Capped at 3 dispatches (max_visits) so a broken manifest
+      cannot loop the tail; the 4th entry escalates via acceptance_escalation.
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-acceptance.js\" \".aidakit/tasks/${context.select.change_id}/acceptance-manifest.json\""
+    max_visits: 3
+    on_max_visits: acceptance_escalation
+    on_success: pr
+    on_failure: acceptance
+
+  - id: acceptance_escalation
+    type: human_gate
+    description: |
+      Escalation gate — the acceptance-leash could not clear in 3 rounds. The manifest at
+      .aidakit/tasks/${context.select.change_id}/acceptance-manifest.json has criteria
+      whose evidence paths do not resolve. Abort so you can intervene out-of-band (fix
+      the missing evidence or waive the criterion with a written condition) and re-run.
+    prompt: |
+      "${inputs.request}": the acceptance-leash ran 3 rounds without clearing. Some
+      acceptance criteria still have evidence paths that don't resolve on disk. Inspect
+      the manifest at .aidakit/tasks/${context.select.change_id}/acceptance-manifest.json
+      and the errors it reports. Abort to intervene?
+    options:
+      - abort
+    on_result:
+      abort: aborted
 
   - id: pr
     type: invoke
