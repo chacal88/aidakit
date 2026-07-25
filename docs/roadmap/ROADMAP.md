@@ -27,6 +27,7 @@ _(nada planejado)_
 
 ### Endurecimento da disciplina do próprio kit — **backlog**
 
+- `aidakit:review` grava o bench manifest mecanicamente — `review-bench-manifest-mechanical-writer` → backlog
 - Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → backlog
 - Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → backlog
 - `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → backlog
