@@ -167,7 +167,7 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 | Agents | `agents/adr-reviewer.md`, `agents/spec-reviewer.md`, `agents/reviewer-quality.md`, `agents/reviewer-security.md`, `agents/reviewer-architecture.md`, `agents/tester.md`, `agents/implementer.md` | Verify-then-inject the pack |
 | Flow YAMLs | `governance/flows/full.yaml`, `governance/flows/fast.yaml` | Insert `context_pack` phase between `readiness` and `implement` |
 | Validators | `governance/validators/check-context-pack.js` (new), `governance/validators/check-context-pack-freshness.js` (new) | Byte-stability + hash-invalidation; separate from `check-doc-manifest.js` |
-| Decisions | `docs/decisions/ADR-012-context-pack-per-change.md` (new), `docs/decisions/README.md` (modify — index entry) | Register the pack as first-class |
+| Decisions | `docs/decisions/ADR-013-context-pack-per-change.md` (new), `docs/decisions/README.md` (modify — index entry) | Register the pack as first-class |
 | Ignore | `.gitignore` | Already covers `.aidakit/` — no change; documented here for clarity |
 
 ### File structure — create / modify / delete
@@ -179,7 +179,7 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 - `governance/validators/check-context-pack.js` — byte-stability validator; contract identical to sibling validators (`AIDAKIT_GOVERNANCE`-invoked, JSON+stderr output, exit 0/1/2).
 - `governance/validators/check-context-pack-freshness.js` — hash-invalidation validator scoped to the pack's own `sources[]`; separate from `check-doc-manifest.js`.
 - `governance/__tests__/context-pack.test.mjs` — parser-style tests: byte-stability (rebuild produces identical bytes), fuzz-with-system-time (produces identical bytes even when the wall-clock advances), freshness pass/fail cases, separation from doc-manifest (a stale pack does not trip doc-manifest), telemetry-line JSON validity, `aidakit:learn` rollup writing, contract test per dispatcher/reviewer.
-- `docs/decisions/ADR-012-context-pack-per-change.md` — the ADR; format mirrors ADR-009.
+- `docs/decisions/ADR-013-context-pack-per-change.md` — the ADR; format mirrors ADR-009.
 - `governance/telemetry/append.js` — the JSONL-append helper. Zero-dep, opens the file in append mode, resolves `.aidakit/tasks/<change_id>/.telemetry.jsonl` via `findProjectRoot`/`AIDAKIT_PROJECT_ROOT` (same convention as `check-doc-manifest.js`), writes one JSON object per invocation, never rewrites prior lines. Called from `governance/engine/steps/invoke.js`'s resume handler when telemetry kwargs are present.
 - `docs/features/context-pack-l1/.context-pack.md` — the dogfood pack for this change itself (built by the new skill during implementation).
 
@@ -192,7 +192,7 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 - `skills/learn/SKILL.md` — extend §4 (Record the scoped memory) or add a §4.5 that reads `.aidakit/tasks/<change_id>/.telemetry.jsonl` and writes a rollup into `evidence.md`.
 - `governance/cli.js` — extend the `resume` command handler to parse the new optional telemetry kwargs (`--tokens-cache-read=N`, `--tokens-cache-creation=N`, `--tokens-output=N`, `--duration-ms=N`, `--pack-rebuilt=bool`) after the outcome and the existing structured outputs. Preserve the existing `<flow_id> <outcome> [key=value ...]` signature; the new kwargs are additive and default to absent (backward compatible).
 - `governance/engine/steps/invoke.js` — extend the resume-side handler (the branch entered when `ctx.resumeValue !== undefined`) to forward the parsed telemetry kwargs to the telemetry-append helper. When the kwargs are all absent, do nothing (no line written). Freshness/routing logic is unchanged; the extension is additive.
-- `docs/decisions/README.md` — add the ADR-012 index row and, if the thematic grouping applies, cite it under a "Context caching" bucket (or extend an existing bucket).
+- `docs/decisions/README.md` — add the ADR-013 index row and, if the thematic grouping applies, cite it under a "Context caching" bucket (or extend an existing bucket).
 
 **DELETE**
 
@@ -202,7 +202,7 @@ At the `learn` step (both flows), `aidakit:learn` reads the telemetry JSONL and 
 
 ```
 Optimistic: 6 hours   (skill + validators + one dispatcher wired; the pattern generalizes fast)
-Likely:     10 hours  (full dispatcher/reviewer sweep + full test surface + ADR-012)
+Likely:     10 hours  (full dispatcher/reviewer sweep + full test surface + ADR-013)
 Pessimistic: 14 hours (SDK telemetry field names differ from PoC and per-dispatch wrapper needs refactor)
 
 Recommendation: start from "Likely"; adjust if the SDK telemetry field discovery uncovers surprises.
@@ -220,7 +220,7 @@ Recommendation: start from "Likely"; adjust if the SDK telemetry field discovery
 | Agent wiring (7 agent files: verify-then-inject clause) | 1.5 | Integration | MEDIUM (blast radius; see risks) |
 | Skill wiring (`skills/{implement,review,ship}/SKILL.md`) | 0.5 | Integration | LOW |
 | `skills/learn/SKILL.md` extension + rollup writer | 1 | Integration | LOW |
-| `docs/decisions/ADR-012-context-pack-per-change.md` + index entry in `README.md` | 0.5 | Documentation | LOW |
+| `docs/decisions/ADR-013-context-pack-per-change.md` + index entry in `README.md` | 0.5 | Documentation | LOW |
 | Dogfood: build `docs/features/context-pack-l1/.context-pack.md` and validate it | 0.5 | Documentation | LOW |
 | **Total** | **10.5** | | |
 
@@ -228,16 +228,16 @@ Recommendation: start from "Likely"; adjust if the SDK telemetry field discovery
 
 | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|
-| Pack drifts from sources without tripping invalidation (someone edits a distilled bullet by hand) | LOW | HIGH | The pointers-only rule removes distillate to be drifted; byte-stability validator + freshness validator running as separate gates catch the two failure modes distinctly. The invariant is codified in ADR-012. |
+| Pack drifts from sources without tripping invalidation (someone edits a distilled bullet by hand) | LOW | HIGH | The pointers-only rule removes distillate to be drifted; byte-stability validator + freshness validator running as separate gates catch the two failure modes distinctly. The invariant is codified in ADR-013. |
 | Telemetry JSONL grows unbounded across long sessions | MEDIUM | LOW | File is gitignored and per-change; `aidakit:learn` rolls it up at end-of-run and the operator is free to delete the JSONL after archiving. No unbounded state escapes the change dir. |
 | Dispatcher-modification blast radius: a wiring bug on one agent silently breaks all reviewers | MEDIUM | HIGH | Contract test per agent (§Test §…-contract-per-agent below) asserting the pack is read when present and fallback works when absent; graceful-degradation path means an incorrectly-wired agent still runs, only without the pack — the failure mode is a size regression visible in telemetry, not a broken flow. |
 | The same-`subagent_type` cache assumption from PoC E2 does not hold on future SDK versions | LOW | LOW | The design does not depend on it — the win is prefix-size reduction. Telemetry captures `cache_read` vs `cache_creation` so any regression is visible in the `aidakit:learn` rollup. |
-| Freshness check is confused with doc-manifest and starts blocking the doc-leash | MEDIUM | HIGH | The freshness validator is a SEPARATE file (`check-context-pack-freshness.js`) invoked by a SEPARATE flow step; it does not touch `doc-manifest.json`. Explicit test §…-separation-from-doc-manifest asserts a stale pack does not add a `doc-missing` error. Codified in ADR-012's Consequences. |
-| Non-deterministic build (someone adds `Date.now()` to the pack template) | LOW | HIGH | Byte-stability validator rejects wall-clock content; test §…-byte-stability-under-time fuzzes the wall clock while rebuilding and asserts identical bytes. Codified in ADR-012's Decision. |
+| Freshness check is confused with doc-manifest and starts blocking the doc-leash | MEDIUM | HIGH | The freshness validator is a SEPARATE file (`check-context-pack-freshness.js`) invoked by a SEPARATE flow step; it does not touch `doc-manifest.json`. Explicit test §…-separation-from-doc-manifest asserts a stale pack does not add a `doc-missing` error. Codified in ADR-013's Consequences. |
+| Non-deterministic build (someone adds `Date.now()` to the pack template) | LOW | HIGH | Byte-stability validator rejects wall-clock content; test §…-byte-stability-under-time fuzzes the wall clock while rebuilding and asserts identical bytes. Codified in ADR-013's Decision. |
 
 **Assumptions** — each is a point where the plan breaks if reality differs; the executor re-inspects before coding (GOVERNANCE.md §8):
 
-- The pack is byte-stable across builds given identical sources — enforced by the design (LF, sorted, no wall-clock) and by `check-context-pack.js`. Cited in [ADR-012](../../decisions/ADR-012-context-pack-per-change.md).
+- The pack is byte-stable across builds given identical sources — enforced by the design (LF, sorted, no wall-clock) and by `check-context-pack.js`. Cited in [ADR-013](../../decisions/ADR-013-context-pack-per-change.md).
 - The dispatcher change is mechanical, not semantic: agents receive the pack via their prompt entry; behavior downstream is unchanged. If a reviewer's verdict shape depends on re-reading `proposal.md` in a way the pack does not preserve, that is a bug in the pack schema, not in the reviewer — surface as an escalation.
 - `aidakit:learn` runs BEFORE the worktree is cleaned. Confirmed by the flow order: `learn` is upstream of `dna_gate`/`document`/`pr`; the worktree is cleaned only after the human merge gate.
 - `.aidakit/` is already gitignored (confirmed line 1 of the repo's `.gitignore`); no change needed for the telemetry file to inherit that.

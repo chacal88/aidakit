@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-context-pack — byte-stability + schema validator for `.context-pack.md` (ADR-012).
+// check-context-pack — byte-stability + schema validator for `.context-pack.md` (ADR-013).
 // Enforces: the frontmatter has the required keys (change_id, built_at_source_hash,
 // pack_version, sources[]); the six fixed sections are present, in order; no
 // wall-clock timestamp, UUID/random-id or ephemeral tmp-path leaks into the pack

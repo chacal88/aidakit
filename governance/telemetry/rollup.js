@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // governance/telemetry/rollup.js — aggregates a change's `.telemetry.jsonl`
 // into a rollup section written IDEMPOTENTLY into `evidence.md`
-// (aidakit:learn §4.5, ADR-012 §Decision-7). The JSONL itself is ephemeral
+// (aidakit:learn §4.5, ADR-013 §Decision-7). The JSONL itself is ephemeral
 // (gitignored, per-run); this rollup is the durable record that survives
 // once the worktree is cleaned.
 //

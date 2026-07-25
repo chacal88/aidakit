@@ -1,4 +1,4 @@
-// Tests for the context-pack-l1 change (ADR-012):
+// Tests for the context-pack-l1 change (ADR-013):
 //   §2  check-context-pack.js        — byte-stability / schema validator
 //   §3  check-context-pack-freshness.js — hash-invalidation validator
 //   §4  governance/context-pack/build.js — deterministic build/verify/rebuild
@@ -6,7 +6,7 @@
 //   §6  dispatcher/reviewer wiring (read-if-present, no freshness re-check)
 //   §7  telemetry: JSONL append helper + engine resume-kwargs extension
 //   §8  aidakit:learn rollup into evidence.md
-//   §9  ADR-012 format + index registration
+//   §9  ADR-013 format + index registration
 //
 // Pure Node, no framework — mirrors governance/__tests__/engine.test.mjs / check-docs.test.mjs.
 
@@ -936,21 +936,21 @@ function runRollupCli(args) {
   ok(/No telemetry captured for this run\./.test(evidence), "§learn-rollup-empty-or-absent: exact literal message when telemetry is absent");
 }
 
-// ── §9 ADR-012 conformance ────────────────────────────────────────────────
+// ── §9 ADR-013 conformance ────────────────────────────────────────────────
 
-// N9a-i: ADR-012 passes the format check.
+// N9a-i: ADR-013 passes the format check.
 {
-  const adrPath = join(REPO, "docs", "decisions", "ADR-012-context-pack-per-change.md");
+  const adrPath = join(REPO, "docs", "decisions", "ADR-013-context-pack-per-change.md");
   const adrVal = join(GOV, "validators", "check-adr-format.js");
   const r = run(adrVal, [adrPath]);
-  ok(r.code === 0 && r.json.ok, "§adr-010-passes-format: check-adr-format.js exits 0 on ADR-012");
+  ok(r.code === 0 && r.json.ok, "§adr-010-passes-format: check-adr-format.js exits 0 on ADR-013");
 }
 
-// N9a-ii: ADR-012 is indexed in docs/decisions/README.md (ID table row + thematic bucket mention).
+// N9a-ii: ADR-013 is indexed in docs/decisions/README.md (ID table row + thematic bucket mention).
 {
   const readme = readFileSync(join(REPO, "docs", "decisions", "README.md"), "utf8");
-  ok(/\[ADR-012\]\(ADR-012-context-pack-per-change\.md\)/.test(readme), "§adr-010-indexed: ADR-012 row present in the index table");
-  ok((readme.match(/ADR-012/g) || []).length >= 2, "§adr-010-indexed: ADR-012 mentioned in both the ID table and a thematic bucket");
+  ok(/\[ADR-013\]\(ADR-013-context-pack-per-change\.md\)/.test(readme), "§adr-010-indexed: ADR-013 row present in the index table");
+  ok((readme.match(/ADR-013/g) || []).length >= 2, "§adr-010-indexed: ADR-013 mentioned in both the ID table and a thematic bucket");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

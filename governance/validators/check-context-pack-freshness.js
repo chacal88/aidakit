@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// check-context-pack-freshness — hash-invalidation validator for `.context-pack.md` (ADR-012).
+// check-context-pack-freshness — hash-invalidation validator for `.context-pack.md` (ADR-013).
 // Reads the pack's frontmatter, walks its OWN `sources[]` only, recomputes each
 // file's sha256, and exits 0 iff every declared source still matches. Never
 // globs the repo — a file that is not one of the pack's declared sources
 // cannot invalidate it (that's the whole point of the source-scoped design;
 // cross-change invalidation is L2's problem, not L1's).
 //
-// SEPARATE from check-doc-manifest.js by design (ADR-012 §neg-consequence):
+// SEPARATE from check-doc-manifest.js by design (ADR-013 §neg-consequence):
 // a stale pack must never add a `doc-missing` finding to the doc-leash.
 //
 // Pure Node, zero-dep. Contract: exit 0 fresh · 1 stale · 2 usage/error. JSON stdout + human stderr.

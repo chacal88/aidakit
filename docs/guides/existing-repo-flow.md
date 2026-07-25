@@ -96,7 +96,7 @@ The `onboarding` mode of the [aidakit:governance](../../skills/governance/SKILL.
 
    Full scenes of each one in [Governance in practice §1](governance-in-practice.md).
 3. **Branch protection on main** — the agent suggests it (require PR, block force-push and direct commits) and explains; the configuration on the git host is the human's. The agent does not alter repository configuration.
-4. **A short adoption ADR** — the decision to adopt the governance is recorded in `docs/decisions/`, via [aidakit:docs](../../skills/docs/SKILL.md), in the 5-section format, via a branch + PR. In razor (which over these six months has already accumulated ADR-001 to 011 in the legacy `docs/adr/` layout), `ADR-012-adopt-aidakit-governance.md` is born:
+4. **A short adoption ADR** — the decision to adopt the governance is recorded in `docs/decisions/`, via [aidakit:docs](../../skills/docs/SKILL.md), in the 5-section format, via a branch + PR. In razor (which over these six months has already accumulated ADR-001 to 011 in the legacy `docs/adr/` layout), `ADR-013-adopt-aidakit-governance.md` is born:
    - **Status + Date**: accepted · 2027-01-12
    - **Context**: six months of repo with no process; docs degrading, inconsistent review
    - **Decision**: aidakit governance in effect (GOVERNANCE.md), `pre-bash` hook active, main protection on
@@ -141,7 +141,7 @@ In the [quick-start guide](getting-started.md), razor is born with the kit. Supp
 
 - **Day 1 — install + `init`.** The plugin comes in; an agent's first `git add -A` is blocked by the hook (the team notices). `/aidakit:docs` in init mode inventories, presents the section-2 migration proposal; the owner approves; the migration goes out in a single PR with stubs in `docs/adr/`.
 - **Day 2 — `audit`.** The section-3 report appears: the broken link and the index are fixed in a PR of approved mechanical corrections; the out-of-format ADR-004 is recorded — completing it is the human author's decision (WORM).
-- **Day 3 — `onboarding`.** The 3 escalations communicated to the team, main protection turned on by the owner on the git host, and `ADR-012-adopt-aidakit-governance.md` (section 4) merged via PR.
+- **Day 3 — `onboarding`.** The 3 escalations communicated to the team, main protection turned on by the owner on the git host, and `ADR-013-adopt-aidakit-governance.md` (section 4) merged via PR.
 - **Weeks 1–2 — step 1.** Every commit starts going with `/aidakit:test api` or `/aidakit:test web` + `/aidakit:review --diff`. No new ceremony beyond that.
 - **Week 3 — first change with the full cycle.** The rescued note `cancellation-policy.md` becomes the change **`feature-appointment-cancellation`** — "cancel an appointment with a policy: up to 2h beforehand, no penalty". `aidakit:plan` authors the artifacts in `docs/features/feature-appointment-cancellation/` citing ADR-003 (the policy lives inside the `Appointment` aggregate, which remains the owner of the R1 invariant); `aidakit:readiness` gives APPROVED; TDD covers the 2h window and emits `AppointmentCancelled`; `/aidakit:test all` green; GATE 2 PASS; PR #42 opened on the `feature-appointment-cancellation` branch — **the owner merges**. Post-merge, `aidakit:docs` promotes the delta to `docs/specs/` and archives the change in `docs/archive/2027-02-06-feature-appointment-cancellation/` — the same key in the branch, the PR, and the archive ([DOCS.md §2.7](../../DOCS.md)).
 

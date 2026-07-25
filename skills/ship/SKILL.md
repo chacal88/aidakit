@@ -20,7 +20,7 @@ Precedence: if it diverges from [GOVERNANCE.md](../../GOVERNANCE.md) / [PROCESS.
 - The change implemented and reviewed (recent PASS/consensus verdict).
 - The official `commit-commands` plugin installed (`/commit-push-pr`).
 - A change branch/worktree with the work (never the main branch).
-- **Context pack, read-if-present.** When `docs/features/<change-id>/.context-pack.md` exists, inject it into the dispatcher's prompt as the stable prefix of durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — see [ADR-012](../../docs/decisions/ADR-012-context-pack-per-change.md). Freshness is guaranteed upstream by the flow's `context_pack` phase; this skill never runs the pack's freshness validator itself. **If the pack is absent**, fall back to the raw `proposal.md`/`design.md`/`tasks.md`/cited ADRs, exactly as before — a missing pack never fails the dispatch.
+- **Context pack, read-if-present.** When `docs/features/<change-id>/.context-pack.md` exists, inject it into the dispatcher's prompt as the stable prefix of durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — see [ADR-013](../../docs/decisions/ADR-013-context-pack-per-change.md). Freshness is guaranteed upstream by the flow's `context_pack` phase; this skill never runs the pack's freshness validator itself. **If the pack is absent**, fall back to the raw `proposal.md`/`design.md`/`tasks.md`/cited ADRs, exactly as before — a missing pack never fails the dispatch.
 
 ## Process
 

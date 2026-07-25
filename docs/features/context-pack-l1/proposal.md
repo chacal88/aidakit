@@ -25,7 +25,7 @@ Introduce **L1 context caching** as a first-class per-change artifact:
 - All dispatchers and reviewers — `implement`, `review`, `ship`, `aidakit:adr-reviewer`, `aidakit:spec-reviewer`, `aidakit:reviewer-quality`, `aidakit:reviewer-security`, `aidakit:reviewer-architecture`, `aidakit:tester` — **verify-then-inject the pack** as a stable prefix instead of re-reading the durable sources one by one. Injecting the same bytes across dispatches preserves whatever same-subagent-type cache reuse the SDK does provide, while shrinking every cross-type dispatch to the size of the pack.
 - Two new validators under `governance/validators/`: `check-context-pack.js` (byte-stability of the pack — reject wall-clock-varying content like timestamps, random ids or ephemeral paths) and `check-context-pack-freshness.js` (invalidation by hash-check scoped to `sources[]` of *this* change, never a repo-wide glob). Freshness is a **separate** validator from `check-doc-manifest.js` — a stale pack must not be conflated with a missing mandatory document and must not block the doc-leash.
 - Telemetry: `.aidakit/tasks/<change-id>/.telemetry.jsonl` (append-only, gitignored) records per dispatch `{subagent, cache_creation, cache_read, output_tokens, pack_size, duration, pack_rebuilt}`. The MVP has no live TUI; the end-of-run rollup is written into `evidence.md` by `aidakit:learn` before the worktree is cleaned.
-- A new ADR — **ADR-012** — registers the context pack as a first-class artifact and locks its frontmatter schema, its invalidation semantics and the validator split.
+- A new ADR — **ADR-013** — registers the context pack as a first-class artifact and locks its frontmatter schema, its invalidation semantics and the validator split.
 
 The premise is unambiguous: **L1 wins by shrinking the per-dispatch prefix, not by depending on cross-dispatch cache hits.** Any future SDK-side cache improvements are additive, not required.
 
@@ -37,7 +37,7 @@ The premise is unambiguous: **L1 wins by shrinking the per-dispatch prefix, not 
 - Wire the pack into every dispatcher/reviewer named above.
 - Ship both validators (byte-stability + freshness) under the `AIDAKIT_GOVERNANCE` contract of [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md).
 - Ship the telemetry JSONL file, gitignored, and extend `aidakit:learn` to distill it into `evidence.md` at the end of the run.
-- Author [ADR-012](../../decisions/ADR-012-context-pack-per-change.md) and register it in `docs/decisions/README.md`.
+- Author [ADR-013](../../decisions/ADR-013-context-pack-per-change.md) and register it in `docs/decisions/README.md`.
 
 ## Non-goals
 
@@ -59,10 +59,10 @@ The premise is unambiguous: **L1 wins by shrinking the per-dispatch prefix, not 
 7. Missing pack degrades gracefully: dispatch still succeeds (the reviewer falls back to reading the raw docs) — no dispatcher fails hard on absent pack during rollout.
 8. `.aidakit/tasks/<change-id>/.telemetry.jsonl` is gitignored, append-only, and every line parses as JSON with the seven declared fields (round-1 bench fix E added `output_tokens`, previously parsed off `--tokens-output` but silently dropped before reaching the JSONL record).
 9. `aidakit:learn` writes a rollup section into `docs/features/<change-id>/evidence.md` before the worktree is cleaned.
-10. [ADR-012](../../decisions/ADR-012-context-pack-per-change.md) is authored and registered in `docs/decisions/README.md`.
+10. [ADR-013](../../decisions/ADR-013-context-pack-per-change.md) is authored and registered in `docs/decisions/README.md`.
 11. Full governance test suite → green with the new tests added; no regression.
 12. Freshness check (`check-context-pack-freshness.js`) is a validator SEPARATE from `check-doc-manifest.js`. A stale pack MUST NOT block the doc-leash (doc-manifest validator is untouched).
-13. ADR-012 exists at `docs/decisions/ADR-012-context-pack-per-change.md`, follows the ADR format (validated by `check-adr-format.js`), is indexed in `docs/decisions/README.md`, and registers the context pack as a first-class artifact.
+13. ADR-013 exists at `docs/decisions/ADR-013-context-pack-per-change.md`, follows the ADR format (validated by `check-adr-format.js`), is indexed in `docs/decisions/README.md`, and registers the context pack as a first-class artifact.
 
 ## References
 
@@ -72,4 +72,4 @@ The premise is unambiguous: **L1 wins by shrinking the per-dispatch prefix, not 
 - [ADR-004](../../decisions/ADR-004-aidakit-governance-env-contract.md) — the `AIDAKIT_GOVERNANCE` env contract the new validators plug into.
 - [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) — flow YAML schema for the new phase's `runs` step and `${context.select.change_id}` interpolation.
 - [ADR-009](../../decisions/ADR-009-flow-commits-plan-early.md) — the phase-insertion precedent right before this one.
-- [ADR-012](../../decisions/ADR-012-context-pack-per-change.md) — this change's registration of the pack as a first-class artifact.
+- [ADR-013](../../decisions/ADR-013-context-pack-per-change.md) — this change's registration of the pack as a first-class artifact.
