@@ -57,3 +57,60 @@ export function parseResumeOutput(tokens) {
   }
   return out;
 }
+
+// ── telemetry kwargs (ADR-013 §Decision-7/8 — additive, opt-in) ──────────
+//
+// `resume` additionally accepts `--<kwarg>=<value>` tokens carrying the
+// parent dispatcher's own usage numbers for THIS dispatch (cache_read,
+// cache_creation, output_tokens, wall-clock duration, whether the pack was
+// rebuilt). They live in the SAME "safe single token" whitelist as the
+// key=value structured outputs above: an integer for every counter, a
+// `true|false` literal for `pack-rebuilt`. A malformed OR unrecognized `--`
+// token is a usage error thrown BEFORE any state is touched — same
+// fail-closed contract as parseResumeOutput.
+
+/** CLI flag name → { field written into the telemetry record, value shape }. */
+export const TELEMETRY_KWARG_SPECS = {
+  "tokens-cache-read": { field: "cache_read", type: "int" },
+  "tokens-cache-creation": { field: "cache_creation", type: "int" },
+  "tokens-output": { field: "output_tokens", type: "int" },
+  "duration-ms": { field: "duration_ms", type: "int" },
+  "pack-rebuilt": { field: "pack_rebuilt", type: "bool" },
+};
+
+const TELEMETRY_INT_RE = /^\d+$/;
+const TELEMETRY_BOOL_RE = /^(true|false)$/;
+
+/**
+ * Splits the resume CLI tokens into `{ telemetry, rest }`: every `--<kwarg>=<value>`
+ * token declared in TELEMETRY_KWARG_SPECS is validated and moved into `telemetry`
+ * (or throws on a malformed/unknown one); every other token is left in `rest`
+ * for `parseResumeOutput`. `telemetry` is `undefined` when no telemetry kwarg
+ * was supplied — the fully backward-compatible, zero-telemetry path.
+ * @param {string[]} tokens
+ * @returns {{telemetry: (Object.<string, number|boolean>|undefined), rest: string[]}}
+ */
+export function parseTelemetryKwargs(tokens) {
+  /** @type {Object.<string, number|boolean>} */
+  const telemetry = {};
+  const rest = [];
+  let sawAny = false;
+  for (const tok of tokens) {
+    if (!tok.startsWith("--")) { rest.push(tok); continue; }
+    const eq = tok.indexOf("=");
+    if (eq < 0) throw new Error(`invalid telemetry kwarg "${tok}" (expected --key=value)`);
+    const key = tok.slice(2, eq);
+    const value = tok.slice(eq + 1);
+    const spec = TELEMETRY_KWARG_SPECS[key];
+    if (!spec) throw new Error(`unknown resume kwarg "--${key}"`);
+    if (spec.type === "int") {
+      if (!TELEMETRY_INT_RE.test(value)) throw new Error(`invalid value for --${key}: expected a non-negative integer, got "${value}"`);
+      telemetry[spec.field] = Number(value);
+    } else {
+      if (!TELEMETRY_BOOL_RE.test(value)) throw new Error(`invalid value for --${key}: expected true|false, got "${value}"`);
+      telemetry[spec.field] = value === "true";
+    }
+    sawAny = true;
+  }
+  return { telemetry: sawAny ? telemetry : undefined, rest };
+}

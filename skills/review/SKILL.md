@@ -26,6 +26,7 @@ description: The canonical pre-ship review gate. Runs structural validation and,
 - The bench agents available: `aidakit:adr-reviewer` and `aidakit:spec-reviewer` (base, always); `aidakit:reviewer-quality`, `aidakit:reviewer-security`, `aidakit:reviewer-architecture`, and `aidakit:tester` (summoned by flag — see the step 5 matrix).
 - Optional: the change classification ([aidakit:identify-domain](../identify-domain/SKILL.md)) — `{ domain, type, flags[] }` — which decides which flag-based roles the bench summons. Without a classification, operate by the heuristic built into the matrix (what the diff touches).
 - Mandatory input: change-id **or** the `--diff` flag.
+- **Context pack, read-if-present.** When `docs/features/<change-id>/.context-pack.md` exists, inject it into each dispatched role's prompt as the stable prefix of durable context (identity, decisions, ADRs, specs, code-map-pointers, DoD) — see [ADR-013](../../docs/decisions/ADR-013-context-pack-per-change.md). Freshness is guaranteed upstream by the flow's `context_pack` phase; this skill never runs the pack's freshness validator itself. **If the pack is absent**, fall back to the raw `proposal.md`/`design.md`/`tasks.md`/cited ADRs, exactly as before — a missing pack never fails the dispatch.
 
 Invocation forms:
 

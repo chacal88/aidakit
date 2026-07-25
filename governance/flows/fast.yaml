@@ -106,9 +106,23 @@ steps:
       - needs-revision
       - blocked
     on_result:
-      approved: implement
+      approved: context_pack
       needs-revision: plan
       blocked: aborted
+
+  - id: context_pack
+    type: runs
+    description: |
+      aidakit:context-pack — L1 context cache phase (ADR-013). Verifies the
+      change's .context-pack.md freshness; on staleness (non-zero exit),
+      rebuilds it lazily. Best-effort and fail-safe, mirroring the
+      commit_plan posture from ADR-009: both outcomes route to `implement` —
+      a build failure never blocks the flow, and the dispatchers/reviewers
+      themselves tolerate a missing/stale pack by falling back to reading the
+      raw docs (see agents/*.md "Step 0.5 — Load the context pack").
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-context-pack-freshness.js\" \"docs/features/${context.select.change_id}/.context-pack.md\" || node \"$AIDAKIT_GOVERNANCE/context-pack/build.js\" --change-id \"${context.select.change_id}\""
+    on_success: implement
+    on_failure: implement
 
   - id: implement
     type: invoke

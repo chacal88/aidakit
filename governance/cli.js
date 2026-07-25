@@ -22,7 +22,7 @@
 import { startFlow, resumeFlow } from "./engine/engine.js";
 import { loadFlow, listFlowNames } from "./engine/parser.js";
 import { loadState, saveState } from "./engine/persistence.js";
-import { parseResumeOutput } from "./engine/resume-output.js";
+import { parseResumeOutput, parseTelemetryKwargs } from "./engine/resume-output.js";
 import { renderProgressTable } from "./engine/progress-table.js";
 
 function fail(msg) {
@@ -69,12 +69,18 @@ function cmdStart(argv) {
 function cmdResume(argv) {
   const flowId = argv[0];
   const value = argv[1];
-  if (!flowId || value === undefined || value === "") fail("usage: resume <flow_id> <outcome> [key=value ...]");
+  if (!flowId || value === undefined || value === "") fail("usage: resume <flow_id> <outcome> [key=value ...] [--tokens-cache-read=N] [--tokens-cache-creation=N] [--tokens-output=N] [--duration-ms=N] [--pack-rebuilt=true|false]");
   // key=value tokens after the outcome are structured outputs (resume-output.js);
-  // a malformed token is a usage error BEFORE any state is touched.
+  // --<kwarg>=<value> tokens are the OPTIONAL telemetry kwargs (ADR-013) — additive,
+  // backward compatible: absent kwargs = no telemetry, no error. Both kinds are
+  // validated and split apart BEFORE any state is touched, same fail-closed contract.
   let resumeOutput;
+  let telemetry;
   try {
-    resumeOutput = argv.length > 2 ? parseResumeOutput(argv.slice(2)) : undefined;
+    const tokens = argv.slice(2);
+    const split = parseTelemetryKwargs(tokens);
+    telemetry = split.telemetry;
+    resumeOutput = split.rest.length > 0 ? parseResumeOutput(split.rest) : undefined;
   } catch (err) {
     fail(err.message);
   }
@@ -84,7 +90,7 @@ function cmdResume(argv) {
   if (errors.length) fail(errors.map((e) => e.message).join("\n"));
   let res;
   try {
-    res = resumeFlow({ state, flow, resumeValue: value, resumeOutput });
+    res = resumeFlow({ state, flow, resumeValue: value, resumeOutput, telemetry });
   } catch (err) {
     fail(err.message);
   }

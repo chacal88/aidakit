@@ -36,3 +36,26 @@ export function findProjectRoot(startDir) {
   }
   return base;
 }
+
+/**
+ * The single owner of the "explicit override → AIDAKIT_PROJECT_ROOT →
+ * climb from startDir" composition (round-1 bench fix, quality-important
+ * finding): this exact three-step resolution was independently reimplemented
+ * at 5 call sites (governance/context-pack/build.js, governance/validators/
+ * check-context-pack-freshness.js inline, governance/telemetry/append.js,
+ * governance/telemetry/rollup.js, governance/engine/steps/invoke.js) plus
+ * governance/pr/pr-config.js's own pre-existing copy — the SAME anti-pattern
+ * this file's header comment already documents as previously fixed once.
+ * This is now the single owner; every caller above imports and uses this
+ * function instead of reimplementing the composition.
+ * @param {string} [explicitRoot] wins over everything else when provided
+ * @param {string} [startDir] passed to findProjectRoot when neither the
+ *   explicit override nor AIDAKIT_PROJECT_ROOT apply; defaults to
+ *   process.cwd() (findProjectRoot's own default)
+ * @returns {string}
+ */
+export function resolveProjectRoot(explicitRoot, startDir) {
+  if (explicitRoot) return resolve(explicitRoot);
+  if (process.env.AIDAKIT_PROJECT_ROOT) return resolve(process.env.AIDAKIT_PROJECT_ROOT);
+  return findProjectRoot(startDir);
+}

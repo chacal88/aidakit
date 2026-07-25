@@ -27,6 +27,7 @@
 | [ADR-010](ADR-010-acceptance-leash.md) | The acceptance-leash mirrors the doc-leash — separate agent, weak-bar validator, both flows, max_visits from day one | accepted | 2026-07-24 |
 | [ADR-011](ADR-011-runs-infra-error-routing.md) | The `runs` step separates infra errors from validator verdicts, and infra always bypasses `on_failure` | accepted | 2026-07-24 |
 | [ADR-012](ADR-012-aidakit-governance-session-wide.md) | `AIDAKIT_GOVERNANCE` becomes session-wide via a `SessionStart` hook (amends ADR-004) | accepted | 2026-07-24 |
+| [ADR-013](ADR-013-context-pack-per-change.md) | The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix | proposed | 2026-07-24 |
 
 ## Thematic grouping
 
@@ -35,5 +36,6 @@
 - **Flow engine:** [ADR-004](ADR-004-aidakit-governance-env-contract.md) — `AIDAKIT_GOVERNANCE` env contract for validator resolution independent of cwd; [ADR-006](ADR-006-flow-values-as-data.md) — flow values are data (env-passed `runs` interpolation + structured invoke outputs); [ADR-009](ADR-009-flow-commits-plan-early.md) — the `full` flow's `commit_plan` step commits the authored plan; [ADR-010](ADR-010-acceptance-leash.md) — the acceptance-leash mirrors the doc-leash (separate agent + weak-bar validator + both flows + `max_visits` from day one); [ADR-011](ADR-011-runs-infra-error-routing.md) — infra errors on a `runs` step are a first-class outcome kind that always bypasses `on_failure`; [ADR-012](ADR-012-aidakit-governance-session-wide.md) — amends ADR-004 to broaden `AIDAKIT_GOVERNANCE` from `runs`-child-only to session-wide via a `SessionStart` hook, closing the direct-invocation vector (agents/skills/commands).
 - **Command surface:** [ADR-005](ADR-005-command-namespacing.md) — `flow` group prefix, mechanical grouping rule, and the locked `flow-<name>` naming syntax.
 - **Delivery & shipping governance:** [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) — autonomous PR merge, opt-in per project, as a scoped supersession of GOVERNANCE.md §1 rule 1.
+- **Context caching:** [ADR-013](ADR-013-context-pack-per-change.md) — the context pack as a first-class per-change artifact (L1 of the caching epic), byte-stable and source-scoped invalidated, injected as a stable prefix at every dispatcher/reviewer, with a freshness validator kept separate from the doc-manifest.
 
 <!-- The DISCOVERY index (DECISION_INDEX.md, with decision trees and tours by role) is created once this repo reaches ≥15 ADRs (DOCS.md §1). -->

@@ -40,6 +40,16 @@ Every learning with `action: doc-update`/`rule` becomes a **proposed literal dif
 - `scope: user` → propose an item for the user's auto-memory (the same memory mechanism you already use) — the `remember` + why.
 - **Never** record a secret, credential, sensitive path, or code snippet in the `remember`/`class` — only the class (1 line). The rich detail stays in the `proposed-updates.md`.
 
+### 4.5 Context-pack telemetry rollup
+
+Before the worktree is cleaned, distill `.aidakit/tasks/<change-id>/.telemetry.jsonl` (the per-dispatch log `governance/engine/steps/invoke.js`'s resume handler writes — see [ADR-013](../../docs/decisions/ADR-013-context-pack-per-change.md) §Decision-7/8) into a durable `## Context-pack telemetry rollup` section in `evidence.md`: total dispatches, mean `pack_size`, sum of `cache_read`/`cache_creation`, count of `pack_rebuilt=true`, and a per-subagent breakdown. Run it with:
+
+```
+node governance/telemetry/rollup.js --change-id <change-id>
+```
+
+The write is **idempotent** — rerunning replaces the existing section instead of duplicating it, so `learn` can run more than once on the same change without leaving stale copies behind. When `.telemetry.jsonl` is absent or has zero lines (no dispatch opted into telemetry this run), the section is still written, with the exact text `No telemetry captured for this run.` instead of crashing on a missing file or a zero-division on empty aggregates. The JSONL itself stays ephemeral (gitignored, per-change) — the rollup in `evidence.md` is the durable record.
+
 ### 5. Evals that grow
 A recurring `bug-class` → `action: regression-gate` → becomes a permanent test requirement on the next change that touches the area. A recurrence of an already-mitigated bug (it shows up again after the mitigation) is an **error-2** — it mandates a deeper review, not just a new fix.
 
