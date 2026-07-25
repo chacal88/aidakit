@@ -81,7 +81,7 @@ This is the reusable "team" primitive of the kit: any skill that fans out to N i
 
 Lives in `.aidakit/flows/{state,logs}/` in the target project (ephemeral — gitignore recommended). `state/<flow_id>.json` is the resumable state; `logs/<flow_id>.log` is the JSON-lines event log. Base overridable via the `AIDAKIT_PROJECT_ROOT` env var.
 
-`runs` steps also receive `AIDAKIT_GOVERNANCE` in their child env, computed by `runs.js` from its own `import.meta.url` and pointing at the kit's own `governance/` directory — not the target project's. This lets a flow command call a kit validator as `node "$AIDAKIT_GOVERNANCE/validators/…"` and resolve it regardless of `cwd` (which is `AIDAKIT_PROJECT_ROOT`/the consumer repo, not the kit). See [docs/guides/flows.md](../docs/guides/flows.md) §3 (the `${...}` vs `$FOO` grammar distinction) and §6 (calling a kit validator from a flow of your own), and [ADR-004](../docs/decisions/ADR-004-aidakit-governance-env-contract.md) for the decision.
+Every Bash session under the plugin — `runs`-step children (via `runs.js`, computed from its own `import.meta.url`) and direct Bash tool calls (via the `SessionStart` hook, `hooks/session-start.js`) — receives `AIDAKIT_GOVERNANCE`, pointing at the kit's own `governance/` directory — not the target project's. This lets a flow command, agent, skill, or slash command call a kit validator as `node "$AIDAKIT_GOVERNANCE/validators/…"` and resolve it regardless of `cwd` (which is `AIDAKIT_PROJECT_ROOT`/the consumer repo, not the kit). See [docs/guides/flows.md](../docs/guides/flows.md) §3 (the `${...}` vs `$FOO` grammar distinction) and §6 (calling a kit validator from a flow of your own), [ADR-004](../docs/decisions/ADR-004-aidakit-governance-env-contract.md) for the original `runs`-child decision, and [ADR-012](../docs/decisions/ADR-012-aidakit-governance-session-wide.md) for the session-wide broadening.
 
 ## Ported from recruit, coupling cut
 
@@ -91,3 +91,5 @@ Brought over: the type contract, the loop with IoC, pause/resume, the `max`/`unt
 <!-- aidakit v0.6 — ADR-006: structured invoke outputs (change_id) + runs values passed as env data, 2026-07-24 -->
 <!-- aidakit v0.7 — flow-run-progress-table: read-only progress table (done/current/pending) at start/resume/status, 2026-07-24 -->
 <!-- aidakit v0.8 — flow-step-summaries: declarative per-step narrative (state.summaries[], summary: template, `summaries <flow_id>` CLI), 2026-07-24 -->
+<!-- aidakit v0.8 — agent-validator-paths: AIDAKIT_GOVERNANCE session-wide via SessionStart hook (ADR-012), 2026-07-24 -->
+
