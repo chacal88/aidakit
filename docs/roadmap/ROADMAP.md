@@ -17,17 +17,18 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Coleiras mecânicas do flow engine — **backlog**
-
-- Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
-
 ### Automação de entrega (PR → merge) — **backlog**
 
 - Sweep pós-merge — arquiva, apaga branch, remove worktree — `post-merge-sweep` → backlog
 
-### Endurecimento da disciplina do próprio kit — **backlog**
+### Coleiras mecânicas do flow engine — **backlog**
+
+- Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
+
+### Endurecimento da disciplina do próprio kit — **in-progress**
 
 - `aidakit:review` grava o bench manifest mecanicamente — `review-bench-manifest-mechanical-writer` → backlog
+- Validador mecânico de anchors das citações do plano — `design-claims-anchor-validator` → backlog
 - Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → backlog
 - Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → backlog
 - `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → backlog

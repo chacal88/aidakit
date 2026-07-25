@@ -116,7 +116,7 @@ Don't adopt the [full cycle](../../PROCESS.md) on day 1. The ladder that works:
 
 The hook is already the passive layer under both — step 1 = leash + two gates, zero planning ceremony.
 
-**Step 2 — non-trivial changes get a plan and an entry gate.** A change that isn't a <2h bugfix starts being born through [aidakit:plan](../../skills/plan/SKILL.md) (plan-only artifacts in `docs/features/<change-id>/`: proposal, design, tasks, evidence) and through GATE 1, [aidakit:readiness](../../skills/readiness/SKILL.md) (13 steps, verdict APPROVED / NEEDS-REVISION / BLOCKED). You only implement with APPROVED.
+**Step 2 — non-trivial changes get a plan and an entry gate.** A change that isn't a <2h bugfix starts being born through [aidakit:plan](../../skills/plan/SKILL.md) (plan-only artifacts in `docs/features/<change-id>/`: proposal, design, tasks, evidence) and through GATE 1, [aidakit:readiness](../../skills/readiness/SKILL.md) (14 steps, verdict APPROVED / NEEDS-REVISION / BLOCKED). You only implement with APPROVED.
 
 **Step 3 — the full cycle of [PROCESS.md §2](../../PROCESS.md).** `/aidakit:flow-build` picks the next ready change in the 1st step of the flow and generates the self-contained prompt (logic previously exposed as a separate command, now absorbed); implementation with TDD; [aidakit:coverage](../../skills/coverage/SKILL.md) when coverage falls below target; `/aidakit:review --diff` as GATE 2; commit/PR; **you merge**; and `aidakit:docs` does the dated archive post-merge with WORKING → DURABLE promotion ([DOCS.md §4](../../DOCS.md)). The cycle does not require having run the design: `aidakit:plan` accepts a change or idea still without a spec, and the `aidakit:orchestrator` inspects the repo's real artifacts instead of assuming state.
 

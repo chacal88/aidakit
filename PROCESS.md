@@ -70,7 +70,7 @@ Next change from the design (or a new idea)
         ↓                  ready and generates a self-contained prompt for a new session
   aidakit:plan          ←─ aidakit:planner authors the plan-only change
         ↓                  (proposal / design / tasks / evidence — no product code)
-  aidakit:readiness     ←─ GATE 1: 13-step readiness review of the plan package.
+  aidakit:readiness     ←─ GATE 1: 14-step readiness review of the plan package.
         ↓                  Verdict: Status: APPROVED | NEEDS-REVISION | BLOCKED
         ↓                  + Ready to implement: yes | no
   implementation        ←─ TDD (skill test-driven-development): RED → GREEN → REFACTOR
@@ -97,7 +97,7 @@ Next change from the design (or a new idea)
 
 2. **`/aidakit:plan <change-id-or-description>`** — when the change doesn't have a spec yet. The `aidakit:planner` agent (in the new session) authors the plan-only artifacts: `proposal.md` + `design.md` + `tasks.md` + a stub of `evidence.md`, plus the change metadata — as an OpenSpec change or in `docs/features/<change-id>/` in kit mode. The implementation plan (effort, risks, file structure per surface) is part of what `plan` produces. The planner reads the repo's recorded decisions, the list of open decisions if one exists, and the specs the change extends. Cross-checks: every cited decision exists; every `design.md` deliverable has a bullet in `tasks.md`; every path in `tasks.md` matches the repo's real layout. **Plan-only — never writes product code.** If the change-id already exists, the planner refuses and asks whether to extend or rename.
 
-3. **`/aidakit:readiness` — GATE 1.** The kit's strongest readiness review: 13 steps over the complete plan package before any implementation. Machine-parseable verdict (verbatim, in English): `Status: APPROVED | NEEDS-REVISION | BLOCKED` and `Ready to implement: yes | no`. Implementation happens only with `Status: APPROVED` and `Ready to implement: yes`; `NEEDS-REVISION` goes back to the author to fix. GOVERNANCE.md §3 doctrine holds: the reviewer reports, doesn't fix; an approved verdict with an open blocker is forbidden.
+3. **`/aidakit:readiness` — GATE 1.** The kit's strongest readiness review: 14 steps over the complete plan package before any implementation. Machine-parseable verdict (verbatim, in English): `Status: APPROVED | NEEDS-REVISION | BLOCKED` and `Ready to implement: yes | no`. Implementation happens only with `Status: APPROVED` and `Ready to implement: yes`; `NEEDS-REVISION` goes back to the author to fix. GOVERNANCE.md §3 doctrine holds: the reviewer reports, doesn't fix; an approved verdict with an open blocker is forbidden.
 
 4. **Implementation with TDD.** The executing session (or the implementation agents available in the environment — see `/aidakit:catalog`) implements the tasks following the **`test-driven-development`** skill: write the failing test first (RED), make it pass (GREEN), then refactor (REFACTOR). Non-negotiable quality bars: no untyped escapes (`any` and equivalents), no forgotten debug prints, typed exceptions, mandatory edge cases. When a bug or unexpected behavior shows up mid-implementation, apply the **`systematic-debugging`** skill before proposing fixes. Before coding, re-inspect the repo's real state — a plan premise changed → STOP and report (GOVERNANCE.md §8).
 
@@ -179,7 +179,7 @@ The step-by-step usage lives in the [docs/guides/flows.md](docs/guides/flows.md)
 | `/aidakit:flow-build` (command, not a skill) | Build a change from plan to PR. Execution entry point: the 1st step picks the next ready change and generates the execution prompt; it also drives the cycle through the executable flow engine (start/resume/status/abort/list — see §2 "Running the cycle as an executable flow"). |
 | `aidakit:plan` | You have an idea/change still without a spec. Generates the prompt for `aidakit:planner` to author the plan-only artifacts (includes the implementation plan: effort, risks, file structure). |
 | `aidakit:spec` | Read/show a spec, discover related specs and decisions, or validate work against a spec. Documents the proposal template with quality checks. |
-| `aidakit:readiness` | The strongest gate: 13-step readiness review of the plan package before implementation (GATE 1). Verdict `Status: APPROVED \| NEEDS-REVISION \| BLOCKED` + `Ready to implement: yes \| no`. |
+| `aidakit:readiness` | The strongest gate: 14-step readiness review of the plan package before implementation (GATE 1). Verdict `Status: APPROVED \| NEEDS-REVISION \| BLOCKED` + `Ready to implement: yes \| no`. |
 | `aidakit:test` | Run a surface's focused test suite with a coverage report; before every commit. |
 | `aidakit:coverage` | Coverage came in below target, or before the PR: cross-surface gap analysis with concrete test suggestions. |
 | `aidakit:review` | The post-implementation gate (GATE 2, `--diff`): the two reviewers in parallel + structural validation, PASS/FAIL verdict. Also runs against the change's artifacts (without `--diff`) as a complementary check to readiness. |

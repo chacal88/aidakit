@@ -175,6 +175,7 @@ Check:
 - privacy, auth, permissions, and operational constraints addressed when relevant
 - alternatives and trade-offs documented for the big architecture choices
 - open questions don't block the next implementation phase, or are explicitly assigned to discovery tasks
+- claims about the repo's own internals (executor write-sets, persistence shapes, validator contracts, state fields) are re-derived from live code per Process §14 — including unanchored prose and generalizations that sum several cited facts
 
 ### 5. Review the change metadata
 
@@ -307,6 +308,22 @@ Answer all of them explicitly:
 8. Is any decision implicit rather than written?
 9. Do the tasks deliver the intended outcome in full?
 10. What will be discovered too late if implementation starts now?
+
+### 14. Verify claims about internals against live code
+
+MANDATORY. Do not emit a verdict before this step is done. (This is **Process** step 14; the `## 14. Mandatory review questions` heading further down belongs to the output template and is a different thing.)
+
+For every claim in `<change-root>/design.md` and `<change-root>/proposal.md` about an internal contract of the repo's own machinery — an executor's write-set, a persistence function's shape, a validator's return value or exit codes, a state field, a parser rule, a schema key, a CLI argv contract — re-derive the claim from the **live code** with `Read`/`Grep` before approving it. Reading the plan is not verification: open the file.
+
+Three shapes qualify, not one:
+
+1. **Line-anchored claims** (`path/file.ext:NN`) — open the file at that line and confirm the code says what the plan says. A resolvable anchor pointing at code that does something else is a finding.
+2. **Unanchored claims** — prose that asserts an internal behavior with no citation. Locate the code yourself. A claim you cannot ground is a finding, never a free pass.
+3. **Prose generalizations that sum several individually-cited facts** — sentences of the form "every X does Y", "always populated", "all executors write Z", built on citations that are each individually correct. **Enumerate the full set the sentence quantifies over and verify every member.** A generalization that does not hold for every case it covers is `Critical` / `Mandatory before implementation`, even when each underlying citation checks out.
+
+Why shape 3 is called out separately: in `flow-step-summaries` the design claimed `context[step.id].outcome` was "populated by every pause-emitting executor" (`docs/archive/2026-07-24-flow-step-summaries/design.md:92`). Only `invoke.js` writes `.outcome`; `human-gate.js` writes `.choice` and `human-handoff.js` writes `.response`. Every individual anchor in that design was re-verified and passed (`evidence.md:8-18`) — the summing sentence was still false, and it reached implementation.
+
+Report every failed re-derivation in `## 4. Design review` with severity + fix classification per the evidence standard, and mirror the `Critical` ones into `## 11. Mandatory fixes before implementation`.
 
 ### Severity classification
 

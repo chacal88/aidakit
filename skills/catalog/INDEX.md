@@ -24,7 +24,7 @@
 | `aidakit:catalog` (+ `/aidakit:catalog`) | kit | This index — "do I have a tool for X?" |
 | `aidakit:plan` (+ `/aidakit:plan`) | kit | Plan-only change authoring (proposal/design/tasks) via the `aidakit:planner` agent: breakdown, estimation, risk matrix, with a review gate before coding |
 | `aidakit:spec` | kit | Reads specs + a proposal template with a quality checklist (testable criteria, committed effort) |
-| `aidakit:readiness` | kit | The strongest gate: 13 planning-readiness steps, failure simulation, APPROVED/BLOCKED verdict |
+| `aidakit:readiness` | kit | The strongest gate: 14 planning-readiness steps, failure simulation, APPROVED/BLOCKED verdict |
 | `aidakit:review` (+ `/aidakit:review`) | kit | Pre-ship gate: structural validation + an adversarial bench of agents dispatched in parallel (role×flag matrix), verdicts aggregated by consensus. Report, don't fix |
 | `aidakit:docs` (+ `/aidakit:docs`) | kit | Deploys, audits, and maintains the document architecture of `DOCS.md` in the project (structure, indexes, archive) |
 | `aidakit:governance` (+ `/aidakit:governance`) | kit | Applies and verifies the execution doctrine of `GOVERNANCE.md` in the project (authority, PR, roles, guardrails) |

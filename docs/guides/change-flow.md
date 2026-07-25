@@ -109,7 +109,7 @@ The change touches **1 surface** (`apps/api`), so the mode is **serial** ([PROCE
 
 ## Step 3 — GATE 1: readiness (`/aidakit:readiness`)
 
-Before any code, the 13-step readiness review ([aidakit:readiness](../../skills/readiness/SKILL.md)) sweeps the whole package — scope, proposal, design, specs, tasks, omissions, implementation simulation. The output comes in the chat, in the skill's fixed 15-section structure (condensed below), with the **machine-parseable** verdict required by [GOVERNANCE.md](../../GOVERNANCE.md) §3. The verdict is exactly two lines, verbatim and in English: `Status: APPROVED | NEEDS-REVISION | BLOCKED` and `Ready to implement: yes | no` — there is no "APPROVED WITH FIXES" value:
+Before any code, the 14-step readiness review ([aidakit:readiness](../../skills/readiness/SKILL.md)) sweeps the whole package — scope, proposal, design, specs, tasks, omissions, implementation simulation. The output comes in the chat, in the skill's fixed 15-section structure (condensed below), with the **machine-parseable** verdict required by [GOVERNANCE.md](../../GOVERNANCE.md) §3. The verdict is exactly two lines, verbatim and in English: `Status: APPROVED | NEEDS-REVISION | BLOCKED` and `Ready to implement: yes | no` — there is no "APPROVED WITH FIXES" value:
 
 ```md
 # Readiness review result

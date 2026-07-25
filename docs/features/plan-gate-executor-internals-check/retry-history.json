@@ -1,0 +1,22 @@
+[
+  {
+    "round": 1,
+    "step_id": "specify",
+    "cause": "adr-required-by-doc-leash-collides-with-no-adr-criterion"
+  },
+  {
+    "round": 2,
+    "step_id": "specify",
+    "cause": "unsatisfiable-check-links-exit-criterion-and-miscounted-ripple-claim"
+  },
+  {
+    "round": null,
+    "step_id": "implement",
+    "cause": "bench-veto"
+  },
+  {
+    "round": null,
+    "step_id": "implement",
+    "cause": "bench-veto"
+  }
+]

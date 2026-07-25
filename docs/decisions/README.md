@@ -29,6 +29,7 @@
 | [ADR-012](ADR-012-aidakit-governance-session-wide.md) | `AIDAKIT_GOVERNANCE` becomes session-wide via a `SessionStart` hook (amends ADR-004) | accepted | 2026-07-24 |
 | [ADR-013](ADR-013-context-pack-per-change.md) | The context pack is a first-class per-change artifact — deterministic, hash-invalidated, injected as a stable prefix | proposed | 2026-07-24 |
 | [ADR-014](ADR-014-archive-aware-link-resolution.md) | `check-links` resolves archived change packages via the single key, instead of rewriting the documents that cite them | accepted | 2026-07-24 |
+| [ADR-015](ADR-015-readiness-owns-internals-claims-gate.md) | `aidakit:readiness` owns the internals-claims gate; the mechanical anchor check is deferred to a separate change | proposed | 2026-07-25 |
 
 ## Thematic grouping
 
@@ -38,6 +39,7 @@
 - **Command surface:** [ADR-005](ADR-005-command-namespacing.md) — `flow` group prefix, mechanical grouping rule, and the locked `flow-<name>` naming syntax.
 - **Delivery & shipping governance:** [ADR-008](ADR-008-opt-in-autonomous-pr-merge.md) — autonomous PR merge, opt-in per project, as a scoped supersession of GOVERNANCE.md §1 rule 1.
 - **Documentation mechanics:** [ADR-014](ADR-014-archive-aware-link-resolution.md) — `check-links` resolves a citation of `docs/features/<change-id>/` against the dated archive via the DOCS.md §2 rule 7 single key, so the §4 promotion of a shipped change stops rotting inbound links in documents that rule §2 rule 2 forbids editing (WORM); the fallback is strict (exact date-prefix match, ambiguity reported, target must exist) so a real typo still fails, and `docs/decisions/` is deliberately NOT blanket-skipped.
+- **Planning gates & review discipline:** [ADR-015](ADR-015-readiness-owns-internals-claims-gate.md) — `aidakit:readiness` owns the mandatory gate that re-derives a plan's claims about engine/executor internals from live code (including unanchored prose and generalizations); the mechanical anchor check was deferred to a separate change (`design-claims-anchor-validator`) after a blocking extraction defect survived four bench rounds.
 - **Context caching:** [ADR-013](ADR-013-context-pack-per-change.md) — the context pack as a first-class per-change artifact (L1 of the caching epic), byte-stable and source-scoped invalidated, injected as a stable prefix at every dispatcher/reviewer, with a freshness validator kept separate from the doc-manifest.
 
 <!-- The DISCOVERY index (DECISION_INDEX.md, with decision trees and tours by role) is created once this repo reaches ≥15 ADRs (DOCS.md §1). -->
