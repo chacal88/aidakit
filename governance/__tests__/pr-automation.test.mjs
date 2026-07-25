@@ -861,6 +861,64 @@ delete baseEnv.AIDAKIT_BASE_REF;
     eq(runHook(repro3, rootAutoMerge).code, 0, `live repro 2026-07-25 (3): allowed under the opt-in — "${repro3}"`);
     eq(runHook(repro3, rootNoConfig).code, 2, `live repro 2026-07-25 (3): still blocked WITHOUT the opt-in — "${repro3}"`);
   }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Live repros 2026-07-25, SECOND stale-plugin sighting (flow
+  // full-260725-642b02, 14:16–14:51 UTC, worktree
+  // flow-build-post-merge-sweep-0e0a0f): the installed pre-round-6 hook
+  // blocked ordinary git commit/diff/grep commands with a "gh pr merge
+  // with a disallowed flag" message ASSEMBLED FROM UNRELATED SUBSTRINGS —
+  // "gh" from the word "caught" (or the `ghp_` token regex), "merge" from
+  // the WORKTREE PATH in the leading `cd`, "--" from --dry-run/grep flags.
+  // The live workaround was rewording "caught"→"found". The parser at HEAD
+  // (#48) tokenizes and allows every one of these — locked so a matcher
+  // change that reintroduces raw-substring assembly fails here, not
+  // mid-flow. The path prefix is the load-bearing part: it is what put
+  // "merge" on every command the session ran.
+  // ══════════════════════════════════════════════════════════════════════
+  {
+    const rootNoConfig = mkGitProjectRoot({});
+    const rootAutoMerge = mkGitProjectRoot({ baseConfig: CONFIG_TRUE });
+    const cdMergePath = "cd /Users/x/.claude/worktrees/flow-build-post-merge-sweep-0e0a0f";
+
+    // Repro 4 — the live bisect floor: --dry-run commit, "caught" in the
+    // message, "merge" in the cd path. No construct → parses → allowed.
+    const repro4 = `${cdMergePath}\ngit commit --dry-run -m "caught" 2>&1 | head -3`;
+    eq(runHook(repro4, rootNoConfig).code, 0, 'live repro 642b02 (4): commit --dry-run -m "caught" from a merge-named cwd is allowed');
+    eq(runHook('git commit --dry-run -m "caught" 2>&1 | head -3', rootNoConfig).code, 0, 'live repro 642b02 (4b): the standalone bisect floor is allowed');
+
+    // Repro 5 — the secret-scan sweep: grep PATTERN carries "gh" (`ghp_…`)
+    // and "--" (-----BEGIN), the diff redirect and cd path carry "merge".
+    const repro5 = `${cdMergePath}\ngit diff origin/main...HEAD > /tmp/full.diff\ngrep -inE '-----BEGIN|ghp_[0-9A-Za-z]{36}' /tmp/full.diff 2>&1 | head -5`;
+    eq(runHook(repro5, rootNoConfig).code, 0, "live repro 642b02 (5): secret-grep with a ghp_ pattern over a diff is allowed");
+
+    // Repro 6 — "caught" and "merge" as plain literal words in ONE -m.
+    eq(runHook('git commit -m "fix: caught the stale merge check"', rootNoConfig).code, 0, "live repro 642b02 (6): literal message with caught+merge as words is allowed");
+
+    // ── Doctrine locks: what still blocks at HEAD blocks BY DESIGN ──
+    // The flow's actual ship-shape commit — message via `$(cat <<'EOF'…)`
+    // whose body carries "caught", from the merge-named cwd — hits the
+    // fail-closed ambiguity rule: an unreadable $(…) that mentions gh+merge
+    // cannot be proven safe. The block must name ambiguity, never claim a
+    // gh pr merge invocation was found (round-6 message contract).
+    const heredocCommit = `${cdMergePath}\ngit add docs/features/x/evidence.md\ngit commit -m "$(cat <<'EOF'\nfix(x): re-measure agents/doc-planner.md (bench round 2)\n\nthe same drift class round 1 caught for skills/readiness/SKILL.md\nEOF\n)"`;
+    const hd = runHook(heredocCommit, rootAutoMerge);
+    eq(hd.code, 2, "doctrine 642b02: heredoc-substitution commit mentioning gh+merge is fail-closed (by design)");
+    ok(/ambiguous construct, NOT a forbidden flag/.test(hd.stderr), "doctrine 642b02: the block names ambiguity");
+    ok(!/this command invokes/.test(hd.stderr), "doctrine 642b02: the block does NOT claim a gh pr merge invocation");
+
+    // Why the rule cannot be loosened for that comfort: the SAME construct
+    // is how a forbidden flag gets smuggled past any static tokenizer.
+    const smuggle = "gh pr merge 60 $(cat <<'EOF'\n--admin\nEOF\n)";
+    eq(runHook(smuggle, rootAutoMerge).code, 2, "doctrine 642b02: --admin smuggled via heredoc substitution stays blocked even under the opt-in");
+
+    // The prescribed rewrites (instead of rewording "caught"→"found"):
+    // take the message off the command line (-F), or pass it as literal -m
+    // strings — both parse, both allowed, no construct involved.
+    eq(runHook(`${cdMergePath}\ngit commit -F /tmp/msg.txt`, rootNoConfig).code, 0, "doctrine 642b02: rewrite via commit -F <file> is allowed");
+    const literalM = `${cdMergePath}\ngit commit -m "fix(x): re-measure agents/doc-planner.md (bench round 2)" -m "the same drift class round 1 caught for skills/readiness/SKILL.md"`;
+    eq(runHook(literalM, rootNoConfig).code, 0, "doctrine 642b02: rewrite via literal -m strings is allowed");
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
