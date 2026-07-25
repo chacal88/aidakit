@@ -55,7 +55,7 @@ _(pending — one line per command from [tasks.md](tasks.md) §8, each with its 
 - `for t in governance/__tests__/*.test.mjs; do node "$t" || echo "FAIL $t"; done` → _pending_ (per-file counts here)
 - `node governance/validators/check-design-claims.js docs/features/plan-gate-executor-internals-check` → _pending_ (dogfood)
 - Negative dogfood (scratch rotten anchor → exit 1) → _pending_
-- `node governance/validators/check-links.js .` → _pending_
+- `check-links.js` over the change's touched-file set (list in [proposal.md](proposal.md) §Exit criteria) → _pending_ (repo-wide is NOT the bar: 13 pre-existing breakages in 8 files, out of scope)
 - `node governance/validators/check-plugin-version.js` → _pending_
 - `node governance/validators/check-adr-format.js docs/decisions` → _pending_ (expect `adrs_checked: 14`)
 - `node governance/validators/check-adr-format.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` → at plan time: `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}`, **exit 0**. Re-run at implementation time.
@@ -70,11 +70,11 @@ _(pending — created vs edited, matching [tasks.md](tasks.md) §9's expected di
 
 - `governance/validators/check-design-claims.js` — _pending_
 - `governance/__tests__/check-design-claims.test.mjs` — _pending_
-- `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` — **done at plan time** (authored in this package per the ADR-008 precedent); `check-adr-format` → `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}`, exit 0; `check-links` → exit 0. Re-confirm at implementation time after any edit.
+- `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` — **done at plan time** (authored in this package per the ADR-008 precedent); `check-adr-format` → `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}`, exit 0; `check-links` → exit 0. Re-run at implementation time after any edit.
 
 **Edited:**
 
-- `docs/decisions/README.md` — **done at plan time**: ADR-014 row added to the index table and a `Planning gates & review discipline` bullet added to the thematic grouping. Re-confirm `check-links` green.
+- `docs/decisions/README.md` — **done at plan time**: ADR-014 row added to the index table and a `Planning gates & review discipline` bullet added to the thematic grouping. Re-run `check-links` at implementation time.
 - `skills/readiness/SKILL.md` — _pending_
 - `governance/__tests__/agent-validator-paths.test.mjs` — _pending_
 - `docs/roadmap/epics/EPIC-kit-discipline-hardening.md` — _pending_
