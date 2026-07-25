@@ -23,7 +23,7 @@ Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../..
 
 1. `## identity` — change-id, date, owner, phase, one-line summary.
 2. `## decisions` — the local planning decisions from `design.md`, one bullet per decision with a `file:line` pointer.
-3. `## ADRs` — every ADR the change cites, as a read-once address (`- [ADR-NNN](path) — role`).
+3. `## ADRs` — every ADR the change cites, as a read-once address (`- [ADR-NNN](<path>) — role`).
 4. `## specs` — the capability specs the change extends, pointers only.
 5. `## code-map-pointers` — the files the implementation creates/modifies, pointers only.
 6. `## DoD` — the Definition of Done, lifted verbatim from `proposal.md`'s `## Success criteria`.
