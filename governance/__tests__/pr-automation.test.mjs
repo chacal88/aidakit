@@ -686,6 +686,110 @@ delete baseEnv.AIDAKIT_BASE_REF;
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // Round 6 (FALSE-BLOCK fix, reproduced live in flow fast-260725-9cfd01):
+  // an OUTPUT redirection made the whole parse ambiguous, so the kit's OWN
+  // documented read-only mergeability query — skills/merge/SKILL.md §Process
+  // step 2, `gh pr view --json mergeable,mergeStateStatus,reviewDecision,
+  // statusCheckRollup` — was BLOCKED the moment an operator appended `2>&1`
+  // or `> file`. It reaches this rule at all because the JSON FIELD NAMES
+  // `mergeable`/`mergeStateStatus` satisfy the deliberately broad gh+merge
+  // trigger; the redirect then killed the parse before the
+  // `mergeInvocationFound: false` fall-through could let it go.
+  //
+  // Fix: output redirection is PARSED (operator + target word dropped)
+  // instead of marking the parse ambiguous. It is pure plumbing — it cannot
+  // change a byte of argv or stdin — so it carries none of the injection
+  // risk of $(...)/eval/xargs. INPUT redirection (`<`) deliberately stays
+  // ambiguous (stdin-injection class, same as the round-5 xargs bypass).
+  // ══════════════════════════════════════════════════════════════════════
+
+  // The read-only query must be ALLOWED with a redirect and with a pipe —
+  // and regardless of pr.auto_merge, since this rule is not its business.
+  {
+    const rootNoConfig = mkGitProjectRoot({});
+    const rootAutoMerge = mkGitProjectRoot({ baseConfig: CONFIG_TRUE });
+    const readOnly = [
+      // the exact command from the live repro
+      "gh pr view 44 --json number,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,baseRefName 2>&1",
+      // the exact command SKILL.md §Process step 2 prescribes, piped
+      "gh pr view --json mergeable,mergeStateStatus,reviewDecision,statusCheckRollup | jq .",
+      "gh pr view 44 --json mergeable,mergeStateStatus | tail -1",
+      "gh pr view 44 --json mergeable > /tmp/pr.json",
+      "gh pr view 44 --json mergeable >> /tmp/pr.json",
+      "gh pr view 44 --json mergeable 1>/tmp/out 2>&1", // explicit fd prefixes
+      "gh pr view 44 --json mergeable &> /tmp/pr.json", // both streams
+      "gh pr view 44 --json mergeable 2>/dev/null | jq -r '.mergeable'", // redirect + pipe
+    ];
+    for (const cmd of readOnly) {
+      const rNo = runHook(cmd, rootNoConfig);
+      eq(rNo.code, 0, `hook round 6: read-only gh pr view allowed, no config — "${cmd}"`);
+      const rYes = runHook(cmd, rootAutoMerge);
+      eq(rYes.code, 0, `hook round 6: read-only gh pr view allowed, WITH pr.auto_merge:true — "${cmd}"`);
+    }
+  }
+
+  // A redirection must NOT become a laundering channel: every forbidden /
+  // obfuscated payload stays blocked when a redirect is appended to it.
+  {
+    const rootAutoMerge = mkGitProjectRoot({ baseConfig: CONFIG_TRUE });
+    const stillBlocked = [
+      "gh pr merge --admin 2>/dev/null",
+      "gh pr merge --admin > /dev/null",
+      "gh pr merge --admin >out 2>&1",
+      "gh pr merge --no-verify &>/dev/null",
+      "gh pr merge --adm''in 2>&1", // quote-splicing survives the redirect parse
+      "command /opt/homebrew/bin/gh pr merge --admin 2>&1", // wrapper + path + redirect
+      "gh pr view 44 --json mergeable 2>&1 && gh pr merge --admin", // read-only THEN a real merge
+      "gh pr merge 1 2 2>&1", // double positional still rejected (the `2` isn't eaten as an fd)
+      "printf 'pr\\nmerge\\n--admin\\n' | xargs gh 2>&1", // xargs stdin injection + redirect
+      "gh${IFS}pr${IFS}merge --admin 2>&1", // $IFS obfuscation + redirect
+      "eval 'gh pr merge --admin' 2>&1", // inline re-interpreting leader + redirect
+      "gh pr merge $(echo --admin) 2>&1", // command substitution + redirect
+      "gh pr merge --merge >", // dangling redirect (syntax error) → ambiguous, fail-closed
+      "gh pr merge --merge < payload", // INPUT redirection stays ambiguous (stdin-injection class)
+    ];
+    for (const cmd of stillBlocked) {
+      const r = runHook(cmd, rootAutoMerge);
+      eq(r.code, 2, `hook round 6: redirect is no laundering channel — still blocked: "${cmd}"`);
+    }
+  }
+
+  // The redirect parse must not break the ALLOW path either: a safe shape
+  // with a redirect stays allowed under the opt-in, and stays blocked
+  // without it (the redirect target is never counted as a positional).
+  {
+    const rootAutoMerge = mkGitProjectRoot({ baseConfig: CONFIG_TRUE });
+    const rootNoConfig = mkGitProjectRoot({});
+    eq(runHook("gh pr merge 42 --merge 2>&1", rootAutoMerge).code, 0,
+      "hook round 6: safe shape + redirect still allowed under the opt-in");
+    eq(runHook("gh pr merge 42 --squash > /tmp/merge.log", rootAutoMerge).code, 0,
+      "hook round 6: safe shape + output redirect to a file still allowed under the opt-in");
+    eq(runHook("gh pr merge 42 --merge 2>&1", rootNoConfig).code, 2,
+      "hook round 6: safe shape + redirect still blocked WITHOUT the opt-in");
+  }
+
+  // Round 6 (message): the block message must name the condition that
+  // actually fired. The old single message cited --admin/--no-verify even
+  // when nothing of the sort was present, so an ambiguity block on a
+  // read-only command read as a security accusation about a `view`.
+  {
+    const root = mkGitProjectRoot({});
+    const amb = runHook('gh pr view "$PR" --json mergeable,mergeStateStatus', root);
+    eq(amb.code, 2, "hook round 6: an unresolvable $VAR still blocks fail-closed (documented, not silently allowed)");
+    ok(/ambiguous construct, NOT a forbidden flag/.test(amb.stderr),
+      "hook round 6: the ambiguity block names ambiguity, not a forbidden flag");
+    ok(!/BLOCKED: this command invokes/.test(amb.stderr),
+      "hook round 6: the ambiguity block does NOT claim a gh pr merge invocation was found");
+
+    const flag = runHook("gh pr merge --admin", root);
+    eq(flag.code, 2, "hook round 6: --admin still blocked");
+    ok(/outside the allowlist/.test(flag.stderr),
+      "hook round 6: the forbidden-flag block names the allowlist violation");
+    ok(!/ambiguous construct/.test(flag.stderr),
+      "hook round 6: the forbidden-flag block does NOT blame ambiguity");
+  }
+
   // ── Fix C: --admin/--no-verify stay blocked even under AIDAKIT_BYPASS ──
   {
     const rootNoConfig = mkGitProjectRoot({});
