@@ -47,6 +47,21 @@ This is the LAW handed to the agent on dispatch — it belongs to the skill, the
 
 **Classification of each doubt.** Critical doubt (changes what is delivered) → interrogate until resolved, it becomes an acceptance criterion. Small/reversible doubt → becomes a recorded **assumption**, does not block.
 
+**Literal form for schema/path claims.** Before closing `assumptions[]`, re-read every assumption that names one of the following — and either rewrite it in unambiguous literal form or mark the ambiguity explicitly; never leave it dotted and silent:
+
+- **Code path / file:** the path from the repo root, not "the runs step file".
+- **YAML/JSON field:** the full nesting, parent named, sibling relationship stated.
+- **Function/method:** `file.js#functionName`, or `path:line` when the line is the point.
+- **CLI flag/subcommand:** the verbatim token as typed.
+- **State key:** the full access path from the state root.
+
+1. **Rewrite it in unambiguous literal form** — the form the implementer would type. A dotted shorthand (`a.b`) is never the literal form: it reads as a nested key, a top-level key literally named `a.b`, and a sibling entry the parent map happens to carry, all at once.
+2. **Or mark the ambiguity explicitly**, in the assumption's own prose, when the owner's answers genuinely do not settle which reading is right: `— AMBIGUOUS: (a) <reading> | (b) <reading>; planner resolves at authoring`.
+
+The flag is not a default escape hatch: a shorthand you can disambiguate yourself gets rewritten, not flagged. Flag only what an extra question would not answer.
+
+*What this costs when skipped* — on `flow-step-summaries` the assumption closed with the shorthand `outputs.summary`, and the planner treated it informally as "the summary output of the step" rather than settling which of two literal shapes it named. Read one way, `outputs.summary` is a `summary` key nested inside the step's `outputs:` map; read the other, it is a top-level `summary:` field on the step, sibling to `outputs:`. Nothing flagged it; the planner picked one, and the collision surfaced only at implementation-time anti-drift. The literal form it should have carried: "a top-level `summary:` field on the step, sibling to `outputs:` — NOT a key inside the `outputs:` map, whose keys are outcome names ([ADR-006](../../docs/decisions/ADR-006-flow-values-as-data.md))."
+
 **Event trail whenever it decides.** Ran → `{ "kind": "brainstorm", "questions": <n>, "assumptions": <n> }`; opt-out → `{ "kind": "brainstorm-skipped", "reason": "..." }`. Without the event, the flow gate does not transition from `brainstorm` to `specify`.
 
 ## Process
@@ -70,13 +85,13 @@ Invoke `subagent_type: "aidakit:brainstorm"` with a self-contained envelope carr
 >
 > **Envelope:** `{ request: "<owner's request verbatim>", domain: "<classification from aidakit:identify-domain>", ammunition: <ammunition read OR pointers: docs/decisions/ + index, DoD, inviolable rules, external-resource material> }`. If the ammunition comes as pointers, read it yourself before grilling.
 >
-> **Doctrine (the law you obey):** grill along the 4 axes — scope, end effect (observable state, not `success=true`), edges (empty/error/concurrency/volume; performance is a gate), and confrontation with the law (inviolable rule X / ADR-00N: respected or recorded exception?). Derive EVERY question from the ammunition — nothing generic. Use AskUserQuestion, one line of reasoning at a time, following the thread the answer resonates. Calibrate the depth by complexity (trivial/reversible → few; broad/irreversible/`architecture`/`contract` → deep); don't turn it into an endless interrogation. Critical doubt → interrogate, it becomes an acceptance criterion; small/reversible doubt → becomes a recorded assumption. Collision with an ADR/inviolable rule or scope beyond what was approved → record it as an escalation to the human (GOVERNANCE.md §1), don't decide on your own.
+> **Doctrine (the law you obey):** grill along the 4 axes — scope, end effect (observable state, not `success=true`), edges (empty/error/concurrency/volume; performance is a gate), and confrontation with the law (inviolable rule X / ADR-00N: respected or recorded exception?). Derive EVERY question from the ammunition — nothing generic. Use AskUserQuestion, one line of reasoning at a time, following the thread the answer resonates. Calibrate the depth by complexity (trivial/reversible → few; broad/irreversible/`architecture`/`contract` → deep); don't turn it into an endless interrogation. Critical doubt → interrogate, it becomes an acceptance criterion; small/reversible doubt → becomes a recorded assumption. Collision with an ADR/inviolable rule or scope beyond what was approved → record it as an escalation to the human (GOVERNANCE.md §1), don't decide on your own. Before closing `assumptions[]`, rewrite in unambiguous literal form every assumption naming one of the triggers listed above under "Literal form for schema/path claims", or mark it `— AMBIGUOUS: (a) <reading> | (b) <reading>; planner resolves at authoring` when you genuinely cannot settle it — never leave it dotted and silent.
 >
 > **Return** the verdict in your output format: the `brainstorm-event:` line at the top, followed by the assumptions, acceptance criteria, questions asked, and escalations. Don't write a spec and don't implement.
 
 ### 4. Integrate the verdict back
 The agent returns the verdict block. The skill:
-- **Passes the assumptions + acceptance criteria** on to spec generation ([aidakit:plan](../plan/SKILL.md)) as input. Each acceptance criterion carries a stable kebab-slug id (`- \`criterion-id\` — prose`, [agents/brainstorm.md](../../agents/brainstorm.md) output format), persisted into `.aidakit/tasks/<change-id>/brainstorm.json`'s `acceptance_criteria: [{ id, criterion }]` — the canonical shape [governance/acceptance/parse-criteria.js](../../governance/acceptance/parse-criteria.js) and `aidakit:acceptance-planner` (the goal-leash's author agent, invoked later in the flow at the `acceptance` step) consume. The id is the correlation key across plan revisions — a rewording of the prose does not orphan the manifest item that maps the criterion to its evidence.
+- **Passes the assumptions + acceptance criteria** on to spec generation ([aidakit:plan](../plan/SKILL.md)) as input. Each acceptance criterion carries a stable kebab-slug id (`- \`criterion-id\` — prose`, [agents/brainstorm.md](../../agents/brainstorm.md) output format), persisted into `.aidakit/tasks/<change-id>/brainstorm.json`'s `acceptance_criteria: [{ id, criterion }]` — the canonical shape [governance/acceptance/parse-criteria.js](../../governance/acceptance/parse-criteria.js) and `aidakit:acceptance-planner` (the goal-leash's author agent, invoked later in the flow at the `acceptance` step) consume. The id is the correlation key across plan revisions — a rewording of the prose does not orphan the manifest item that maps the criterion to its evidence. An assumption carrying the `AMBIGUOUS:` marker is persisted verbatim into the `assumptions[]` array of `.aidakit/tasks/<change-id>/brainstorm.json` (top-level, sibling to `acceptance_criteria[]`; no consumer reads it — prose only) and reaches `aidakit:plan` as input, where the planner MUST resolve it in `design.md` and name what settled it.
 - **Propagates the `brainstorm-event`** to the flow state (or records it in `.aidakit/tasks/<slug>/events.ndjson` when outside a flow) — it is what satisfies the gate. Don't rewrite the event; propagate what the agent emitted.
 - **Don't implement and don't write the spec here.** Brainstorm is thinking; the spec belongs to another step.
 
@@ -106,3 +121,4 @@ Assumptions and acceptance criteria (input for the spec) + the `brainstorm-event
 - Invoked as the 1st step of the [full](../../governance/flows/full.yaml) flow.
 
 <!-- aidakit v0.3 — went thin: doctrine (4 axes, default-on, opt-out, trail, calibration) + dispatch of the aidakit:brainstorm agent (isolated context); port of guided-discovery (codeflow/psim, ADR-0049) 2026-07-17 — translated to EN -->
+<!-- aidakit v0.4 — literal-form lock on schema/path assumptions (two-branch rule + AMBIGUOUS marker + before/after example), brainstorm-schema-path-literal-lock, 2026-07-24 -->

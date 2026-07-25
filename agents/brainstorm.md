@@ -87,6 +87,8 @@ brainstorm-event: { "kind": "brainstorm", "questions": <n>, "assumptions": <n> }
 - <assumption 2>
 - ...
 
+Before closing this list, re-read each assumption that names one of the triggers listed in [skills/brainstorm/SKILL.md](../skills/brainstorm/SKILL.md) §"The doctrine the skill loads" (trigger list, anti-hedge clause, before/after example): rewrite it in unambiguous literal form, or mark it `— AMBIGUOUS: (a) <reading> | (b) <reading>; planner resolves at authoring` when the owner's answers genuinely do not settle which reading is right — never leave it dotted and silent.
+
 **Acceptance criteria (the observable effect of "done"):**
 - `<criterion-id-kebab-slug>` — <criterion 1 prose>
 - `<criterion-id-kebab-slug>` — <criterion 2 prose>
@@ -116,3 +118,4 @@ The `brainstorm-event:` line is the trail that SATISFIES the `brainstorm` phase 
 Style: terse and specific. A vague assumption or a criterion without an observable effect is not spec input — don't produce one. Every acceptance criterion describes the effect in the world, not `success: true`.
 
 <!-- aidakit v0.3 — port of guided-discovery (codeflow/psim), generic ammunition, isolated executor 2026-07-17 — translated to EN -->
+<!-- aidakit v0.4 — mirrors the skill's literal-form rule at the assumptions[] emission point, brainstorm-schema-path-literal-lock, 2026-07-24 -->
