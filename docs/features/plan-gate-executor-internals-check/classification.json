@@ -1,0 +1,22 @@
+{
+  "change_id": "plan-gate-executor-internals-check",
+  "domain": "product",
+  "type": "feature",
+  "flags": ["architecture", "contract"],
+  "classification": "strict-assumed",
+  "source": {
+    "roadmap_line": "Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → backlog",
+    "epic": "docs/roadmap/epics/EPIC-kit-discipline-hardening.md",
+    "acceptance": "`skills/planner/SKILL.md` OU `skills/readiness/SKILL.md` (a decisão de qual é do próprio change) inclui um passo obrigatório de \"verificar claims sobre internals contra código vivo\" — quando o `design.md` cita a shape de `context[step.id]`, uma função de persistence, o retorno de um validator ou qualquer contrato interno do engine, grep no path:line citado e confirma a claim antes de aprovar. Pino: idealmente um validator mecânico `governance/validators/check-design-claims.js` que grepe cada `<file>.js:<NN>` referenciado em `design.md` e falhe se o anchor sumiu; se validator mecânico não couber, ao menos um checklist item explícito no fluxo do skill."
+  },
+  "rationale": {
+    "domain": "Repo declares no `domain-by-path` taxonomy in aidakit.config.yaml (only `pr.auto_merge`) → single-domain default (`product`). The built-in mechanism-only carve-out (`process`) does NOT apply: the acceptance's preferred pin is executable engine code (`governance/validators/check-design-claims.js` + its test), not just doctrine markdown. If the brainstorm lands on checklist-only (option b), the surface collapses to `skills/**/SKILL.md` and would be `process` — doubt raises strictness, so `product` stands until the brainstorm resolves it.",
+    "type": "New mandatory gate + (preferred) new validator = added capability, not a defect in existing behaviour. The false claim in flow-step-summaries' design.md was caught by the implementer's anti-drift; nothing in the engine is currently returning Y instead of Z.",
+    "flags": {
+      "architecture": "The change decides WHICH skill owns the gate (planner authors vs readiness approves) — a responsibility/boundary decision between two doctrine surfaces, plus a possible new step wired into `governance/flows/full.yaml`.",
+      "contract": "A mechanical `check-design-claims.js` turns `<file>.js:<NN>` anchors in `design.md` into a machine-checked contract between the planner's artifact and the gate — every future plan author is bound by the anchor format, and a `runs` step's exit semantics are involved."
+    },
+    "classification": "strict-assumed because the brainstorm still has to decide (a) validator / (b) checklist / (c) both and which skill owns the gate — the touched-path set (and therefore domain + flags) follows that decision. Fail-closed per GOVERNANCE.md §1: assume the strictest track; the pre_apply/readiness gate confirms with the owner."
+  },
+  "produced_by": "aidakit:identify-domain (dispatched by full-260725-434f68 · classify step)"
+}
