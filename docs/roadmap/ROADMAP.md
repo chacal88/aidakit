@@ -4,19 +4,7 @@
 
 ## Now (in-progress / in-review)
 
-### Cacheamento de contexto por change — **in-progress**
-
-- Context pack por change (L1) — `context-pack-l1` → in-progress
-
-### Experiência de linha de comando dos flows — **in-progress**
-
-- Sumários de passo do flow — `flow-step-summaries` → in-progress
-
-### Coleiras mecânicas do flow engine — **in-progress**
-
-- Retry com memória — `retry-memory` → in-progress
-- `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → in-progress
-- Caminho de validador para invocações diretas de agente/skill — `agent-validator-paths` → in-progress
+_(nada em andamento)_
 
 ## Next (planned)
 
@@ -37,6 +25,10 @@ _(nada planejado)_
 
 ## Done
 
+### Cacheamento de contexto por change
+
+- Context pack por change (L1) — `context-pack-l1` → done (2026-07-24)
+
 ### Automação de entrega (PR → merge)
 
 - Merge autônomo opt-in do PR — `configurable-pr-automation` → done (2026-07-24)
@@ -45,13 +37,18 @@ _(nada planejado)_
 
 - Agrupamento de comandos + inputs — `command-grouping-and-inputs` → done (2026-07-24)
 - Tabela de progresso do flow — `flow-run-progress-table` → done (2026-07-24)
+- Sumários de passo do flow — `flow-step-summaries` → done (2026-07-24)
 
 ### Coleiras mecânicas do flow engine
 
 - Cap mecânico de retries — `engine-max-visits` → done (2026-07-24)
 - Coleira das metas — `acceptance-leash` → done (2026-07-24)
+- Retry com memória — `retry-memory` → done (2026-07-24)
 - Registro diferido no build (débito) — `add-debit` → done (2026-07-22)
 - Arquivamento do loop-var-resume (bookkeeping) — `archive-loop-var-resume` → done (2026-07-24)
+- `runs` distingue erro de infraestrutura de veredito negativo — `runs-error-routing` → done (2026-07-24)
 - Request livre vs change-id nos flows — `flow-request-vs-change-id` → done (2026-07-24)
+- Caminho absoluto do validador nos `runs` steps — `validator-path-resolution` → done (2026-07-23)
+- Caminho de validador para invocações diretas de agente/skill/command — `agent-validator-paths` → done (2026-07-24)
 - Status derivado do git compartilhado (single-valued entre worktrees) — `roadmap-status-from-shared-git` → done (2026-07-24)
 - Commit precoce do plano no `full` flow (fecha a janela do ADR-007) — `flow-commit-plan-early` → done (2026-07-24)
