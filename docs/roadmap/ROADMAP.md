@@ -4,15 +4,20 @@
 
 ## Now (in-progress / in-review)
 
-### Endurecimento da disciplina do próprio kit — **in-progress**
+### Cacheamento de contexto por change — **in-progress**
 
-- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → in-progress
+- Flows×steps×agents dispatch audit + measured telemetry rollup — `workflow-script-optimization` → in-progress
 
 ## Next (planned)
 
 _(nada planejado)_
 
 ## Later (backlog)
+
+### Cacheamento de contexto por change — **in-progress**
+
+- Trim `agents/doc-planner.md`'s prompt body — `trim-doc-planner-agent-prompt` → backlog
+- Trim `agents/reviewer-quality.md`'s prompt body — `trim-reviewer-quality-agent-prompt` → backlog
 
 ### Automação de entrega (PR → merge) — **backlog**
 
@@ -21,11 +26,15 @@ _(nada planejado)_
 ### Coleiras mecânicas do flow engine — **backlog**
 
 - Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
+- `classify` declares structured `domain` output instead of leaking `outcome` — `flow-request-classify-domain-contract` → backlog
+- Split `hardening`'s mechanical suite-run from its anti-hardcode judgment — `hardening-anti-hardcode-split` → backlog
 
-### Endurecimento da disciplina do próprio kit — **in-progress**
+### Endurecimento da disciplina do próprio kit — **backlog**
 
 - `aidakit:review` grava o bench manifest mecanicamente — `review-bench-manifest-mechanical-writer` → backlog
 - Validador mecânico de anchors das citações do plano — `design-claims-anchor-validator` → backlog
+- Telemetry rollup reads the two fields its own writer persists — `telemetry-rollup-missing-fields` → backlog
+- Audit and close the roadmap's stale backlog declarations — `stale-backlog-declaration-cleanup` → backlog
 
 ## Done
 
@@ -59,6 +68,7 @@ _(nada planejado)_
 
 ### Endurecimento da disciplina do próprio kit
 
+- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → done (2026-07-25)
 - Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → done (2026-07-25)
 - Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → done (2026-07-25)
 - Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → done (2026-07-25)
