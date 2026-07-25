@@ -7,6 +7,7 @@
 
 import { findStep } from "./parser.js";
 import { logEvent, newFlowId, saveState } from "./persistence.js";
+import { renderSummary, capSummary } from "./summary-template.js";
 import { executeInvoke } from "./steps/invoke.js";
 import { executeRuns } from "./steps/runs.js";
 import { executeHumanHandoff } from "./steps/human-handoff.js";
@@ -203,10 +204,26 @@ function drive(state, flow, queue, initialResumeValue, initialResumeOutput, init
       ended_at: new Date().toISOString(),
       result: outcomeKey(outcome),
       output: "output" in outcome ? outcome.output : undefined,
-      error: outcome.kind === "fail" ? outcome.error : undefined,
+      error: outcome.kind === "fail" || outcome.kind === "infra" ? outcome.error : undefined,
     };
     state.step_history.push(history);
     logEvent(state.flow_id, { event: "step_end", step_id: step.id, result: history.result });
+
+    // ── per-step narrative emission (flow-step-summaries) ──────────────────
+    // Emits when the step has RESOLVED (kind: "next" or "fail") — NOT on the
+    // initial pause (kind: "pause"), because context[step.id] is only fully
+    // populated after resume (see invoke.js/human-gate.js/human-handoff.js).
+    // The type gate excludes `runs`/`loop`/`parallel`/`terminal` (which never
+    // pause and do not carry a per-step narrative — see design.md §Emission
+    // points). A re-entered step (back-edge) appends a NEW entry; visit_n is
+    // derived from the count of PRIOR entries for this step_id, never mutating
+    // an earlier entry.
+    if (
+      (outcome.kind === "next" || outcome.kind === "fail") &&
+      (step.type === "invoke" || step.type === "human_gate" || step.type === "human_handoff")
+    ) {
+      emitSummary(state, step, outcome);
+    }
 
     if (outcome.kind === "pause") {
       state.status = "paused";
@@ -220,6 +237,25 @@ function drive(state, flow, queue, initialResumeValue, initialResumeOutput, init
       state.finished_at = new Date().toISOString();
       saveState(state);
       logEvent(state.flow_id, { event: "flow_end", outcome: state.outcome });
+      return { status: state.status, state };
+    }
+    if (outcome.kind === "infra") {
+      // Infra errors (command not found, permission denied, signal-kill,
+      // spawn failure, Node require() failure) ALWAYS hard-stop the flow —
+      // the on_failure lookup is not performed. ADR-010.
+      logEvent(state.flow_id, {
+        event: "runs_infra_error",
+        step_id: step.id,
+        command: outcome.output?.command,
+        exit_code: outcome.output?.exit_code,
+        signal: outcome.output?.signal,
+        stderr: (outcome.output?.stderr ?? "").slice(-2000),
+      });
+      state.status = "failed";
+      state.outcome = "failed";
+      state.finished_at = new Date().toISOString();
+      saveState(state);
+      logEvent(state.flow_id, { event: "flow_end", outcome: "failed", error: outcome.error });
       return { status: state.status, state };
     }
     if (outcome.kind === "fail") {
@@ -319,9 +355,41 @@ function dispatch(step, ctx) {
   }
 }
 
+/** Renders and appends one state.summaries entry for a resolved pause-emitting
+ * step. Never throws (renderSummary/capSummary are total functions); a template
+ * referencing an unset key renders a visible `<unset:key>` marker instead of
+ * crashing the flow. See docs/features/flow-step-summaries/design.md
+ * §Emission points. */
+function emitSummary(state, step, outcome) {
+  const resolvedOutcome = outcomeKey(outcome);
+  // `{outcome}` must always resolve, regardless of step type: only invoke.js
+  // writes an explicit `.outcome` into context[step.id] (human-gate.js writes
+  // `.choice`; human-handoff.js writes `.response` — neither sets `.outcome`).
+  // Synthesizing it here from the SAME value persisted as the entry's own
+  // `outcome` field keeps the default template `{outcome}` uniform across
+  // invoke/human_gate/human_handoff (crit. 2, 6) without depending on each
+  // executor's individual write-set.
+  const bag = { ...(state.context[step.id] ?? {}), outcome: resolvedOutcome };
+  const template = typeof step.summary === "string" ? step.summary : "{outcome}";
+  const rawText = renderSummary(template, bag);
+  const cappedText = capSummary(rawText);
+  const priorVisits = (state.summaries ?? []).filter((s) => s.step_id === step.id).length;
+  state.summaries = state.summaries ?? [];
+  const visitN = priorVisits + 1;
+  state.summaries.push({
+    step_id: step.id,
+    visit_n: visitN,
+    outcome: resolvedOutcome,
+    text: cappedText,
+    ts: new Date().toISOString(),
+  });
+  logEvent(state.flow_id, { event: "step_summary", step_id: step.id, visit_n: visitN, text: cappedText });
+}
+
 function outcomeKey(o) {
   if (o.kind === "next") return o.outcome === "success" ? "success" : o.outcome === "failure" ? "failure" : o.outcome;
   if (o.kind === "pause") return "paused";
+  if (o.kind === "infra") return "infra_error";
   if (o.kind === "fail") return "failure";
   return "success"; // terminal
 }

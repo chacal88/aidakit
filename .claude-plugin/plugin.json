@@ -1,7 +1,7 @@
 {
   "name": "aidakit",
   "description": "Pre-aida development kit: guided 4-phase DDD design, spec-driven pipeline (aidakit:*), standardized document architecture, execution governance with active hooks and a curated tool catalog.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "author": {
     "name": "Kauê Santos",
     "email": "kauemsc@gmail.com"

@@ -743,6 +743,19 @@ function seedSatisfiedManifest(request) {
   mkdirSync(join(p, ".."), { recursive: true });
   writeFileSync(p, JSON.stringify({ change_id: request, level: "change", required: [] }));
 }
+// THE ACCEPTANCE (GOAL) LEASH: both flows now gate check_docs → acceptance →
+// check_acceptance → pr (acceptance-leash change). Seed a satisfied
+// acceptance-manifest alongside the doc-manifest so these pr-automation
+// scenarios (unrelated to the acceptance-leash) pass through it untouched.
+function acceptanceManifestPathFor(request) { return join(tmp, ".aidakit", "tasks", request, "acceptance-manifest.json"); }
+function seedSatisfiedAcceptanceManifest(request) {
+  const p = acceptanceManifestPathFor(request);
+  mkdirSync(join(p, ".."), { recursive: true });
+  writeFileSync(p, JSON.stringify({
+    change_id: request, level: "change",
+    required: [{ criterion_id: "seed", criterion: "test seed", evidence: { kind: "file", path: "README.md" }, status: "n/a", condition: "pr-automation test seed — no live criteria to verify in this drive" }],
+  }));
+}
 function benchPathFor(request) { return join(tmp, ".aidakit", "tasks", request, "bench.ndjson"); }
 function seedSatisfiedBench(request, { round = 1, pass = true } = {}) {
   const p = benchPathFor(request);
@@ -813,13 +826,14 @@ function driveDry(flowName, inputs, answers) {
 {
   const request = "pr-automation-fast-default";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("fast", { request }, {
     select: selectAnswer(request), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success", merge: "merged",
+    document: "success", acceptance: "success", pr: "success", merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "merge"],
-    "fast: default path (no config) pause order is byte-identical to today");
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "merge"],
+    "fast: default path (no config) pause order is byte-identical to today (plus the acceptance-leash)");
   eq(res.state.status, "completed", "fast: default path completes");
   const mergeRouteRun = res.state.step_history.filter((h) => h.step_id === "merge_route").pop();
   ok(mergeRouteRun && mergeRouteRun.result === "failure" && mergeRouteRun.output.exit_code !== 0,
@@ -828,15 +842,16 @@ function driveDry(flowName, inputs, answers) {
 {
   const request = "pr-automation-full-default";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("full", { request }, {
     select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok",
     pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus", hardening: "success",
-    learn: "success", document: "success", pr: "success", merge: "merged",
+    learn: "success", document: "success", acceptance: "success", pr: "success", merge: "merged",
   });
   eq(visited,
-    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "merge"],
-    "full: default path (no config) pause order is byte-identical to today");
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "acceptance", "pr", "merge"],
+    "full: default path (no config) pause order is byte-identical to today (plus the acceptance-leash)");
   eq(res.state.status, "completed", "full: default path completes");
   const mergeRouteRun = res.state.step_history.filter((h) => h.step_id === "merge_route").pop();
   ok(mergeRouteRun && mergeRouteRun.result === "failure" && mergeRouteRun.output.exit_code !== 0,
@@ -851,12 +866,13 @@ commitConfig(tmp, CONFIG_TRUE);
 {
   const request = "pr-automation-fast-auto-merged";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("fast", { request }, {
     select: selectAnswer(request), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success", auto_merge: "merged",
+    document: "success", acceptance: "success", pr: "success", auto_merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "auto_merge"],
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "auto_merge"],
     "fast: auto_merge path (merged) reaches auto_merge instead of merge, never pauses at merge");
   eq(res.state.status, "completed", "fast: auto_merge merged → flow completes");
   const mergeRouteRun = res.state.step_history.filter((h) => h.step_id === "merge_route").pop();
@@ -866,40 +882,43 @@ commitConfig(tmp, CONFIG_TRUE);
 {
   const request = "pr-automation-fast-auto-blocked";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("fast", { request }, {
     select: selectAnswer(request), plan: "success", readiness: "approved", implement: "success", review: "pass",
-    document: "success", pr: "success", auto_merge: "blocked", merge: "merged",
+    document: "success", acceptance: "success", pr: "success", auto_merge: "blocked", merge: "merged",
   });
-  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "pr", "auto_merge", "merge"],
+  eq(visited, ["select", "plan", "readiness", "implement", "review", "document", "acceptance", "pr", "auto_merge", "merge"],
     "fast: auto_merge path (blocked) falls back explicitly to the human merge gate");
   eq(res.state.status, "completed", "fast: auto_merge blocked → fallback → human merges → completes");
 }
 {
   const request = "pr-automation-full-auto-merged";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("full", { request }, {
     select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok",
     pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus", hardening: "success",
-    learn: "success", document: "success", pr: "success", auto_merge: "merged",
+    learn: "success", document: "success", acceptance: "success", pr: "success", auto_merge: "merged",
   });
   eq(visited,
-    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "auto_merge"],
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "acceptance", "pr", "auto_merge"],
     "full: auto_merge path (merged) reaches auto_merge instead of merge");
   eq(res.state.status, "completed", "full: auto_merge merged → flow completes");
 }
 {
   const request = "pr-automation-full-auto-failure";
   seedSatisfiedManifest(request);
+  seedSatisfiedAcceptanceManifest(request);
   seedSatisfiedBench(request);
   const { res, visited } = driveDry("full", { request }, {
     select: selectAnswer(request), classify: "success", brainstorm: "done", specify: "success", critic: "ok",
     pre_apply: "yes", readiness: "approved", implement: "success", review_bench: "consensus", hardening: "success",
-    learn: "success", document: "success", pr: "success", auto_merge: "failure", merge: "merged",
+    learn: "success", document: "success", acceptance: "success", pr: "success", auto_merge: "failure", merge: "merged",
   });
   eq(visited,
-    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "pr", "auto_merge", "merge"],
+    ["select", "classify", "brainstorm", "specify", "critic", "pre_apply", "readiness", "implement", "review_bench", "hardening", "learn", "document", "acceptance", "pr", "auto_merge", "merge"],
     "full: auto_merge path (failure) falls back explicitly to the human merge gate too");
   eq(res.state.status, "completed", "full: auto_merge failure → fallback → human merges → completes");
 }

@@ -9,6 +9,7 @@
 - Each subdirectory is one change package, named by its `change-id` — the single key of [DOCS.md §2](../../DOCS.md), rule 7 (change-id = branch = PR title suffix = archive directory).
 - Presence here **is** status: `derive-roadmap-status.js` derives `in-progress` from a directory existing under `docs/features/` and `done` from its dated twin under `docs/archive/`. Nothing is hand-written.
 - **Empty is the healthy resting state** — it means no change is in flight. This index stays behind so the directory exists in git even then (a `git mv` to the archive removes the last tracked file, and an empty directory vanishes from fresh checkouts, rotting inbound links).
+- **New proposals MUST carry a `## Acceptance criteria` section** (observable-effect promises, `- \`criterion-id\` — prose` or plain `- prose`) in addition to the existing `## Exit criteria` section (validator commands / green-suite gates) — the closest to a proposal template the kit has today. `## Acceptance criteria` is what the goal-leash (`aidakit:acceptance-planner` + `check-acceptance.js`) maps to evidence in the `fast` flow (see [ADR-010](../decisions/ADR-010-acceptance-leash.md)). Existing archived/in-flight proposals predate this and are grandfathered — no retrofit required.
 
 ## In flight now
 

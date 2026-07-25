@@ -656,12 +656,20 @@ for (const flowName of ["full", "fast"]) {
 }
 
 // N5a-v: pre-existing back-edges into `implement` are left unchanged.
+// The retry-memory feature (ADR-011 sibling) inserted record_*_cause runs
+// steps between the failing step and its back-edge target; the target of
+// each cause-recorder is still `implement`, preserving the loop semantic.
 {
   const { flow } = loadFlow("full");
-  ok(findStep(flow, "check_implement_bench").on_failure === "implement", "§flow-back-edges-unchanged (full): check_implement_bench.on_failure === implement");
+  const backEdgeTarget = (stepId) => {
+    const step = findStep(flow, stepId);
+    const next = findStep(flow, step.on_failure);
+    return next && next.id && next.id.startsWith("record_") ? next.on_success : step.on_failure;
+  };
+  ok(backEdgeTarget("check_implement_bench") === "implement", "§flow-back-edges-unchanged (full): check_implement_bench ultimately routes back to implement");
   ok(findStep(flow, "check_review_bench").on_failure === "review_bench", "§flow-back-edges-unchanged (full): check_review_bench.on_failure === review_bench (unchanged)");
-  ok(findStep(flow, "bench_outcome").on_failure === "implement", "§flow-back-edges-unchanged (full): bench_outcome.on_failure === implement");
-  ok(findStep(flow, "hardening").on_failure === "implement", "§flow-back-edges-unchanged (full): hardening.on_failure === implement");
+  ok(backEdgeTarget("bench_outcome") === "implement", "§flow-back-edges-unchanged (full): bench_outcome ultimately routes back to implement");
+  ok(backEdgeTarget("hardening") === "implement", "§flow-back-edges-unchanged (full): hardening ultimately routes back to implement");
 }
 {
   const { flow } = loadFlow("fast");

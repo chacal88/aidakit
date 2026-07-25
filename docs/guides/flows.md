@@ -80,13 +80,14 @@ This way the engine is the **deterministic spine** (order, gates, state that sur
 
 ## 5. The CLI commands
 
-`node governance/cli.js <command>` — five commands:
+`node governance/cli.js <command>` — six commands:
 
 | Command | Does |
 |---|---|
 | `start <flow> [key=value …]` | Starts a flow, passing the `inputs` via `key=value`. |
 | `resume <flow_id> <outcome> [key=value …]` | Resumes a paused flow with the outcome (the value of an `invoke`, the option of a `human_gate`, the free text of a `human_handoff`). The `key=value` tokens carry an invoke step's declared structured outputs (e.g. `change_id=<id>` on `select`). |
 | `status <flow_id>` | Shows the state, the current step, and where it's paused. |
+| `summaries <flow_id>` | Prints the ordered per-step narrative log (`[<step_id>#<visit_n> <outcome>] <text>`) — the step's optional `summary:` template, rendered after it resolves. See [governance/README.md](../../governance/README.md#per-step-summaries-the-narrative-layer). |
 | `abort <flow_id> [reason]` | Aborts a flow in flight. |
 | `list` | Lists the available flows (project + the plugin default). |
 
@@ -186,6 +187,8 @@ Minimal structure: a top-level map with `flow` (string), `description` (string),
 
 **Calling a kit validator from a flow of your own:** `governance/validators/*.js` ships **inside the plugin**, not the target project, so a relative `node governance/validators/x.js` only resolves when the flow happens to run inside the kit repo itself — every consumer project's own `.aidakit/flows/*.yaml` needs the absolute path instead. `runs.js` injects `AIDAKIT_GOVERNANCE` (pointing at the kit's own `governance/` directory) into every `runs` step's child env; call a kit validator as `node "$AIDAKIT_GOVERNANCE/validators/x.js"` — double-quoted, since the plugin cache path may contain spaces. Leave your own project's argument paths (e.g. `.aidakit/…`) relative, unaffected by this — see §3 for why the bare `$AIDAKIT_GOVERNANCE` passes untouched through the engine's own `${...}` interpolation.
 
+**Infra errors on a `runs` step always hard-stop the flow — never route via `on_failure`.** When a `runs` step's command cannot be found, its permission is denied, its child crashes on a signal, or a `node` sub-invocation fails to resolve a module, the engine emits a `runs_infra_error` log event, records `result: "infra_error"` in `step_history`, and ends the flow with `status: "failed"` — regardless of whether the step declares `on_failure`. This is intentional: those are infrastructure failures the command never got to weigh in on, not a validator's legitimate verdict (exit≠0, no infra signal), which still routes via `on_failure` as before. `runs.js` also injects `NODE_OPTIONS=--require=<prelude>` into every child env so a `node` sub-invocation's `require()` failure is remapped to the reserved sentinel exit **250** instead of the ordinary `1` a legitimate validator NO could also produce. Do not attempt to catch infra errors with `on_failure`; fix the underlying environment (missing binary, wrong permissions, missing dependency) and re-run. See [ADR-010](../decisions/ADR-010-runs-infra-error-routing.md).
+
 ### The two default flows
 
 - **[fast.yaml](../../governance/flows/fast.yaml)** — Margi style: from change to PR with minimal ceremony (pick → plan → readiness → TDD → review → PR → human merge). For small, reversible work.
@@ -208,4 +211,5 @@ Back to the [guides index](README.md) or the [master index](../INDEX.md).
 <!-- aidakit v0.3 — guide to the executable flows layer, created on 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 register-mode subsection: route_mode → check_registered → parked (add-debit), 2026-07-22 -->
 <!-- aidakit v0.5 — AIDAKIT_GOVERNANCE for consumer flows calling kit validators (§3, §5, §6), 2026-07-23 -->
+<!-- aidakit v0.7 — §6: runs infra-error routing always bypasses on_failure (ADR-010), 2026-07-24 -->
 <!-- aidakit v0.6 — ADR-006: runs values as env data (§3) + structured resume outputs / change_id (§4, §5), 2026-07-24 -->

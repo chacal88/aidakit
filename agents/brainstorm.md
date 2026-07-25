@@ -88,9 +88,11 @@ brainstorm-event: { "kind": "brainstorm", "questions": <n>, "assumptions": <n> }
 - ...
 
 **Acceptance criteria (the observable effect of "done"):**
-- <criterion 1>
-- <criterion 2>
+- `<criterion-id-kebab-slug>` — <criterion 1 prose>
+- `<criterion-id-kebab-slug>` — <criterion 2 prose>
 - ...
+
+Each item carries a stable kebab-slug id (derive it from the first few words of the prose when none is obvious) — the correlation key `aidakit:acceptance-planner` uses to map the criterion to a manifest item across plan revisions, so a rewording later doesn't orphan the mapping. The structured `.aidakit/tasks/<change-id>/brainstorm.json` persists this as `acceptance_criteria: [{ id, criterion }]`.
 
 **Questions asked:**
 1. [<axis>] <question> → <owner's answer, summarized>

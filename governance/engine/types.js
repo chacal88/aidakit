@@ -34,6 +34,12 @@
  * If `max_visits` is set without `on_max_visits`, the engine fails the flow with
  * a diagnostic — fail-closed, because an unbounded loop is worse than a hard
  * stop. Absent field = unbounded (today's behavior).
+ * `summary` is an optional per-step narrative template (flow-step-summaries):
+ * a `{key}`-substitution string rendered against context[step.id] after the
+ * step resolves (invoke/human_gate/human_handoff only — see engine.js
+ * emission block). Permissive at the schema level (any step type may declare
+ * it); the runtime type gate is what actually restricts emission. Absent →
+ * the engine falls back to the default template "{outcome}".
  * @typedef {Object} BaseStep
  * @property {string} id
  * @property {StepType} type
@@ -43,6 +49,7 @@
  * @property {Object.<string,string>} [on_result]
  * @property {number} [max_visits]     positive integer; bounds dispatch entries.
  * @property {string} [on_max_visits]  step id to route to when the cap trips.
+ * @property {string} [summary]        optional narrative template, e.g. "resolved change_id={change_id}".
  */
 
 /** @typedef {BaseStep & {type:"invoke", invoke_target:string, input?:Object.<string,unknown>, expects?:string[], outputs?:Object.<string,string[]>}} InvokeStep — dispatches the skill/agent named in `invoke_target`. `outputs` maps an outcome to the structured output keys a resume with that outcome MUST supply (safe single tokens, persisted into context[step.id] — ADR-006). */
@@ -96,6 +103,19 @@
  */
 
 /**
+ * One rendered per-step narrative entry (flow-step-summaries). Appended to
+ * state.summaries on every RESOLVED (not paused) visit of an invoke/human_gate/
+ * human_handoff step. Never mutated once pushed — the array is append-only;
+ * a re-entered step (back-edge) gets a NEW entry with visit_n incremented.
+ * @typedef {Object} StepSummary
+ * @property {string} step_id
+ * @property {number} visit_n   monotonic count of pause-emitting visits to this step_id, starting at 1.
+ * @property {string} outcome   the outcome the step resolved to ("success"/"failure"/a human_gate choice).
+ * @property {string} text      the rendered + capped summary, always ≤200 chars, never empty.
+ * @property {string} ts        ISO-8601 emission timestamp.
+ */
+
+/**
  * @typedef {Object} FlowState
  * @property {string} flow_id
  * @property {string} flow_name
@@ -107,6 +127,7 @@
  * @property {Object.<string,unknown>} inputs
  * @property {Object.<string,unknown>} context   mutable bag that steps read/write
  * @property {StepHistoryEntry[]} step_history
+ * @property {StepSummary[]} [summaries]   optional — absent on state files written before this change; readers use `state.summaries ?? []`.
  * @property {PauseInfo} [pause]
  * @property {"completed"|"aborted"|"failed"} [outcome]
  * @property {string} [finished_at]
@@ -116,10 +137,12 @@
  * Result of a step executor:
  *  - {kind:"next", outcome}   → engine routes via on_result/on_success/on_failure
  *  - {kind:"pause", pause}    → engine persists and exits
+ *  - {kind:"infra", error}    → infra error (ADR-010); ALWAYS hard-stops, bypasses on_failure
  *  - {kind:"fail", error}     → engine routes via on_failure or marks it failed
  *  - {kind:"terminal", ...}   → engine ends the flow
  * @typedef {{kind:"next",outcome:string,output?:unknown}
  *          |{kind:"pause",pause:PauseInfo,output?:unknown}
+ *          |{kind:"infra",error:string,output?:unknown}
  *          |{kind:"fail",error:string,output?:unknown}
  *          |{kind:"terminal",outcome:"completed"|"aborted",message?:string}} StepOutcome
  */

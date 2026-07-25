@@ -1,0 +1,25 @@
+# Endurecimento da disciplina do próprio kit
+
+Goal: converter os aprendizados do post-mortem do flow-step-summaries (2026-07-24) em endurecimentos mecânicos das superfícies planejar → revisar → implementar → testar, para que a lição não dependa de memória — a próxima pessoa (humana ou Claude) que pisar aqui deve tropeçar da forma certa.
+
+Origem: `learn` step do flow `full-260724-c09ac9` (change `flow-step-summaries`, PR #34 mergeado). Todos os 4 items foram registrados em `.aidakit/tasks/flow-step-summaries/proposed-updates.md` (gitignored — não versionado; os diffs propostos e as justificativas ficam locais no worktree onde o `learn` rodou). `deriveCandidates(threshold: 3)` retornou vazio (nenhum aprendizado atingiu o critério objetivo de cristalização em DNA), então o próximo passo é planejamento normal — este épico é o parking lot dessa fila.
+
+## Features
+
+- **Feature:** Usage do `aidakit:review` mostra o requisito do bench manifest — changes: review-usage-bench-manifest
+  - Aceite: `commands/review.md` (e/ou a Usage do `skills/review/SKILL.md`) descreve explicitamente que ANTES do dispatch paralelo dos role agents o caller precisa gravar um `__manifest__` NDJSON em `.aidakit/tasks/<change-id>/bench.ndjson` via `recordBenchManifest`, e que a ausência faz o `check_review_bench` back-edgear o flow (custou uma rodada extra do bench neste flow); a documentação inclui um exemplo mínimo de dispatch (manifest → parallel Agent calls → `recordBench` por role com `dispatched_at`/`returned_at`) e cita `governance/ledgers/ledger.js` + `governance/validators/check-bench.js` como a fonte da verdade mecânica. Preferencial (escopo maior, considerar dividir): o próprio `aidakit:review` grava o manifest sozinho, eliminando a chance do caller esquecer — nesse caso a doc apenas descreve o novo comportamento. Pino: se a doc apenas descrever, um exemplo copy-paste em `commands/review.md`; se o skill passar a gravar, um teste em `governance/__tests__/check-bench.test.mjs` que confirma o manifest é escrito no round certo.
+
+- **Feature:** Gate do plano verifica claims sobre internals dos executors — changes: plan-gate-executor-internals-check
+  - Aceite: `skills/planner/SKILL.md` OU `skills/readiness/SKILL.md` (a decisão de qual é do próprio change) inclui um passo obrigatório de "verificar claims sobre internals contra código vivo" — quando o `design.md` cita a shape de `context[step.id]`, uma função de persistence, o retorno de um validator ou qualquer contrato interno do engine, grep no path:line citado e confirma a claim antes de aprovar. Pino: idealmente um validator mecânico `governance/validators/check-design-claims.js` que grepe cada `<file>.js:<NN>` referenciado em `design.md` e falhe se o anchor sumiu; se validator mecânico não couber, ao menos um checklist item explícito no fluxo do skill. Motivador: `flow-step-summaries` teve a claim `context[step.id].outcome sempre populado` que era falsa (só `invoke` popula, `human_gate`/`human_handoff` populam `choice`/`response`); o implementer pegou no anti-drift do Task 1, mas todo plan carrega esse risco até a inspeção acontecer.
+
+- **Feature:** Testes de step-summaries afirmam exclusão de tipo positivamente — changes: step-summaries-type-gate-tests
+  - Aceite: `governance/__tests__/step-summaries.test.mjs` adiciona asserções positivas por tipo de step excluído (`parallel`, `loop`, `terminal`) — não só o caso `runs` (§S3-v hoje). Comprovado por mutation: o tester round-1 mutou a type-gate para incluir `parallel` e o suite continuou 95/0 (a exclusão não estava travada). Novo teste garante que uma mutação análoga vira RED. Pino: os 3 casos novos (§S3-vi-parallel, §S3-vi-loop, §S3-vi-terminal) verdes no suite existente sem regressão.
+
+- **Feature:** Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — changes: brainstorm-schema-path-literal-lock
+  - Aceite: `skills/brainstorm/SKILL.md` inclui um passo "antes de fechar o `assumptions[]`, para cada assumption que nomeia um path de código, campo YAML, função ou arquivo, reescreva em forma literal inequívoca OU marque a ambiguidade explicitamente para o planner resolver na autoria" — o objetivo é fechar a janela onde uma phrasing informal do tipo "`outputs.summary`" pode ser lida como nested OR top-level sem o brainstorm sinalizar. Pino: o próprio flow.yaml do fluxo full continua rodando (não regride nenhum passo existente) e a nova regra aparece na SKILL.md com pelo menos um exemplo do que era e do que virou.
+
+## Não-goals
+
+- Não redesenhar as skills afetadas — cada change é uma cirurgia mínima na doutrina, não uma reforma.
+- Não cristalizar como DNA — nenhum dos 4 items bateu o threshold ≥3× do `deriveCandidates`. Se um deles recorrer num change futuro, aí sim vira gate mecânico.
+- Não bundlar os 4 em um PR só — são temas ortogonais (review UX, planning discipline, engine tests, brainstorm doctrine); cada um passa em uma rodada de review distinta.

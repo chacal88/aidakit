@@ -27,7 +27,17 @@ function stateDir() {
 function logsDir() {
   return join(projectRoot(), ".aidakit", "flows", "logs");
 }
-function statePath(flowId) {
+
+/**
+ * The canonical on-disk path of a flow's persisted state
+ * (`.aidakit/flows/state/<flowId>.json`). Exported so callers OUTSIDE the
+ * engine (e.g. governance/validators/append-retry-history.js) never
+ * string-concatenate this path themselves — if the state root ever moves,
+ * every caller picks it up for free instead of silently reading the wrong file.
+ * @param {string} flowId
+ * @returns {string}
+ */
+export function statePath(flowId) {
   return join(stateDir(), `${flowId}.json`);
 }
 function logPath(flowId) {

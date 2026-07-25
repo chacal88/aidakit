@@ -76,6 +76,8 @@ steps:
       BEFORE calling aidakit:plan and escalates via specify_escalation — a
       human_gate — instead of silently looping.
     invoke_target: aidakit:plan
+    input:
+      retry_history_path: "docs/features/${context.select.change_id}/retry-history.json"
     max_visits: 3
     on_max_visits: specify_escalation
     expects:
@@ -128,9 +130,25 @@ steps:
     expects:
       - ok
       - revise
+    outputs:
+      revise:
+        - cause
     on_result:
       ok: pre_apply
-      revise: specify
+      revise: record_critic_cause
+
+  - id: record_critic_cause
+    type: runs
+    description: |
+      RETRY-MEMORY (single writer) — records the critic's cause key in
+      docs/features/<change_id>/retry-history.json before re-entering specify,
+      so aidakit:plan sees the shape of the prior rejection on its next round
+      and aidakit:learn later reads the correction stream for DNA promotion.
+      Best-effort and fail-safe: an unresolvable change_id or cause short-circuits
+      to a no-op (exit 0) — the flow must never loop on a bookkeeping hiccup.
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/append-retry-history.js\" \"${context.select.change_id}\" specify \"${context.critic.cause}\" --flow-id \"$AIDAKIT_FLOW_ID\""
+    on_success: specify
+    on_failure: specify
 
   - id: pre_apply
     type: human_gate
@@ -153,10 +171,24 @@ steps:
       - approved
       - needs-revision
       - blocked
+    outputs:
+      needs-revision:
+        - cause
     on_result:
       approved: context_pack
-      needs-revision: specify
+      needs-revision: record_readiness_cause
       blocked: aborted
+
+  - id: record_readiness_cause
+    type: runs
+    description: |
+      RETRY-MEMORY (single writer) — records readiness's cause key in
+      docs/features/<change_id>/retry-history.json before re-entering specify.
+      Same fail-safe doctrine as record_critic_cause: a bookkeeping hiccup must
+      never block the retry.
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/append-retry-history.js\" \"${context.select.change_id}\" specify \"${context.readiness.cause}\" --flow-id \"$AIDAKIT_FLOW_ID\""
+    on_success: specify
+    on_failure: specify
 
   - id: context_pack
     type: runs
@@ -176,6 +208,8 @@ steps:
     type: invoke
     description: Implementation with TDD; post-phase reflection feeds the learning.
     invoke_target: aidakit:implement
+    input:
+      retry_history_path: "docs/features/${context.select.change_id}/retry-history.json"
     expects:
       - success
       - failure
@@ -199,6 +233,17 @@ steps:
       free-form request.
     command: "test ! -f \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || ! grep -q '\"bench\":\"implement\"' \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" || node \"$AIDAKIT_GOVERNANCE/validators/check-bench.js\" \".aidakit/tasks/${context.select.change_id}/bench.ndjson\" --bench implement --outcome success"
     on_success: review_bench
+    on_failure: record_check_implement_cause
+
+  - id: record_check_implement_cause
+    type: runs
+    description: |
+      RETRY-MEMORY (single writer) — check_implement_bench is a `runs` step
+      (no resume-output channel), so its cause is a FIXED key per design.md
+      §Single writer sub-option A: bench-violation. Finer-grained causes are a
+      follow-up in check-bench.js; the plumbing already accepts arbitrary keys.
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/append-retry-history.js\" \"${context.select.change_id}\" implement bench-violation --flow-id \"$AIDAKIT_FLOW_ID\""
+    on_success: implement
     on_failure: implement
 
   - id: review_bench
@@ -233,6 +278,17 @@ steps:
     description: Routes on the bench's own reported outcome now that check_review_bench has verified it mechanically.
     command: "test \"${context.review_bench.outcome}\" = consensus"
     on_success: hardening
+    on_failure: record_bench_outcome_cause
+
+  - id: record_bench_outcome_cause
+    type: runs
+    description: |
+      RETRY-MEMORY (single writer) — bench_outcome routed here because the
+      review bench rejected consensus. Fixed cause per design.md §Single writer:
+      bench-veto (finer-grain, e.g. bench-veto-security, is a Non-goal here —
+      it needs the same outputs: extension on review_bench that critic got).
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/append-retry-history.js\" \"${context.select.change_id}\" implement bench-veto --flow-id \"$AIDAKIT_FLOW_ID\""
+    on_success: implement
     on_failure: implement
 
   - id: hardening
@@ -243,6 +299,17 @@ steps:
       - success
       - failure
     on_success: learn
+    on_failure: record_hardening_cause
+
+  - id: record_hardening_cause
+    type: runs
+    description: |
+      RETRY-MEMORY (single writer) — hardening (full suite) failed. Fixed cause
+      per design.md §Single writer: test-failure (finer-grained test-failure
+      classes are a Non-goal here — needs the same outputs: extension hardening
+      doesn't have yet).
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/append-retry-history.js\" \"${context.select.change_id}\" implement test-failure --flow-id \"$AIDAKIT_FLOW_ID\""
+    on_success: implement
     on_failure: implement
 
   - id: learn
@@ -256,6 +323,7 @@ steps:
     input:
       request: "${inputs.request}"
       change_id: "${context.select.change_id}"
+      retry_history_path: "docs/features/${context.select.change_id}/retry-history.json"
     expects:
       - success
       - failure
@@ -323,11 +391,58 @@ steps:
     type: runs
     description: |
       LEASH GATE — check-doc-manifest checks item by item and LOCKS the flow until the
-      list is 100%. exit 0 (gate released) proceeds to the PR; exit≠0 (incomplete) goes
-      back to document until the list closes.
+      list is 100%. exit 0 (gate released) proceeds to the acceptance-leash; exit≠0
+      (incomplete) goes back to document until the list closes.
     command: "node \"$AIDAKIT_GOVERNANCE/validators/check-doc-manifest.js\" \".aidakit/tasks/${context.select.change_id}/doc-manifest.json\""
-    on_success: pr
+    on_success: acceptance
     on_failure: document
+
+  - id: acceptance
+    type: invoke
+    description: |
+      aidakit:acceptance-planner — GOAL-LEASH author. Maps each acceptance criterion
+      (from .aidakit/tasks/<id>/brainstorm.json) to a concrete evidence path (test file,
+      evidence.md section, log capture) and writes acceptance-manifest.json. Re-runs on
+      every visit to this slot — a plan revised earlier in the flow gets a fresh manifest.
+    invoke_target: aidakit:acceptance-planner
+    input:
+      change_id: "${context.select.change_id}"
+      criteria_source: "brainstorm"
+    expects:
+      - success
+      - failure
+    on_success: check_acceptance
+    on_failure: aborted
+
+  - id: check_acceptance
+    type: runs
+    description: |
+      LEASH GATE — check-acceptance verifies each criterion's evidence path resolves on
+      disk (weak-bar; hardening already ran the suite). exit 0 proceeds to the PR; exit≠0
+      goes back to acceptance. Capped at 3 dispatches (max_visits) so a broken manifest
+      cannot loop the tail; the 4th entry escalates via acceptance_escalation.
+    command: "node \"$AIDAKIT_GOVERNANCE/validators/check-acceptance.js\" \".aidakit/tasks/${context.select.change_id}/acceptance-manifest.json\""
+    max_visits: 3
+    on_max_visits: acceptance_escalation
+    on_success: pr
+    on_failure: acceptance
+
+  - id: acceptance_escalation
+    type: human_gate
+    description: |
+      Escalation gate — the acceptance-leash could not clear in 3 rounds. The manifest at
+      .aidakit/tasks/${context.select.change_id}/acceptance-manifest.json has criteria
+      whose evidence paths do not resolve. Abort so you can intervene out-of-band (fix
+      the missing evidence or waive the criterion with a written condition) and re-run.
+    prompt: |
+      "${inputs.request}": the acceptance-leash ran 3 rounds without clearing. Some
+      acceptance criteria still have evidence paths that don't resolve on disk. Inspect
+      the manifest at .aidakit/tasks/${context.select.change_id}/acceptance-manifest.json
+      and the errors it reports. Abort to intervene?
+    options:
+      - abort
+    on_result:
+      abort: aborted
 
   - id: pr
     type: invoke
