@@ -123,6 +123,76 @@ writeFileSync(join(repo, "docs", "decisions", "ADR-005-x.md"), cite("../features
   ok(r.code === 0, "in-flight change resolves literally");
 }
 
+// § Code is not an address — a link SHAPE illustrated in code is a format, not a target.
+
+// The motivating shape: a format placeholder in an inline code span, on a prose line,
+// whose href resolves to nothing. This is `skills/context-pack/SKILL.md:26` as it stood
+// before #47 rewrote it to `(<path>)` to dodge the false positive — the dodge is exactly
+// what this skip makes unnecessary, so the shape is pinned here as a fixture rather than
+// against a live file that someone may edit around again.
+writeFileSync(join(tmp, "a", "span.md"),
+  "every ADR as a read-once address (`- [ADR-NNN](path) — role`).\n");
+{
+  const r = run(join(tmp, "a", "span.md"));
+  ok(r.code === 0 && r.json.ok, "link-shaped placeholder in an inline code span is ignored");
+}
+
+// Same placeholder inside a fenced block — the emitted-format example a doc shows verbatim.
+writeFileSync(join(tmp, "a", "span-fenced.md"),
+  "## ADRs\n\n```markdown\n- [ADR-NNN](path) — role\n- [ADR-013](nope.md) — another\n```\n");
+{
+  const r = run(join(tmp, "a", "span-fenced.md"));
+  ok(r.code === 0 && r.json.ok, "link-shaped placeholder in a fenced block is ignored");
+}
+
+// The skip must be surgical: a REAL broken link elsewhere on a line that also carries a
+// code span is still reported (the span is blanked, not the whole line).
+writeFileSync(join(tmp, "a", "span-mixed.md"),
+  "the `[ADR-NNN](path)` format, see [the design](gone.md) and `x`\n");
+{
+  const r = run(join(tmp, "a", "span-mixed.md"));
+  ok(r.code === 1 && r.json.errors.length === 1, "real broken link on a line with code spans is still caught");
+  ok(r.json.errors[0]?.href === "gone.md", "the reported href is the real link, not the placeholder");
+}
+
+// A real link whose TEXT is a code span keeps being resolved (blanking the span must not
+// destroy the link around it).
+writeFileSync(join(tmp, "a", "span-as-text.md"), "see [`target.md`](target.md).\n");
+{
+  const r = run(join(tmp, "a", "span-as-text.md"));
+  ok(r.code === 0, "link whose text is a code span still resolves");
+}
+writeFileSync(join(tmp, "a", "span-as-text-broken.md"), "see [`gone.md`](gone.md).\n");
+{
+  const r = run(join(tmp, "a", "span-as-text-broken.md"));
+  ok(r.code === 1 && r.json.errors[0]?.href === "gone.md", "broken link whose text is a code span is caught");
+}
+
+// An unclosed backtick run is literal text, not an open span swallowing the rest of the
+// line — fail-open: it may report a placeholder, it never silently skips a real link.
+writeFileSync(join(tmp, "a", "span-unclosed.md"), "a stray ` tick then [x](gone.md)\n");
+{
+  const r = run(join(tmp, "a", "span-unclosed.md"));
+  ok(r.code === 1 && r.json.errors[0]?.href === "gone.md", "unclosed backtick run is literal — link after it still checked");
+}
+
+// Double-backtick span (used when the content itself contains a backtick): a run of N is
+// closed only by a run of exactly N.
+writeFileSync(join(tmp, "a", "span-double.md"), "the ``[ADR-NNN](path)`` shape\n");
+{
+  const r = run(join(tmp, "a", "span-double.md"));
+  ok(r.code === 0, "link-shaped placeholder in a double-backtick span is ignored");
+}
+
+// Smoke test on the file that motivated this, kept as a canary rather than as proof:
+// since #47 it passes via the `(<path>)` placeholder heuristic too, so it would stay green
+// even if the code-span skip regressed. The fixtures above are what actually pin the skip.
+{
+  const skill = new URL("../../skills/context-pack/SKILL.md", import.meta.url).pathname;
+  const r = run(skill);
+  ok(r.code === 0 && r.json.ok, "skills/context-pack/SKILL.md passes check-links");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
