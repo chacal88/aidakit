@@ -57,7 +57,7 @@ Every command quoted inside `inventory.md`/`dispatch-cost.md` was re-run against
 
 A second, non-defect drift: `dispatch-cost.md`'s `skills/readiness/SKILL.md` row was measured before the mandatory rebase (3104 words / 21265 bytes) and re-measured after (3465 words / 23776 bytes) — the rebase's `80610ab` (PR #52) added "Process §14" to that exact file. The table now carries the post-rebase number with a drift note; the total row (25031 words / 173250 bytes) was recomputed to match.
 
-Every other quoted command (step/type counts per flow, dispatch-tier resolution loop, the `grep -roE`/`grep -rc`/`grep -rn` forbidden-derivation counter-example, F1–F5's citations, the `wc -c -w agents/*.md` table, the `static` per-flow `invoke_target` counts) reproduced its stated number exactly on this re-run — see the inline command blocks above (§Baselines re-measured, and the commands embedded in `inventory.md`/`dispatch-cost.md` themselves, which are the primary source and are not re-pasted here a third time).
+Every other quoted command (step/type counts per flow, dispatch-tier resolution loop, the `grep -roE`/`grep -rc`/`grep -rn` forbidden-derivation counter-example, F1–F5's citations, the `static` per-flow `invoke_target` counts) reproduced its stated number exactly on this re-run — see the inline command blocks above (§Baselines re-measured, and the commands embedded in `inventory.md`/`dispatch-cost.md` themselves, which are the primary source and are not re-pasted here a third time). **Correction — this claim was false for the `wc -c -w agents/*.md` table, caught by review-bench round 2, not by this reproduction pass itself:** `agents/doc-planner.md` changed inside the rebase window (`48f4731`/PR #54, an ancestor of `6af0e7a`) between this table's first draft and this reproduction check, and was never re-measured — the identical drift class round 1 caught for `skills/readiness/SKILL.md`, missed here for the file driving the top-ranked cost row. Re-measured in response to the round-2 finding: `agents/doc-planner.md` moved from 2161/14752 to **2198 words / 15105 bytes**; the 13-file total from 20800/139797 to **20837/140150**; `dispatch-cost.md`'s doc-planner ranking cell from 44256 to **45315** (15105 × Σ happy-path 3) — ranking order unaffected, `doc-planner` was and remains rank 1. The other 12 `agents/*.md` and all 14 `skills/*/SKILL.md` bodies were re-confirmed byte-identical to their tabled values this pass. `dispatch-cost.md` §1 now carries this as a dated drift note, mirroring the `skills/readiness/SKILL.md` one from round 1, instead of the now-corrected "matches the plan-time baseline exactly; no drift" claim.
 
 ### Bench round 1 fixes (second rebase, commit `856351f` → `8a6ce73`, this pass)
 
@@ -82,15 +82,31 @@ Post-fix validator re-run (scoped, matching the criteria this round targeted):
 - `for f in governance/__tests__/*.test.mjs; do node "$f"; done` → 22/22 suites green (unchanged; this round touched no code).
 - `node governance/context-pack/build.js build --change-id workflow-script-optimization` → `{"ok":true,"subcommand":"build","path":".../docs/features/workflow-script-optimization/.context-pack.md"}`, exit 0. Then, with no further edit to any `sources[]` file (14 ADRs + `design.md` + `proposal.md` + `tasks.md`): `node governance/validators/check-context-pack-freshness.js docs/features/workflow-script-optimization/.context-pack.md` → `{"validator":"aidakit.check-context-pack-freshness","ok":true,"path":"docs/features/workflow-script-optimization/.context-pack.md","sources_checked":17,"errors":[]}`, **exit 0**, 17/17 sources fresh.
 
-`git diff HEAD --stat` for this round only (relative to `8a6ce73`, the post-first-rebase commit), captured last and iterated to the fixpoint:
+**Historical record (commit `3f5e150`, superseded — not re-checked live).** `git diff HEAD --stat` for that round, relative to `8a6ce73`, at its own fixpoint: 5 files changed — `.context-pack.md` (+17/-…), `evidence.md` (+64/-…), `inventory.md` (+30/-…), `proposal.md` (+1), `EPIC-kit-discipline-hardening.md` (+2/-1) — 77 insertions(+), 37 deletions(-) total, matching `git show --stat 3f5e150` at the time. Kept as prose, not a fenced `N files changed` block, for the same reason as the round-1 historical record above: `HEAD` has moved again (this round's own fixes), and a stale fenced claim here would trip `check-evidence-stat.js`. The live fixpoint for *this* round is captured in §Bench round 2 fix below.
+
+### Bench round 2 fix (`agents/doc-planner.md` drift, commit `3f5e150` → this pass)
+
+Review bench round 2 on `3f5e150`: `adr-reviewer` PASS, `reviewer-architecture` PASS (round 1's 3 fixes verified closed), `reviewer-quality` FAIL — 1 new blocking. `agents/doc-planner.md` changed inside the rebase window (`48f4731`/PR #54, an ancestor of `6af0e7a`) and was never re-measured after — the same drift class round 1 caught for `skills/readiness/SKILL.md`, missed here for the file driving the top-ranked cost row.
+
+- Re-measured `wc -c -w agents/*.md`: `agents/doc-planner.md` **2198 words / 15105 bytes** (was 2161/14752); 13-file total **20837 words / 140150 bytes** (was 20800/139797). The other 12 files re-confirmed byte-identical to their tabled values.
+- `dispatch-cost.md` §1 (body-size table + total) and §2 (doc-planner ranking cell, `15105 × 3 = 45315`, was `44256`) updated; the "Reading the extremes" prose corrected to the new numbers and states explicitly that ranking order is unaffected (`doc-planner` was rank 1, remains rank 1 — next-highest `reviewer-quality` at 26940 is unaffected).
+- §1's now-false "matches the plan-time baseline exactly; no drift" claim replaced with a dated drift note citing `48f4731`/PR #54, mirroring §4's existing `skills/readiness/SKILL.md` note.
+- `EPIC-context-caching.md`'s `trim-doc-planner-agent-prompt` Feature acceptance updated from the stale `14752 bytes, top-ranked at 44256` to the re-measured `15105 bytes`/`45315`, with the PR #54 citation.
+- This file's own "Reproduction of every quoted number" claim corrected — it had asserted the `wc -c -w agents/*.md` table reproduced exactly, which was false for `doc-planner`; the correction is recorded above, in place, with the round-2 finding named as cause rather than silently fixed.
+
+Post-fix checks: none of `dispatch-cost.md`/`EPIC-context-caching.md`/this file are in the pack's 17-source list (verified: `sed -n '/^sources:/,/^---/p' .context-pack.md | grep path:` → the 14 ADRs + `design.md`/`proposal.md`/`tasks.md`, none of this round's 3 edited files), so no rebuild is structurally required by this round's edits.
+
+- `node governance/validators/check-context-pack-freshness.js docs/features/workflow-script-optimization/.context-pack.md` → `{"validator":"aidakit.check-context-pack-freshness","ok":true,"path":"docs/features/workflow-script-optimization/.context-pack.md","sources_checked":17,"errors":[]}`, **exit 0**, 17/17 fresh — confirms the prediction above rather than assuming it.
+- `node governance/validators/check-links.js docs/features/workflow-script-optimization/` → exit 0. `node governance/validators/check-links.js docs/roadmap/` → exit 0.
+- `git diff HEAD --stat -- governance/ agents/ skills/ commands/ hooks/` → empty — audit-only guard holds.
+
+`git diff HEAD --stat` for this round only (relative to `3f5e150`), captured last and iterated to the fixpoint:
 
 ```
- .../workflow-script-optimization/.context-pack.md  | 17 ++++--
- .../workflow-script-optimization/evidence.md       | 64 +++++++++++++++-------
- .../workflow-script-optimization/inventory.md      | 30 ++++++----
- .../workflow-script-optimization/proposal.md       |  1 +
- .../roadmap/epics/EPIC-kit-discipline-hardening.md |  2 +-
- 5 files changed, 77 insertions(+), 37 deletions(-)
+ .../workflow-script-optimization/dispatch-cost.md  | 10 +++----
+ .../workflow-script-optimization/evidence.md       | 32 ++++++++++++++++------
+ docs/roadmap/epics/EPIC-context-caching.md         |  2 +-
+ 3 files changed, 30 insertions(+), 14 deletions(-)
 ```
 
 ## Raw dispatch telemetry (verbatim JSONL)
