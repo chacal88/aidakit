@@ -826,6 +826,41 @@ delete baseEnv.AIDAKIT_BASE_REF;
     const r = runHook("git push --force origin feature-branch", root);
     eq(r.code, 2, "hook: git push --force still blocked (carve-out doesn't leak to other rules)");
   }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Live repros 2026-07-25 (stale-plugin episode): all three commands below
+  // were BLOCKED live even though the round-6 fix (#48) was already merged —
+  // the installed plugin cache still shipped the pre-round-6 hook because
+  // plugin.json's version had not been bumped past 0.9.0 when #48 landed
+  // (`claude plugin update` is a no-op on an unchanged version; see
+  // check-plugin-version.js). These lock the exact live command texts at
+  // HEAD so any future parser change that re-blocks them fails loudly here,
+  // not in an operator's session days later.
+  // ══════════════════════════════════════════════════════════════════════
+  {
+    const rootNoConfig = mkGitProjectRoot({});
+    const rootAutoMerge = mkGitProjectRoot({ baseConfig: CONFIG_TRUE });
+
+    // Repro 1 — read-only mergeability query + redirect. Trigger fires only
+    // because the JSON field names carry the "merge" substring.
+    const repro1 = "gh pr view 56 --json mergeable,mergeStateStatus,statusCheckRollup 2>&1";
+    eq(runHook(repro1, rootNoConfig).code, 0, `live repro 2026-07-25 (1): allowed, no config — "${repro1}"`);
+    eq(runHook(repro1, rootAutoMerge).code, 0, `live repro 2026-07-25 (1): allowed, with opt-in — "${repro1}"`);
+
+    // Repro 2 — the "merge" substring hides INSIDE a camelCase field
+    // (`mergedAt`), and the read-only query is `;`-chained to an unrelated
+    // git command. Neither the chain nor the redirect may fail-close it.
+    const repro2 = "gh pr view 56 --json state,mergedAt 2>&1; git fetch origin main --quiet";
+    eq(runHook(repro2, rootNoConfig).code, 0, `live repro 2026-07-25 (2): allowed, no config — "${repro2}"`);
+    eq(runHook(repro2, rootAutoMerge).code, 0, `live repro 2026-07-25 (2): allowed, with opt-in — "${repro2}"`);
+
+    // Repro 3 — the allowed plain merge form with a trailing redirect: the
+    // exact command the aidakit:merge skill emits when an agent appends
+    // `2>&1`. Allowed under the opt-in, still blocked without it.
+    const repro3 = "gh pr merge 56 --squash 2>&1";
+    eq(runHook(repro3, rootAutoMerge).code, 0, `live repro 2026-07-25 (3): allowed under the opt-in — "${repro3}"`);
+    eq(runHook(repro3, rootNoConfig).code, 2, `live repro 2026-07-25 (3): still blocked WITHOUT the opt-in — "${repro3}"`);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
