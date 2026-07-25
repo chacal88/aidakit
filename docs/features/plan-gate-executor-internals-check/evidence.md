@@ -24,7 +24,7 @@ _(pending — record here, per item, whether each shape in [design.md](design.md
 
 ### 1. `readiness-owns-the-gate`
 
-_(pending — `skills/readiness/SKILL.md` §14 as shipped: heading, placement between §13 and `### Severity classification`, the three claim shapes, the `Critical` / `Mandatory before implementation` rule for generalizations, the guarded `$AIDAKIT_GOVERNANCE` invocation, the `Read`/`Grep` fallback. Proof: test §C20 output + `node governance/__tests__/agent-validator-paths.test.mjs` exit code.)_
+_(pending — `skills/readiness/SKILL.md` Process §14 as shipped: heading, placement between Process §13 and `### Severity classification`, the three claim shapes, the `Critical` / `Mandatory before implementation` rule for generalizations, the guarded `$AIDAKIT_GOVERNANCE` invocation, the `Read`/`Grep` fallback. Proof: test §C20 output + `node governance/__tests__/agent-validator-paths.test.mjs` exit code.)_
 
 ### 2. `mechanical-validator-scoped-as-secondary`
 
@@ -32,7 +32,7 @@ _(pending — `governance/validators/check-design-claims.js` exists; test §C1-�
 
 ### 3. `not-flow-wired-by-default`
 
-_(pending — `git diff --stat governance/flows/full.yaml governance/flows/fast.yaml` → empty; `git status --porcelain docs/decisions/` → empty; test §C21 output; the `skills/readiness/SKILL.md` line that invokes it via `Bash`.)_
+_(pending — `git diff --stat governance/flows/full.yaml governance/flows/fast.yaml` → empty; test §C21 output; the `skills/readiness/SKILL.md` line that invokes the validator via `Bash`. **Scope note:** this criterion covers the flow-wiring half only. The original "and no new ADR" clause was struck on 2026-07-25 by owner ruling — `agents/doc-planner.md:47` makes an ADR mandatory for an `architecture`-flagged change, so the clause was mechanically unsatisfiable against the doc-leash. The ADR is [ADR-014](../../decisions/ADR-014-readiness-owns-internals-claims-gate.md) and it **records** the standalone wiring rather than reversing it.)_
 
 ### 4. `planner-naming-corrected`
 
@@ -57,7 +57,8 @@ _(pending — one line per command from [tasks.md](tasks.md) §8, each with its 
 - Negative dogfood (scratch rotten anchor → exit 1) → _pending_
 - `node governance/validators/check-links.js .` → _pending_
 - `node governance/validators/check-plugin-version.js` → _pending_
-- `node governance/validators/check-adr-format.js docs/decisions` → _pending_
+- `node governance/validators/check-adr-format.js docs/decisions` → _pending_ (expect `adrs_checked: 14`)
+- `node governance/validators/check-adr-format.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` → at plan time: `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}`, **exit 0**. Re-run at implementation time.
 - `git diff --stat governance/flows/full.yaml governance/flows/fast.yaml` → _pending_
 - `grep -rn "skills/planner/SKILL.md" …` → _pending_
 
@@ -69,13 +70,15 @@ _(pending — created vs edited, matching [tasks.md](tasks.md) §9's expected di
 
 - `governance/validators/check-design-claims.js` — _pending_
 - `governance/__tests__/check-design-claims.test.mjs` — _pending_
+- `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` — **done at plan time** (authored in this package per the ADR-008 precedent); `check-adr-format` → `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}`, exit 0; `check-links` → exit 0. Re-confirm at implementation time after any edit.
 
 **Edited:**
 
+- `docs/decisions/README.md` — **done at plan time**: ADR-014 row added to the index table and a `Planning gates & review discipline` bullet added to the thematic grouping. Re-confirm `check-links` green.
 - `skills/readiness/SKILL.md` — _pending_
 - `governance/__tests__/agent-validator-paths.test.mjs` — _pending_
 - `docs/roadmap/epics/EPIC-kit-discipline-hardening.md` — _pending_
-- `docs/OVERVIEW.md`, `PROCESS.md`, `docs/guides/existing-repo-flow.md`, `docs/guides/change-flow.md`, `docs/reference/skills.md`, `skills/catalog/INDEX.md` — _pending_
+- `docs/OVERVIEW.md` (validator table row), `PROCESS.md`, `docs/guides/existing-repo-flow.md`, `docs/guides/change-flow.md`, `docs/reference/skills.md`, `skills/catalog/INDEX.md` (the `13` → `14` sweep: 8 sites, 5 files) — _pending_
 
 ## Unresolved Deviations
 
