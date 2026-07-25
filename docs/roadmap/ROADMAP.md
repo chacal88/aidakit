@@ -26,6 +26,7 @@ _(nada planejado)_
 - Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → backlog
 - Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → backlog
 - Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → backlog
+- Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → backlog
 
 ## Done
 
