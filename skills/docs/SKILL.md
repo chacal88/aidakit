@@ -48,7 +48,7 @@ Check each rule of DOCS.md §2, plus the hygiene of §5, against the reality on 
 1. **Internal links** (§2.4): every relative link resolves; ADRs linked with the ID visible in the text (`[ADR-016](ADR-016-slug.md)`). A broken link is a blocking finding — "all internal links resolve" is a formal readiness criterion.
 2. **Placement** (§3): each file under `docs/` passes through the decision tree; a file in the wrong folder is a finding, with a proposed destination.
 3. **ADRs** (§2.2–2.3): fixed 5-section format (Status+Date · Context · Decision · Consequences with "Accepted"/"Mitigated" · Alternatives considered); a valid status, including partial supersede and `amends` with a bidirectional link (`## Amendments` in the amended one); global sequential numbering, never recycled.
-4. **Archive** (§2.6): every doc under `docs/archive/YYYY-MM-DD-*/` opens with a legacy banner (`> **Status**: legacy — do not use as a reference` + replacements + date/change) and the old location keeps a stub.
+4. **Archive** (§2.6): every doc under `docs/archive/YYYY-MM-DD-*/` opens with a legacy banner (`> **Status**: legacy — do not use as a reference` + replacements + date/change); a standalone doc's old location keeps a stub, while an archived **change dir** keeps none — its old location must be empty (a stub there would read as `in-progress`, ADR-002) and its inbound links must already point at the archive. A `../features/<id>/` link to an archived change is this rule's failure mode: fix it with the rewriter (archive mode step 4), not by hand.
 5. **Indexes** (§2.1): they do not duplicate content — they sequence and point; scope/anti-scope at the top; a precedence rule declared where conflict can arise (§2.5).
 6. **Sizes** (§5): ~2 pages for indexes, ~4 for content; overflowed → a finding with a proposed split (the overflow rule).
 7. **Index↔reality drift**: a file on disk with no entry in the index; an index entry pointing to a nonexistent file.
@@ -65,20 +65,28 @@ Check each rule of DOCS.md §2, plus the hygiene of §5, against the reality on 
 
 ### `archive` mode — archive a doc or completed change
 
-1. **Confirm with the human BEFORE moving anything** (gate below) — present what will be moved, where to, and what stays as a stub.
+1. **Confirm with the human BEFORE moving anything** (gate below) — present what will be moved, where to, what stays as a stub, and (for a change dir) the inbound links that will be rewritten; the rewriter's dry-run output is that list.
 2. **Destination**: `docs/archive/YYYY-MM-DD-<reason>/`, dated by the archiving event (§2.6). For a completed change, `<reason>` = change-id — the single key end-to-end (§2.7: change-id = branch = PR suffix = archive directory).
 3. **Legacy banner** at the top of each moved doc: legacy status, links to the replacements, the date and change that archived it (§2.6).
-4. **Stub at the old location** with a link to the new destination (anti-link-rot, §2.6).
-5. **Completed change (PR merged) — promotion WORKING → DURABLE** (§4): spec deltas merge into the canonical specs (`docs/specs/` or `openspec/specs/`); learnings become guides or new ADRs. **The promotion is a human gate**: present the proposed merge diff and wait for approval before merging — the plan only becomes history once the implementation has validated it.
-6. **Update the affected indexes** (apply the `index` mode to the touched indexes).
-7. **Deliver via branch + PR** — archiving is bookkeeping and bookkeeping also goes via PR (GOVERNANCE.md §2); the merge is the human's.
+4. **Anti-link-rot — which of the two mechanisms applies (§2.6)**:
+   - **A standalone doc** leaves a **stub** at the old location pointing at the new destination.
+   - **A change directory** leaves **no stub** — a stub at `docs/features/<change-id>/` is what `derive-roadmap-status.js` reads as `in-progress`, so it would pin the archived change as in-flight forever ([ADR-002](../../docs/decisions/ADR-002-roadmap-status-derived-from-disk.md)). Instead **rewrite the inbound links**, mechanically — never by hand, because the relative depth differs per referring file and that is exactly how 12 links rotted before this step existed:
+     ```
+     node "$AIDAKIT_GOVERNANCE/archive/rewrite-links.js" --change <change-id> --root <project-root>          # dry-run: review the list
+     node "$AIDAKIT_GOVERNANCE/archive/rewrite-links.js" --change <change-id> --root <project-root> --apply  # write
+     ```
+     Run it **after** the move (it reads the real archive dir off disk and refuses to guess a date). Anchors (`#section`) are preserved verbatim; the archive itself is never touched (WORM). Repointing a link inside an ADR is **not** a rule-2 violation — the decision text is untouched, only the address of an unchanged document moves.
+5. **Prove it** — `node "$AIDAKIT_GOVERNANCE/validators/check-links.js" <project-root>` must exit 0 before the PR. The rewrite is the repair; this validator is the evidence.
+6. **Completed change (PR merged) — promotion WORKING → DURABLE** (§4): spec deltas merge into the canonical specs (`docs/specs/` or `openspec/specs/`); learnings become guides or new ADRs. **The promotion is a human gate**: present the proposed merge diff and wait for approval before merging — the plan only becomes history once the implementation has validated it.
+7. **Update the affected indexes** (apply the `index` mode to the touched indexes).
+8. **Deliver via branch + PR** — archiving is bookkeeping and bookkeeping also goes via PR (GOVERNANCE.md §2); the merge is the human's.
 
 ## Outputs
 
 - **init**: the canonical structure of DOCS.md §1 created/completed in the project + a created-vs-existed report; or, in a consolidated divergent layout, a migration proposal awaiting a decision.
 - **audit**: a conformance report (finding × severity × proposed fix); mechanical fixes applied only as approved, via PR.
 - **index**: `docs/INDEX.md` and `docs/decisions/README.md` synced with the disk; `DECISION_INDEX.md` created when ≥15 ADRs.
-- **archive**: a dated folder in `docs/archive/`, legacy banners, stubs at the old locations, updated indexes and — after the human gate — canonical specs with the deltas merged. All delivered via PR.
+- **archive**: a dated folder in `docs/archive/`, legacy banners, anti-link-rot discharged per §2.6 (a stub for a standalone doc; rewritten inbound links for a change dir) with `check-links` exiting 0 as the evidence, updated indexes and — after the human gate — canonical specs with the deltas merged. All delivered via PR.
 
 ## Gates and guardrails
 
