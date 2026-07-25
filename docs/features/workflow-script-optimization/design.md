@@ -149,7 +149,7 @@ The ranking column is a **lower bound**, stated as such: back-edges multiply rea
 
 ## 6. The findings contract
 
-`inventory.md` §4, one entry per finding, fixed shape: **what · mechanical evidence (`path:line` or a command + its output) · leash family · routed to**. Three findings are already established and go in verbatim; the rest come from the pass itself.
+`inventory.md` §4, one entry per finding, fixed shape: **what · mechanical evidence (`path:line` or a command + its output) · leash family · routed to**. Four findings are already established and go in verbatim; the rest come from the pass itself.
 
 **F1 — `classify` feeds its outcome where a domain belongs.** `governance/flows/full.yaml:61` declares `domain: "${context.classify.outcome}"` (`grep -n 'domain:' governance/flows/full.yaml` → `61`) while the `classify` step (lines 43-53, bounded by `grep -n '  - id: classify' / '  - id: brainstorm'` → 43 / 55) declares no `outputs:`, so `context.classify` holds only `{outcome, invoke_target}`. This run's own state file records the result: `.aidakit/flows/state/full-260725-642b02.json`, `step_history[4].output.input.domain: "success"`. Family: [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) §Decision-2, the same gap `flow-request-vs-change-id` closed for `select`/`change_id`. Routed to `EPIC-flow-engine-leashes`. **Not fixed here** — a flow YAML edit is exactly what `audit-only-no-flow-edits` forbids, and the fail-closed resume semantics it needs are a contract decision.
 
