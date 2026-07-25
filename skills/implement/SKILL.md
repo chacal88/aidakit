@@ -37,7 +37,7 @@ These rules are **non-negotiable** and travel in the dispatch prompt — the age
 
 1. **Detect the target repo's tracking mode** (the agent also detects it, but cite the right path in the prompt): **OpenSpec mode** if `openspec/` exists (or the `openspec` CLI) — tasks in `openspec/changes/<change-id>/tasks.md`; **kit mode** otherwise — tasks in `docs/features/<change-id>/tasks.md` (DOCS.md).
 
-2. **Read `input.retry_history_path` when the dispatch carries one** (the `full` flow's `implement` step injects it — see [retry-memory/design.md](../../docs/features/retry-memory/design.md#read-side-injection--how-aidakitimplement-and-plan-learn-see-the-history)). It may be absent or empty — that's round-1 semantics, never a bug, never a reason to stop. When it resolves to a real file, read it and filter records where `step_id === "implement"`; PREAMBLE your work with the prior rounds' `cause` list and steer explicitly away from repeating those failure classes. Example:
+2. **Read `input.retry_history_path` when the dispatch carries one** (the `full` flow's `implement` step injects it — see [retry-memory/design.md](../../docs/archive/2026-07-24-retry-memory/design.md#read-side-injection--how-aidakitimplement-and-plan-learn-see-the-history)). It may be absent or empty — that's round-1 semantics, never a bug, never a reason to stop. When it resolves to a real file, read it and filter records where `step_id === "implement"`; PREAMBLE your work with the prior rounds' `cause` list and steer explicitly away from repeating those failure classes. Example:
 
    ```json
    [{"round": 1, "step_id": "implement", "cause": "bench-violation"}]

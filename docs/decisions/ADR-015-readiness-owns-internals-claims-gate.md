@@ -1,7 +1,7 @@
-<!-- File: docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
+<!-- File: docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md — global sequential numbering, never recycled. Registered in the index docs/decisions/README.md. -->
 <!-- An ADR is WORM: never edit a past decision. Changed your mind → a new ADR that supersedes or amends this one. -->
 
-# ADR-014: `aidakit:readiness` owns the internals-claims gate; the mechanical anchor check is deferred to a separate change
+# ADR-015: `aidakit:readiness` owns the internals-claims gate; the mechanical anchor check is deferred to a separate change
 
 - **Status:** proposed (moves to accepted when this change's PR merges)
 - **Date:** 2026-07-25

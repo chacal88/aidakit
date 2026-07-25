@@ -10,13 +10,16 @@
 //
 // Pure Node, no framework — mirrors governance/__tests__/engine.test.mjs / check-docs.test.mjs.
 
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync, symlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, readdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 const { buildPackContent, packPathFor } = await import("../context-pack/build.js");
+// §4b asserts the builder's DoD goes through the single owner of the
+// `## Acceptance criteria` grammar (ADR-010 §Decision-3), not a second parser.
+const { parseAcceptanceCriteriaText } = await import("../acceptance/parse-criteria.js");
 const { loadFlow } = await import("../engine/parser.js");
 const { packSizeFor } = await import("../engine/steps/invoke.js");
 const { appendTelemetry, telemetryPathFor } = await import("../telemetry/append.js");
@@ -607,6 +610,147 @@ function runBuildCli(args) {
   ok(/\[ADR-006\]/.test(adrs), "§build-content-adrs-relative-link: ADRs section lists ADR-006 (relative-path citation)");
 }
 
+// ── §4b heading drift: the builder must read the headings the kit MANDATES ──
+// Regression for the adr-reviewer round-1 finding 4 on `context-pack-heading-drift`:
+// `renderIdentity` derived `summary` from `## Problem` and `renderDoD` from
+// `## Success criteria`, but skills/plan/SKILL.md emits `## Why` and ADR-010
+// §Decision-3 mandates `## Acceptance criteria`. Every CONFORMING change
+// therefore shipped a pack with `summary:` empty and
+// `DoD: (no success criteria found)` — and since ADR-013 injects the pack as the
+// stable prefix of every dispatcher/reviewer, those dispatches lost exactly the
+// change's problem statement and its definition of done.
+//
+// makeBuildProject's fixture intentionally still uses the LEGACY headings, so
+// the assertions above double as the fallback regression; this block builds a
+// proposal carrying the MANDATED ones.
+
+/** A proposal.md using the headings the kit actually mandates today. */
+function makeConformingProject(changeId = "conforming-headings", { headings = "mandated" } = {}) {
+  const root = mkdtempSync(join(tmpdir(), "context-pack-conforming-"));
+  const changeDir = join(root, "docs", "features", changeId);
+  mkdirSync(changeDir, { recursive: true });
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+
+  const summaryHeading = headings === "legacy" ? "## Problem" : "## Why";
+  // The mandated section is a bullet list (ADR-010's grammar); the legacy one a
+  // numbered list. `## Success Criteria` here also pins the case-insensitive
+  // heading match — a real proposal in this repo capitalizes the C.
+  // `exit-only` carries NEITHER criteria section, so it is the only fixture that
+  // actually reaches the legacy fallback with `## Exit criteria` on the page.
+  const dodBlock = {
+    mandated: ["## Acceptance criteria", "", "- `summary-not-empty` — the pack's identity summary is non-empty.", "- the DoD section lists every acceptance criterion.", ""],
+    legacy: ["## Success Criteria", "", "1. The pack's identity summary is non-empty.", "2. The DoD section lists every acceptance criterion.", ""],
+    "exit-only": [],
+  }[headings];
+
+  writeFileSync(join(changeDir, "proposal.md"), [
+    `# Proposal — ${changeId}`, "",
+    `**Change ID:** \`${changeId}\``,
+    "**Date:** `2026-07-24`",
+    "**Owner:** `@fixture`",
+    "**Phase / Package:** `fixture phase`", "",
+    summaryHeading, "",
+    "The builder derives two sections from headings nobody emits. That empties the pack.", "",
+    ...dodBlock,
+    // Must NOT be folded into the DoD — ADR-010 §Decision-3 keeps validator
+    // commands (Exit) and observable-effect promises (Acceptance) separate.
+    "## Exit criteria", "",
+    "- `node governance/__tests__/context-pack.test.mjs` → green.", "",
+  ].join("\n"));
+  writeFileSync(join(changeDir, "design.md"), `# Design — ${changeId}\n\n## Architecture\n\n### A decision\n\nProse.\n`);
+  writeFileSync(join(changeDir, "tasks.md"), `# Tasks — ${changeId}\n\n- [ ] do the thing\n`);
+  return { root, changeId };
+}
+
+function packSections(content) {
+  return {
+    identity: content.split("## identity")[1].split("## decisions")[0],
+    dod: content.split("## DoD")[1],
+  };
+}
+
+// N4b-i: a conforming proposal (`## Why`) yields a NON-EMPTY summary.
+// This is the assertion that fails against the pre-fix builder.
+{
+  const { root, changeId } = makeConformingProject("conforming-summary");
+  const { identity } = packSections(buildPackContent({ root, changeId }).content);
+  const summary = /^- summary:(.*)$/m.exec(identity);
+  ok(!!summary && summary[1].trim().length > 0,
+    "§build-summary-from-mandated-heading: `## Why` proposal builds a non-empty identity summary");
+  ok(!!summary && /derives two sections from headings nobody emits\./.test(summary[1]),
+    "§build-summary-from-mandated-heading: the summary is the first sentence of `## Why`");
+}
+
+// N4b-ii: a conforming proposal (`## Acceptance criteria`) yields a real DoD,
+// never the placeholder — and never the `## Exit criteria` commands.
+{
+  const { root, changeId } = makeConformingProject("conforming-dod");
+  const { dod } = packSections(buildPackContent({ root, changeId }).content);
+  ok(!/no (acceptance|success) criteria found/.test(dod),
+    "§build-dod-from-mandated-heading: `## Acceptance criteria` proposal does not fall back to the placeholder");
+  ok(/the pack's identity summary is non-empty\./i.test(dod),
+    "§build-dod-from-mandated-heading: DoD carries the explicit-id bullet's prose (id stripped)");
+  ok(/the DoD section lists every acceptance criterion\./.test(dod),
+    "§build-dod-from-mandated-heading: DoD carries the plain bullet too");
+  ok(!/summary-not-empty/.test(dod),
+    "§build-dod-strips-criterion-id: the `criterion-id` backtick token is not echoed into the DoD line");
+  ok(!/context-pack\.test\.mjs/.test(dod),
+    "§build-dod-excludes-exit-criteria: `## Exit criteria` validator commands never merge into the DoD (ADR-010 §Decision-3)");
+}
+
+// N4b-iii: the legacy headings still work — an in-flight change authored
+// before the rename must not regress to an empty pack. `## Success Criteria`
+// also pins the case-insensitive heading match.
+{
+  const { root, changeId } = makeConformingProject("legacy-headings", { headings: "legacy" });
+  const { identity, dod } = packSections(buildPackContent({ root, changeId }).content);
+  const summary = /^- summary:(.*)$/m.exec(identity);
+  ok(!!summary && summary[1].trim().length > 0,
+    "§build-summary-legacy-fallback: `## Problem` still yields a non-empty summary");
+  ok(!/no (acceptance|success) criteria found/.test(dod) && /identity summary is non-empty\./i.test(dod),
+    "§build-dod-legacy-fallback: numbered `## Success Criteria` (capital C) still yields a real DoD");
+}
+
+// N4b-iii-b: a proposal with `## Exit criteria` but NEITHER criteria section
+// falls through to the PLACEHOLDER — it must never harvest the Exit section's
+// validator commands as a definition of done (ADR-010 §Decision-3: the two
+// sections "do not merge"). This is the only fixture that actually reaches the
+// legacy fallback with an Exit section present, so it is what pins the rule:
+// adding "Exit criteria" to LEGACY_DOD_SECTIONS turns this RED.
+{
+  const { root, changeId } = makeConformingProject("exit-criteria-only", { headings: "exit-only" });
+  const { dod } = packSections(buildPackContent({ root, changeId }).content);
+  ok(/no acceptance criteria found/.test(dod),
+    "§build-dod-exit-only-yields-placeholder: a proposal with only `## Exit criteria` yields the placeholder DoD");
+  ok(!/context-pack\.test\.mjs/.test(dod),
+    "§build-dod-excludes-exit-criteria-in-fallback: the legacy fallback never harvests `## Exit criteria` commands into the DoD");
+}
+
+// N4b-iv: the DoD grammar has ONE owner (ADR-010 §Decision-3) — the builder
+// reuses governance/acceptance/parse-criteria.js rather than re-deriving the
+// bullet shapes, so a change to the accepted shapes cannot drift between the
+// acceptance leash and the pack.
+{
+  const proposal = [
+    "## Acceptance criteria", "",
+    "- `explicit-id` — prose with an explicit id.",
+    "- a plain bullet.", "",
+  ].join("\n");
+  const viaOwner = parseAcceptanceCriteriaText(proposal).map((c) => c.criterion);
+  const { root, changeId } = makeConformingProject("single-owner-dod");
+  const { dod } = packSections(buildPackContent({ root, changeId }).content);
+  ok(viaOwner.length === 2 && viaOwner[0] === "prose with an explicit id." && viaOwner[1] === "a plain bullet.",
+    "§dod-single-owner: parse-criteria.js exposes the section grammar as a text-level parser");
+  // Every DoD line in a built pack must be a criterion the owner would return.
+  const built = makeConformingProject("single-owner-dod-2");
+  const ownerLines = parseAcceptanceCriteriaText(
+    readFileSync(join(built.root, "docs", "features", built.changeId, "proposal.md"), "utf8"),
+  ).map((c) => `- ${c.criterion}`);
+  const dodLines = dod.split(/\r?\n/).filter((l) => /^-\s/.test(l));
+  ok(JSON.stringify(dodLines) === JSON.stringify(ownerLines),
+    "§dod-single-owner: the pack's DoD lines are exactly what parse-criteria.js returns for the same proposal");
+}
+
 // ── §5 flow phase `context_pack` in full.yaml / fast.yaml ────────────────
 
 // N5a-i: full.yaml — context_pack step exists, type runs, wired between readiness and implement.
@@ -709,8 +853,60 @@ for (const rel of DISPATCHER_FILES) {
 // bullets (7 agents + 3 skills, previously dropped by the multi-backtick
 // bug, Fix C) and ADR-006 + ADR-009 (previously dropped by the relative-link
 // bug, Fix D — design.md's own Dependencies section cites both).
+//
+// Archive-proofing: a change's artifacts live at docs/features/<id>/ only
+// while it is in flight — `aidakit:docs archive` moves them to
+// docs/archive/<YYYY-MM-DD>-<id>/ the moment it ships. Reading the live
+// path directly would turn this dogfood into a time bomb that detonates on
+// the archiving commit (it did: ab037b7). resolveChangeSourceDir finds the
+// change wherever it currently lives, and stageChangeSources re-materializes
+// its three build inputs under a temp root at the canonical
+// docs/features/<id>/ path the builder expects — with docs/decisions/ and
+// docs/specs/ symlinked back to the real repo, so cited-ADR discovery still
+// resolves against real files. The staged build is byte-identical to an
+// in-repo one (every path the builder records is repo-relative), so this
+// keeps testing REAL repo content, not a frozen fixture.
+
+/** Repo-relative dir holding a change's proposal/design/tasks — docs/features/<id>/
+ * while in flight, docs/archive/<YYYY-MM-DD>-<id>/ once archived (newest wins
+ * if a change was archived more than once). Returns "" when neither exists. */
+function resolveChangeSourceDir(repoRoot, changeId) {
+  const live = join("docs", "features", changeId);
+  if (existsSync(join(repoRoot, live, "design.md"))) return live;
+  const archiveRoot = join(repoRoot, "docs", "archive");
+  if (!existsSync(archiveRoot)) return "";
+  const re = new RegExp(`^\\d{4}-\\d{2}-\\d{2}-${changeId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+  const matches = readdirSync(archiveRoot).filter((d) => re.test(d)).sort();
+  if (matches.length === 0) return "";
+  return join("docs", "archive", matches[matches.length - 1]);
+}
+
+/** Copies a change's three build inputs into a temp root at the canonical
+ * docs/features/<id>/ path and symlinks the shared docs the builder cites,
+ * so buildPackContent() sees the real content wherever it actually lives. */
+function stageChangeSources(repoRoot, changeId, sourceDir) {
+  const root = mkdtempSync(join(tmpdir(), `dogfood-${changeId}-`));
+  const staged = join(root, "docs", "features", changeId);
+  mkdirSync(staged, { recursive: true });
+  for (const file of ["proposal.md", "design.md", "tasks.md"]) {
+    const from = join(repoRoot, sourceDir, file);
+    if (existsSync(from)) copyFileSync(from, join(staged, file));
+  }
+  for (const shared of [join("docs", "decisions"), join("docs", "specs"), join("openspec", "specs")]) {
+    const from = join(repoRoot, shared);
+    if (!existsSync(from)) continue;
+    mkdirSync(dirname(join(root, shared)), { recursive: true });
+    symlinkSync(from, join(root, shared));
+  }
+  return root;
+}
+
 {
-  const { content } = buildPackContent({ root: REPO, changeId: "context-pack-l1" });
+  const DOGFOOD_ID = "context-pack-l1";
+  const sourceDir = resolveChangeSourceDir(REPO, DOGFOOD_ID);
+  ok(sourceDir !== "", `§dogfood-regression-sources-resolvable: ${DOGFOOD_ID} found under docs/features/ or docs/archive/`);
+  const stagedRoot = stageChangeSources(REPO, DOGFOOD_ID, sourceDir || join("docs", "features", DOGFOOD_ID));
+  const { content } = buildPackContent({ root: stagedRoot, changeId: DOGFOOD_ID });
   const pointers = content.split("## code-map-pointers")[1].split("## DoD")[0];
   for (const rel of DISPATCHER_FILES) {
     ok(pointers.includes(rel), `§dogfood-regression-code-map-pointers: code-map-pointers includes ${rel}`);
@@ -718,6 +914,7 @@ for (const rel of DISPATCHER_FILES) {
   const adrs = content.split("## ADRs")[1].split("## specs")[0];
   ok(/\[ADR-006\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-006 (design.md Dependencies, relative link)");
   ok(/\[ADR-009\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-009 (design.md Dependencies, relative link)");
+  rmSync(stagedRoot, { recursive: true, force: true });
 }
 
 // ── §7 telemetry: JSONL append helper ─────────────────────────────────────

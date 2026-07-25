@@ -6,6 +6,24 @@
 // Proves: docs/features/flow-step-summaries/design.md — YAML schema (§S1),
 // template renderer + cap (§S2), engine emission (§S3), progress-table
 // second-line rendering (§S4), `summaries <flow_id>` CLI subcommand (§S5).
+//
+// §S3's negative-emission family (one named case per excluded type, per
+// docs/features/step-summaries-type-gate-tests/design.md): the emission
+// gate at engine.js:221-226 is TWO independent conditions (a kind gate and
+// a type gate), and the four excluded types are NOT symmetric under a
+// type-gate-only mutation:
+//   §S3-v            — `runs`   (kind gate passes; type-gate-only mutation observable)
+//   §S3-vi-loop-empty — `loop`  (degenerate empty-array termination dispatch)
+//   §S3-vi-loop       — `loop`  (iterating: exercises the `__iterate__` dispatches)
+//   §S3-vi-parallel   — `parallel` (kind gate passes; type-gate-only mutation observable)
+//   §S3-vi-terminal   — `terminal` — excluded by the KIND half of the gate, NOT
+//                        the type half: `executeTerminal` returns `kind:"terminal"`,
+//                        which the kind gate rejects before the type gate is ever
+//                        consulted, so a type-gate-only mutation on `terminal` is a
+//                        documented no-op; the discriminating mutation adds BOTH
+//                        `step.type === "terminal"` and `outcome.kind === "terminal"`.
+// Mutation logs for all four are captured in
+// docs/features/step-summaries-type-gate-tests/evidence.md.
 
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -312,9 +330,13 @@ steps:
   ok(!res.state.summaries || res.state.summaries.length === 0, "S3-v: no summary entry for a runs step, even with a summary: field declared");
 }
 
-// §S3-vi: no emission on `loop` (structural container; type gate excludes it
-// regardless of outcome kind — the loop's own summary: is ignored, while the
-// body's runs step still emits nothing either, since it's a runs step).
+// §S3-vi-loop-empty: no emission on `loop` (structural container; type gate
+// excludes it regardless of outcome kind — the loop's own summary: is
+// ignored, while the body's runs step still emits nothing either, since
+// it's a runs step). Degenerate empty-array case: still dispatches the loop
+// step once (index >= total → kind:"next"), so this mutation-checks the
+// termination path but never exercises the `__iterate__` dispatches — see
+// §S3-vi-loop below for the iterating sibling.
 {
   const { flow, errors } = writeFlow("s3-looptype", `flow: s3-looptype
 description: loop step summary is ignored (structural container)
@@ -336,10 +358,117 @@ steps:
     type: terminal
     outcome: completed
 `);
-  eq(errors, [], "S3-vi: s3-looptype parses");
+  eq(errors, [], "S3-vi-loop-empty: s3-looptype parses");
   const res = startFlow({ flow, inputs: { items: [] }, startedBy: "test", idOpts: { rand: "s3i006", now: new Date("2026-07-24T00:00:00Z") } });
-  eq(res.state.status, "completed", "S3-vi: empty-array loop completes without pausing");
-  ok(!res.state.summaries || !res.state.summaries.some((e) => e.step_id === "lp"), "S3-vi: no summary entry for the loop step id");
+  eq(res.state.status, "completed", "S3-vi-loop-empty: empty-array loop completes without pausing");
+  ok(!res.state.summaries || !res.state.summaries.some((e) => e.step_id === "lp"), "S3-vi-loop-empty: no summary entry for the loop step id");
+}
+
+// §S3-vi-loop: no emission on `loop` — iterating case with a real pausing
+// body. Exercises the `__iterate__` dispatches the empty-array case above
+// never reaches: two body-step pauses, two resumes, then the loop's own
+// termination dispatch. Positive control: the body_step entries DO emit
+// (with visit_n incrementing per iteration); negative: zero entries carry
+// the loop step's own id.
+{
+  const { flow, errors } = writeFlow("s3-loopiter", `flow: s3-loopiter
+description: loop with a real pausing body — the loop step itself never emits
+inputs:
+  - name: items
+    type: array<string>
+steps:
+  - id: lp
+    type: loop
+    over: inputs.items
+    as: item
+    summary: "loop summary should never appear"
+    body:
+      - id: body_step
+        type: invoke
+        invoke_target: aidakit:x
+        summary: "body {outcome}"
+    on_success: done
+  - id: done
+    type: terminal
+    outcome: completed
+`);
+  eq(errors, [], "S3-vi-loop: s3-loopiter parses");
+  let res = startFlow({ flow, inputs: { items: ["a", "b"] }, startedBy: "test", idOpts: { rand: "s3i013", now: new Date("2026-07-24T00:00:00Z") } });
+  res = resumeWith(loadState(res.state.flow_id), flow, "success"); // body_step iteration 0
+  res = resumeWith(loadState(res.state.flow_id), flow, "success"); // body_step iteration 1
+  eq(res.state.status, "completed", "S3-vi-loop: flow completes after both iterations");
+  const s = res.state.summaries ?? [];
+  eq(s.map((e) => ({ step_id: e.step_id, visit_n: e.visit_n })), [
+    { step_id: "body_step", visit_n: 1 },
+    { step_id: "body_step", visit_n: 2 },
+  ], "S3-vi-loop: exactly the two body_step entries emit, positive control");
+  eq(s.filter((e) => e.step_id === "lp").length, 0, "S3-vi-loop: zero entries carry the loop step's own id");
+}
+
+// §S3-vi-parallel: no emission on `parallel` (structural container). Two
+// branches, each a pausing `invoke`; positive control on both branch
+// entries, negative on the parallel step's own id.
+{
+  const { flow, errors } = writeFlow("s3-paralleltype", `flow: s3-paralleltype
+description: parallel step summary is ignored (structural container)
+steps:
+  - id: par
+    type: parallel
+    summary: "parallel summary should never appear"
+    branches:
+      -
+        - id: b1
+          type: invoke
+          invoke_target: aidakit:x
+          summary: "branch one {outcome}"
+      -
+        - id: b2
+          type: invoke
+          invoke_target: aidakit:y
+          summary: "branch two {outcome}"
+    on_success: done
+  - id: done
+    type: terminal
+    outcome: completed
+`);
+  eq(errors, [], "S3-vi-parallel: s3-paralleltype parses");
+  let res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "s3i014", now: new Date("2026-07-24T00:00:00Z") } });
+  res = resumeWith(loadState(res.state.flow_id), flow, "success"); // b1
+  res = resumeWith(loadState(res.state.flow_id), flow, "success"); // b2
+  eq(res.state.status, "completed", "S3-vi-parallel: flow completes after both branches");
+  const s = res.state.summaries ?? [];
+  eq(s.map((e) => e.step_id), ["b1", "b2"], "S3-vi-parallel: exactly the two branch entries emit, positive control");
+  eq(s.filter((e) => e.step_id === "par").length, 0, "S3-vi-parallel: zero entries carry the parallel step's own id");
+}
+
+// §S3-vi-terminal: no emission on `terminal` — the ONE excluded type that a
+// type-gate-only mutation cannot flip: `executeTerminal` returns
+// `kind:"terminal"`, which the KIND half of the gate rejects before the type
+// half is ever consulted (see engine.js:221-226). The discriminating
+// mutation is type+kind together (evidence.md M4); type-gate-only (M3) is a
+// documented no-op. `done` declares a `summary:`, proving the field is
+// ignored, not merely absent.
+{
+  const { flow, errors } = writeFlow("s3-terminaltype", `flow: s3-terminaltype
+description: terminal step summary is ignored (flow end, not a semantic pause)
+steps:
+  - id: work
+    type: invoke
+    invoke_target: aidakit:x
+    summary: "work {outcome}"
+    on_success: done
+  - id: done
+    type: terminal
+    outcome: completed
+    summary: "terminal summary should never appear"
+`);
+  eq(errors, [], "S3-vi-terminal: s3-terminaltype parses");
+  let res = startFlow({ flow, inputs: {}, startedBy: "test", idOpts: { rand: "s3i015", now: new Date("2026-07-24T00:00:00Z") } });
+  res = resumeWith(loadState(res.state.flow_id), flow, "success"); // work
+  eq(res.state.status, "completed", "S3-vi-terminal: flow completes, proving the terminal genuinely executed");
+  const s = res.state.summaries ?? [];
+  eq(s.map((e) => e.step_id), ["work"], "S3-vi-terminal: exactly the work entry emits, positive control");
+  eq(s.filter((e) => e.step_id === "done").length, 0, "S3-vi-terminal: zero entries carry the terminal step's own id");
 }
 
 // §S3-vii: `failure` outcome still emits (crit. 3).

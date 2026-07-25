@@ -7,7 +7,7 @@
 
 > **Pre-execution stub.** Every section below is filled during implementation with the **real** command and its **real** output — never a paraphrase, never a prediction. A criterion without a runnable proof line stays `pending`.
 
-> **Reading note, added 2026-07-25 (§Round 5 — owner ruling: change split).** This change went through 4 implementation/bench rounds before the owner split it: `governance/validators/check-design-claims.js` and its test are **removed** from this change entirely — see [design.md](design.md) §Mechanical check: split out and [ADR-014](../../decisions/ADR-014-readiness-owns-internals-claims-gate.md) §Decision 2. Everything in this file dated Round 1 through Round 4 that documents that validator, its tests, and the two criteria it satisfied (`mechanical-validator-scoped-as-secondary`, `new-file-citations-excluded`) is a **historical record of work that was ultimately reverted** — real at the time, useful for the successor change, but **not** evidence for what this change finally ships. Jump to §Round 5 at the bottom for the final, accurate state.
+> **Reading note, added 2026-07-25 (§Round 5 — owner ruling: change split).** This change went through 4 implementation/bench rounds before the owner split it: `governance/validators/check-design-claims.js` and its test are **removed** from this change entirely — see [design.md](design.md) §Mechanical check: split out and [ADR-015](../../decisions/ADR-015-readiness-owns-internals-claims-gate.md) §Decision 2. Everything in this file dated Round 1 through Round 4 that documents that validator, its tests, and the two criteria it satisfied (`mechanical-validator-scoped-as-secondary`, `new-file-citations-excluded`) is a **historical record of work that was ultimately reverted** — real at the time, useful for the successor change, but **not** evidence for what this change finally ships. Jump to §Round 5 at the bottom for the final, accurate state.
 
 ## Setup / grounding re-check (Task 1)
 
@@ -23,7 +23,7 @@ Re-verified every shape in [design.md](design.md) §Grounding against live code 
 - `docs/OVERVIEW.md` validator table: `check-doc-manifest` at line 121, `check-adr-format` 122, `check-links` 123 — new row goes after 123, confirmed.
 - The `13-step` grep (`grep -rn "13-step\|13 steps\|13 planning" --include="*.md" .`, excluding `docs/archive/` and this change package) returns exactly the 8 edit sites in 5 files design.md/tasks.md enumerate: `PROCESS.md:73,100,182`, `docs/guides/existing-repo-flow.md:119`, `docs/guides/change-flow.md:112`, `docs/reference/skills.md:16,60`, `skills/catalog/INDEX.md:27`.
 - `docs/roadmap/epics/EPIC-kit-discipline-hardening.md` line 13 still names the ghost `skills/planner/SKILL.md` in its `Aceite:` bullet — confirmed present, corrected in Task 7.
-- `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` present, 5-section format, registered in `docs/decisions/README.md`'s index table (row `[ADR-014]`) and thematic grouping (`Planning gates & review discipline`) — both already done at plan time.
+- `docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md` present, 5-section format, registered in `docs/decisions/README.md`'s index table (row `[ADR-015]`) and thematic grouping (`Planning gates & review discipline`) — both already done at plan time.
 
 ## Acceptance-criterion → evidence map
 
@@ -73,11 +73,11 @@ $ git diff --stat governance/flows/full.yaml governance/flows/fast.yaml
 ```
 Test §C21 (2 assertions, green): neither `governance/flows/full.yaml` nor `governance/flows/fast.yaml` contains the string `check-design-claims`. The validator is invoked only from `skills/readiness/SKILL.md`'s Process §14 via `Bash`.
 
-**Scope note (unchanged from plan time):** this criterion covers the flow-wiring half only. The original "and no new ADR" clause was struck on 2026-07-25 by owner ruling — `agents/doc-planner.md:47` makes an ADR mandatory for an `architecture`-flagged change, so the clause was mechanically unsatisfiable against the doc-leash. The ADR is [ADR-014](../../decisions/ADR-014-readiness-owns-internals-claims-gate.md) and it **records** the standalone wiring rather than reversing it.
+**Scope note (unchanged from plan time):** this criterion covers the flow-wiring half only. The original "and no new ADR" clause was struck on 2026-07-25 by owner ruling — `agents/doc-planner.md:47` makes an ADR mandatory for an `architecture`-flagged change, so the clause was mechanically unsatisfiable against the doc-leash. The ADR is [ADR-015](../../decisions/ADR-015-readiness-owns-internals-claims-gate.md) and it **records** the standalone wiring rather than reversing it.
 
 ### 4. `planner-naming-corrected`
 
-`docs/roadmap/epics/EPIC-kit-discipline-hardening.md` line 13's `Aceite:` sub-bullet no longer names `skills/planner/SKILL.md`; it now reads `skills/readiness/SKILL.md` (decidido em `plan-gate-executor-internals-check`, ver ADR-014).
+`docs/roadmap/epics/EPIC-kit-discipline-hardening.md` line 13's `Aceite:` sub-bullet no longer names `skills/planner/SKILL.md`; it now reads `skills/readiness/SKILL.md` (decidido em `plan-gate-executor-internals-check`, ver ADR-015).
 
 ```
 $ grep -rn "skills/planner/SKILL.md" docs/roadmap skills governance agents commands
@@ -171,12 +171,12 @@ Test §C19 (5 assertions, green): the first 40 lines contain, case-insensitively
   exit 1, exactly one error, rule `citation-file-missing`. The scratch file was then deleted (`rm docs/features/plan-gate-executor-internals-check/design.scratch-negative-dogfood.md`); confirmed absent from `git status --short`.
 - `check-links.js` over the change's touched-file set:
   ```
-  $ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
+  $ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
   {"validator":"aidakit.check-links","ok":true,"files_checked":15,"errors":[]}
   ```
   exit 0. (Repo-wide `check-links.js .` is NOT the bar — 13 pre-existing broken links in 8 unrelated files, out of scope, per [proposal.md](proposal.md) §Exit criteria.)
 - `node governance/validators/check-plugin-version.js` → `{"validator":"aidakit.check-plugin-version","ok":true,"manifest":"0.9.0","highest":"0.8","behind":[],"scanned":299}`, exit 0.
-- `node governance/validators/check-adr-format.js docs/decisions` → `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":14,"errors":[]}`, exit 0.
+- `node governance/validators/check-adr-format.js docs/decisions` → `{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":14,"errors":[]}`, exit 0. **Count as of that round.** It became 15 after `origin/main` landed its own ADR-014 (`archive-aware-link-resolution`) and this change renumbered to ADR-015.
 - `git diff --stat governance/flows/full.yaml governance/flows/fast.yaml` → empty output.
 - `grep -rn "skills/planner/SKILL.md" docs/roadmap skills governance agents commands` → no hits (exit 1). `grep -rnE "\]\([^)]*skills/planner/SKILL\.md" . --exclude-dir=node_modules --exclude-dir=.git` → no hits (exit 1).
 
@@ -188,11 +188,11 @@ Matches [tasks.md](tasks.md) §9's expected diff surface exactly (`git status --
 
 - `governance/validators/check-design-claims.js` — 257 lines, the secondary anchor-staleness validator.
 - `governance/__tests__/check-design-claims.test.mjs` — table test, 76 assertions (§C1-§C22).
-- `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` — done at plan time (authored in this package per the ADR-008 precedent); `check-adr-format` → `{"ok":true,"adrs_checked":1}`, exit 0; `check-links` → `{"ok":true,"files_checked":1,"errors":[]}`, exit 0. Re-confirmed unchanged at implementation time.
+- `docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md` — done at plan time (authored in this package per the ADR-008 precedent); `check-adr-format` → `{"ok":true,"adrs_checked":1}`, exit 0; `check-links` → `{"ok":true,"files_checked":1,"errors":[]}`, exit 0. Re-confirmed unchanged at implementation time.
 
 **Edited:**
 
-- `docs/decisions/README.md` — done at plan time: ADR-014 row in the index table and the `Planning gates & review discipline` thematic bullet. Confirmed unchanged, `check-links` clean.
+- `docs/decisions/README.md` — done at plan time: ADR-015 row in the index table and the `Planning gates & review discipline` thematic bullet. Confirmed unchanged, `check-links` clean.
 - `skills/readiness/SKILL.md` — Process `### 14. Verify claims about internals against live code` inserted (line 312), plus one cross-reference bullet in `### 4. Review the design`. Output template (lines 363→384+, unrenumbered) and verbatim-verdict lines unchanged.
 - `governance/__tests__/agent-validator-paths.test.mjs` — `skills/readiness/SKILL.md` added to `SOURCE_FILES`.
 - `docs/roadmap/epics/EPIC-kit-discipline-hardening.md` — line 13's ghost path corrected.
@@ -288,7 +288,7 @@ $ node governance/__tests__/check-design-claims.test.mjs
 76 passed, 0 failed        # after the swap, before round-2 test additions
 ```
 
-### MINOR 2 — "Optional" contradicted ADR-014 (`adr`)
+### MINOR 2 — "Optional" contradicted ADR-015 (`adr`)
 
 `skills/readiness/SKILL.md`'s Process §14 pre-pass heading retitled from *"Optional mechanical pre-pass — **defence-in-depth, never a substitute**"* to *"Mechanical pre-pass — run it whenever `Bash` is available; defence-in-depth, never a substitute for the semantic pass above"*, per the adr-reviewer's exact wording. Confirmed test §C20 does not assert on the word "Optional" (it checks `MANDATORY`, `generaliz`, `Critical`, `Mandatory before implementation`, `Read`/`Grep`, the call-site string, and placement) — no test update needed, and the suite stayed green through the edit.
 
@@ -309,7 +309,7 @@ $ node governance/validators/check-design-claims.js docs/features/plan-gate-exec
 {"validator":"aidakit.check-design-claims","ok":true,"files_checked":2,"citations_checked":85,"waived_new_files":0,"skipped":[...12 citation-unresolvable entries, unchanged...],"errors":[]}
 exit=0
 
-$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
+$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":15,"errors":[]}
 exit=0
 ```
@@ -384,7 +384,7 @@ Widened where cheap and safe, documented where not, per the coordinator's explic
 
 - `file:` scheme added to both `isExternalHref` (linked form — closes a `file:///etc/passwd` href, §C31) and `URL_RE` (bare form).
 - A bare `www.`-prefixed host added to `URL_RE` (closes a `www.`-prefixed citation-shaped token in prose, §C32).
-- **Documented, not silently left implicit:** a scheme-less bare host with **no** `www.` prefix (e.g. `example.com/docs/file.md:NN`) and a protocol-relative `//host/path` (explicitly told NOT to fix — mirrors `check-links.js`'s own blind spot) remain unguarded. Recorded in [design.md](design.md) §External-reference exclusion (addendum) as a named, accepted residual, and in [ADR-014](../../decisions/ADR-014-readiness-owns-internals-claims-gate.md) §Consequences.
+- **Documented, not silently left implicit:** a scheme-less bare host with **no** `www.` prefix (e.g. `example.com/docs/file.md:NN`) and a protocol-relative `//host/path` (explicitly told NOT to fix — mirrors `check-links.js`'s own blind spot) remain unguarded. Recorded in [design.md](design.md) §External-reference exclusion (addendum) as a named, accepted residual, and in [ADR-015](../../decisions/ADR-015-readiness-owns-internals-claims-gate.md) §Consequences.
 
 ### Test gaps that let round 2 through (`tests` FAIL, 0 blocking + 4 important) — all closed
 
@@ -408,7 +408,7 @@ Widened where cheap and safe, documented where not, per the coordinator's explic
 
 Every mutation backup was written to the session scratchpad directory (outside the repo), never as an in-repo `.bak` file — `find . -name "*.bak"` confirmed empty before reporting back.
 
-### MINOR — ADR-014 prose drift (`adr`, fixed while status is `proposed`)
+### MINOR — ADR-015 prose drift (`adr`, fixed while status is `proposed`)
 
 - §Decision-2 qualified: "extracts every `<file>.<ext>:<NN>` citation" → "extracts every **repo-anchored** … citation", with the exclusion predicate and its `check-links.js:69` parity spelled out precisely (case-insensitive, `file:` added) instead of the prior unverified claim of exact parity.
 - **Implemented, not just "considered":** excluded linked-form hrefs now emit a `skipped[]` entry (`rule: "external-reference"`) — §Decision-2's own promise ("every excluded class visible in `skipped[]`") is now true, closing the second unchecked class the round-2 ADR text didn't acknowledge.
@@ -416,9 +416,9 @@ Every mutation backup was written to the session scratchpad directory (outside t
 - New §Consequences bullet: the residual under-reach (scheme-less bare host, protocol-relative `//host/path`) named explicitly, not linked to the ephemeral `docs/features/<change-id>/design.md` path (WORM discipline — an ADR should not point at a WORKING-life artifact that gets archived and renamed).
 
 ```
-$ node governance/validators/check-adr-format.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md
+$ node governance/validators/check-adr-format.js docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md
 {"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}
-$ node governance/validators/check-links.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md
+$ node governance/validators/check-links.js docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":1,"errors":[]}
 ```
 
@@ -443,14 +443,14 @@ $ node governance/validators/check-design-claims.js docs/features/plan-gate-exec
 {"validator":"aidakit.check-design-claims","ok":true,"files_checked":2,"citations_checked":86,"waived_new_files":0,"skipped":[...12 entries, unchanged in kind...],"errors":[]}
 exit=0
 
-$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
+$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":15,"errors":[]}
 exit=0
 ```
 
 **Deviation from round 1/2's stated touched-file set:** `docs/features/plan-gate-executor-internals-check/design.md` is now also edited (new §External-reference exclusion subsection documenting the round-2/3 extraction-contract additions and the accepted residual limitation). Not in `tasks.md` §9's original enumerated diff surface, added deliberately in response to the coordinator's explicit "do not leave it undocumented" instruction — a design decision, not scope creep, since the validator's actual contract changed and the design package is the correct place of record for it. `docs/features/plan-gate-executor-internals-check/retry-history.json` also shows as modified in `git status` — flow-managed bookkeeping (round-tracking), not authored by the implementer.
 
-Files touched in round 3 (beyond round 1+2's set): `governance/validators/check-design-claims.js` (bounded `URL_RE`, widened + corrected `isExternalHref`, `external-reference` skip visibility), `governance/__tests__/check-design-claims.test.mjs` (+30 assertions: §C24 updated, §C26-§C35 added), `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` (§Decision-2 qualified, two new §Consequences bullets), `docs/features/plan-gate-executor-internals-check/design.md` (new §External-reference exclusion subsection).
+Files touched in round 3 (beyond round 1+2's set): `governance/validators/check-design-claims.js` (bounded `URL_RE`, widened + corrected `isExternalHref`, `external-reference` skip visibility), `governance/__tests__/check-design-claims.test.mjs` (+30 assertions: §C24 updated, §C26-§C35 added), `docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md` (§Decision-2 qualified, two new §Consequences bullets), `docs/features/plan-gate-executor-internals-check/design.md` (new §External-reference exclusion subsection).
 
 ## Round 4 — owner ruling, design change (post-delivery)
 
@@ -546,18 +546,18 @@ exit=0   # no false positive from the quoted fragment (was: ok:false, citation-f
 
 Mutation 3 is the one genuinely new finding of this round's own mutation testing (not named by the coordinator) — `CODE_SPAN_RE` without a dedicated bound-check survived silently until §C36 was added specifically to close it, then confirmed to kill it.
 
-### 5. ADR-014 updates
+### 5. ADR-015 updates
 
 - §Decision-2's extraction description updated: "extracts every repo-anchored citation — in a markdown link, or inside an inline-code span". New sub-paragraph records the narrowing, the corpus measurement, and the criterion-reading statement (constraint honored: no criterion id or text touched in `proposal.md`/`classification.json`/`brainstorm.json`).
 - Round-3 `adr` finding 1 (the prose-URL mask's `skipped[]` visibility promise being false) — closed structurally: raw prose is no longer masked at all, it is classified and reported (`citation-not-in-code-span`), so the promise is literally true for every exclusion path now.
 - Round-3 `adr` finding 3 (header comment pointing at a WORKING-life `design.md` path without a link) — moot: the sentence it was about (the "Known limitation" residual) is deleted outright, per the constraint that a disappearing residual must be removed, not reworded.
-- Round-3 `adr` finding 4 (`agent-validator-paths.test.mjs:90-99` should be `:91-100`) — fixed in both `ADR-014` and `design.md` (2 occurrences); confirmed against the live file (`// ── 3. Grep discipline` at line 91, closing `}` at line 100).
+- Round-3 `adr` finding 4 (`agent-validator-paths.test.mjs:90-99` should be `:91-100`) — fixed in both `ADR-015` and `design.md` (2 occurrences); confirmed against the live file (`// ── 3. Grep discipline` at line 91, closing `}` at line 100).
 - §Consequences: the stale round-3 residual bullet (scheme-less bare host, protocol-relative URL) **removed** and replaced with the much narrower actual residual (a rotten citation in raw prose text is never mechanically caught — accepted, by the corpus measurement, since Process §14 still covers it regardless of formatting).
 
 ```
-$ node governance/validators/check-adr-format.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md
+$ node governance/validators/check-adr-format.js docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md
 {"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":1,"errors":[]}
-$ node governance/validators/check-links.js docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md
+$ node governance/validators/check-links.js docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":1,"errors":[]}
 ```
 
@@ -588,7 +588,7 @@ $ node governance/validators/check-design-claims.js docs/features/plan-gate-exec
 {"validator":"aidakit.check-design-claims","ok":true,"files_checked":2,"citations_checked":86,"waived_new_files":0,"skipped":[...12 citation-unresolvable entries, unchanged in kind, none new from the design.md rewrite...],"errors":[]}
 exit=0
 
-$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
+$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md governance/__tests__/agent-validator-paths.test.mjs docs/roadmap/epics/EPIC-kit-discipline-hardening.md docs/OVERVIEW.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":15,"errors":[]}
 exit=0
 
@@ -596,7 +596,7 @@ $ find . -name "*.orig" -o -name "*.bak" -o -name "*.tmp" | grep -v node_modules
 (empty)
 ```
 
-Files touched in round 4 (beyond round 1+2+3's set — no new files): `governance/validators/check-design-claims.js` (deleted `URL_RE`/masking, added code-span classification, net -2 lines), `governance/__tests__/check-design-claims.test.mjs` (§C26 replaced, §C32/§C33/§C30b deleted, §C25 updated, §C36 added — net +5 assertions, 129→134), `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md` (§Decision-2 rewritten with the narrowing sub-paragraph, stale residual bullet replaced, two `:90-99`→`:91-100` span corrections), `docs/features/plan-gate-executor-internals-check/design.md` (§Citation extraction narrowed, new §Owner ruling subsection, §External-reference exclusion trimmed to the linked-form-only mechanism, one span correction).
+Files touched in round 4 (beyond round 1+2+3's set — no new files): `governance/validators/check-design-claims.js` (deleted `URL_RE`/masking, added code-span classification, net -2 lines), `governance/__tests__/check-design-claims.test.mjs` (§C26 replaced, §C32/§C33/§C30b deleted, §C25 updated, §C36 added — net +5 assertions, 129→134), `docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md` (§Decision-2 rewritten with the narrowing sub-paragraph, stale residual bullet replaced, two `:90-99`→`:91-100` span corrections), `docs/features/plan-gate-executor-internals-check/design.md` (§Citation extraction narrowed, new §Owner ruling subsection, §External-reference exclusion trimmed to the linked-form-only mechanism, one span correction).
 
 ## Round 5 — owner ruling: the change is SPLIT (final state)
 
@@ -633,8 +633,8 @@ The mechanical pre-pass paragraph, its guarded `Bash` invocation block, and the 
 - `not-flow-wired-by-default` — the **id** was kept frozen (it is the `parse-criteria.js`/`check-acceptance.js` correlation key), but its **body** was false as first split: it still asserted `check-design-claims.js` is invoked by `aidakit:readiness` via `Bash`, a validator that no longer exists. Caught by the planner's own sweep on the next pass and rewritten in both `proposal.md` and `brainstorm.json` to promise only the flow-wiring half — "no new `runs:` step" — with no reference to the removed validator. Both sources verified byte-identical (sha-compared) after the rewrite. `git diff --stat governance/flows/full.yaml governance/flows/fast.yaml` → empty, confirmed below.
 - `precedent-incident-documented` — its text allows the incident to be documented in `design.md` **or** the validator header; the validator is gone, so `design.md` carries it (§The incident, stated plainly — unchanged content, still present).
 - `design.md` — §Surface 2, §Citation extraction, §Failure rules, §New-file exclusion, §Output contract, §Header comment, §External-reference exclusion, and §Owner ruling (the round-4 one, about the validator's own extraction contract) are all removed. §The incident, §Why `readiness` owns it, §Surface 1, and §Grounding (trimmed to Surface-1-relevant items) are kept. The `Bash`-availability "Open point" section is cut — moot with no `Bash` call remaining. A new `## Mechanical check: split out (owner ruling, 2026-07-25)` section records the four-round history, the exact blocking defect, the 17-hit corpus count, and that the successor change's id was not yet assigned at authoring time.
-- `tasks.md` — rewritten: validator tasks and test sections removed; kept the SKILL.md work, the docs section (epic fix, `13`→`14` ripple, ADR-014 verification), and a narrowed §4 Validation / §5 Cleanup.
-- `ADR-014` — status `proposed`, so a free edit. §Decision 2 rewritten to record the split (four-round history, the blocking defect, why deferring beats a fifth patch); §Decision 3 (the call-site/env-contract paragraph) removed — no call site ships. §Consequences narrowed to match. Title initially **left untouched** in this same round, on the reasoning that `docs/decisions/README.md` quoted the exact same pre-split wording and changing one without the other would create an inconsistency — **corrected in a later round, under an explicit ruling**: the title and both `docs/decisions/README.md` registrations (index row + thematic grouping) were updated *together*, in the same edit, to "…the mechanical anchor check is deferred to a separate change" — precisely because leaving them mismatched, or changing only one, would have been the inconsistency. Verified afterward: the pre-split wording occurs nowhere in `docs/decisions/` outside `docs/archive/`.
+- `tasks.md` — rewritten: validator tasks and test sections removed; kept the SKILL.md work, the docs section (epic fix, `13`→`14` ripple, ADR-015 verification), and a narrowed §4 Validation / §5 Cleanup.
+- `ADR-015` — status `proposed`, so a free edit. §Decision 2 rewritten to record the split (four-round history, the blocking defect, why deferring beats a fifth patch); §Decision 3 (the call-site/env-contract paragraph) removed — no call site ships. §Consequences narrowed to match. Title initially **left untouched** in this same round, on the reasoning that `docs/decisions/README.md` quoted the exact same pre-split wording and changing one without the other would create an inconsistency — **corrected in a later round, under an explicit ruling**: the title and both `docs/decisions/README.md` registrations (index row + thematic grouping) were updated *together*, in the same edit, to "…the mechanical anchor check is deferred to a separate change" — precisely because leaving them mismatched, or changing only one, would have been the inconsistency. Verified afterward: the pre-split wording occurs nowhere in `docs/decisions/` outside `docs/archive/`.
 
 ### 4. Validation (all real output)
 
@@ -649,7 +649,7 @@ FAIL governance/__tests__/context-pack.test.mjs   # pre-existing, unrelated, see
 $ node governance/validators/check-adr-format.js docs/decisions
 {"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":14,"errors":[]}
 
-$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md docs/roadmap/epics/EPIC-kit-discipline-hardening.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
+$ node governance/validators/check-links.js docs/features/plan-gate-executor-internals-check docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md docs/decisions/README.md skills/readiness/SKILL.md docs/roadmap/epics/EPIC-kit-discipline-hardening.md PROCESS.md docs/guides/existing-repo-flow.md docs/guides/change-flow.md docs/reference/skills.md skills/catalog/INDEX.md
 {"validator":"aidakit.check-links","ok":true,"files_checked":14,"errors":[]}
 
 $ node governance/validators/check-plugin-version.js
@@ -676,8 +676,8 @@ $ git status --porcelain | grep -i check-design-claims
 
 **Removed:** `governance/validators/check-design-claims.js`, `governance/__tests__/check-design-claims.test.mjs`.
 **Reverted to original (no diff):** `docs/OVERVIEW.md`, `governance/__tests__/agent-validator-paths.test.mjs`.
-**Rewritten (narrowed):** `skills/readiness/SKILL.md` (Process §14, semantic-only), `docs/features/plan-gate-executor-internals-check/proposal.md`, `docs/features/plan-gate-executor-internals-check/design.md`, `docs/features/plan-gate-executor-internals-check/tasks.md`, `docs/decisions/ADR-014-readiness-owns-internals-claims-gate.md`, `.aidakit/tasks/plan-gate-executor-internals-check/brainstorm.json` (gitignored, not in `git status`).
-**Untouched, per the coordinator's explicit instruction:** the epic ghost-path fix, the `13`→`14` ripple across `PROCESS.md`/`docs/guides/existing-repo-flow.md`/`docs/guides/change-flow.md`/`docs/reference/skills.md`/`skills/catalog/INDEX.md`, `docs/decisions/README.md`'s ADR-014 registration.
+**Rewritten (narrowed):** `skills/readiness/SKILL.md` (Process §14, semantic-only), `docs/features/plan-gate-executor-internals-check/proposal.md`, `docs/features/plan-gate-executor-internals-check/design.md`, `docs/features/plan-gate-executor-internals-check/tasks.md`, `docs/decisions/ADR-015-readiness-owns-internals-claims-gate.md`, `.aidakit/tasks/plan-gate-executor-internals-check/brainstorm.json` (gitignored, not in `git status`).
+**Untouched, per the coordinator's explicit instruction:** the epic ghost-path fix, the `13`→`14` ripple across `PROCESS.md`/`docs/guides/existing-repo-flow.md`/`docs/guides/change-flow.md`/`docs/reference/skills.md`/`skills/catalog/INDEX.md`, `docs/decisions/README.md`'s ADR-015 registration.
 
 ## Unresolved Deviations
 
@@ -685,3 +685,30 @@ $ git status --porcelain | grep -i check-design-claims
 - No divergence was found in [design.md](design.md) §Grounding at setup time (see §Setup above) — nothing to reconcile.
 - **Superseded note:** the `Bash`-availability "Open point" this file previously tracked no longer applies — that whole section was cut from `design.md` in round 5, since Process §14 as shipped needs only `Read`/`Grep` and never invokes `Bash` at all.
 - No task in the final [tasks.md](tasks.md) was left incomplete.
+
+## Round 8 — merge with `origin/main` + ADR renumber (post-merge state)
+
+`origin/main` advanced 9 commits while this change ran and landed its **own** `ADR-014`
+(`archive-aware-link-resolution`, PR #46). ADR numbering is global and never recycled, so
+this change's ADR renumbered **014 → 015** and `origin/main` was merged into the branch.
+Conflicts resolved in `docs/decisions/README.md`, `docs/roadmap/ROADMAP.md` and the epic.
+
+Every count recorded in Rounds 1-5 above was accurate when captured and is superseded here.
+Notably main's archive-aware `check-links` resolved the 13 pre-existing broken links, and
+main also fixed `context-pack.test.mjs` — both of which this change had carried as known,
+out-of-scope debits.
+
+```
+$ node governance/validators/check-adr-format.js docs/decisions
+{"validator":"aidakit.check-adr-format","ok":true,"adrs_checked":15,"errors":[]}
+
+$ node governance/validators/check-links.js .        # repo-wide, previously 13 broken
+{"validator":"aidakit.check-links","ok":true,"files_checked":247,"errors":[]}
+
+$ for t in governance/__tests__/*.test.mjs; do node "$t"; done   # full suite
+22 files, 0 with failures  # context-pack.test.mjs now green (fixed on main)
+
+```
+
+> The context pack is rebuilt **after** this file is finalized (`build.js rebuild`) and then
+> verified — pasting a `verify` capture inside the very file the pack hashes is circular.
