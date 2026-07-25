@@ -176,19 +176,25 @@ _(filled during implementation. Record here — never by editing the plan into a
 
 ## Context-pack telemetry rollup
 
-- Total dispatches: 9
-- Mean pack_size: 488 bytes
-- Sum cache_read: 91887928 tokens
-- Sum cache_creation: 3481917 tokens
+- Total dispatches: 15
+- Mean pack_size: 2889 bytes
+- Sum cache_read: 277349552 tokens
+- Sum cache_creation: 11468998 tokens
 - Pack rebuilds: 0
 
 | subagent | dispatches | mean cache_read | mean pack_size |
 |---|---|---|---|
+| aidakit:acceptance-planner | 1 | 972604 | 6489 |
 | aidakit:brainstorm | 1 | 1377529 | 0 |
+| aidakit:doc-planner | 1 | 1807466 | 6489 |
 | aidakit:identify-domain | 1 | 0 | 0 |
 | aidakit:implement | 1 | 57005411 | 4396 |
+| aidakit:learn | 1 | 9682716 | 6489 |
 | aidakit:orchestrator | 1 | 125910 | 0 |
 | aidakit:plan | 2 | 11045927 | 0 |
 | aidakit:readiness | 1 | 2654668 | 0 |
+| aidakit:review | 1 | 163616078 | 6489 |
+| aidakit:ship | 1 | 4389919 | 6489 |
 | aidakit:spec-reviewer | 2 | 4316279 | 0 |
+| aidakit:test | 1 | 4992841 | 6489 |
 
