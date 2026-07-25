@@ -4,7 +4,12 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em andamento)_
+### Endurecimento da disciplina do próprio kit — **in-progress**
+
+- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → in-progress
+- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → in-progress
+- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → in-progress
+- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → in-progress
 
 ## Next (planned)
 
@@ -12,20 +17,17 @@ _(nada planejado)_
 
 ## Later (backlog)
 
-### Coleiras mecânicas do flow engine — **backlog**
-
-- Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
-
 ### Automação de entrega (PR → merge) — **backlog**
 
 - Sweep pós-merge — arquiva, apaga branch, remove worktree — `post-merge-sweep` → backlog
 
-### Endurecimento da disciplina do próprio kit — **backlog**
+### Coleiras mecânicas do flow engine — **backlog**
 
-- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → backlog
-- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → backlog
-- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → backlog
-- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → backlog
+- Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
+
+### Endurecimento da disciplina do próprio kit — **in-progress**
+
+- Validador mecânico de anchors das citações do plano — `design-claims-anchor-validator` → backlog
 
 ## Done
 

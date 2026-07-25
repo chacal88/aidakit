@@ -13,7 +13,7 @@
 | [aidakit:brainstorm](../../skills/brainstorm/SKILL.md) | Default-on adversarial brainstorm that grills the owner with the project's ammunition before the spec | Start of a new change, idea exploration, 1st step of the flow |
 | [aidakit:plan](../../skills/plan/SKILL.md) | Generates the prompt for `aidakit:planner` to author a plan-only change (including the implementation plan from an existing spec) | Change/idea still without a spec, or the implementation plan before coding |
 | [aidakit:spec](../../skills/spec/SKILL.md) | Reads specs inline with related specs, ADRs, and validation commands | "What does the spec for X say?", keyword discovery |
-| [aidakit:readiness](../../skills/readiness/SKILL.md) | GATE 1 — 13-step readiness review of the plan package | "Can we start coding?", complete plan package |
+| [aidakit:readiness](../../skills/readiness/SKILL.md) | GATE 1 — 14-step readiness review of the plan package | "Can we start coding?", complete plan package |
 | [aidakit:implement](../../skills/implement/SKILL.md) | Thin implementation envelope with TDD (RED→GREEN→REFACTOR) that emits an outcome to the flow | Approved plan, the flow's `implement` step |
 | [aidakit:test](../../skills/test/SKILL.md) | Surface-focused tests with a coverage report | Post-implementation, before every commit |
 | [aidakit:coverage](../../skills/coverage/SKILL.md) | Deep coverage-gap analysis with suggested tests | Coverage below target, or before the PR |
@@ -57,7 +57,7 @@ The six **execution-cycle** skills (classify → grill → implement → deliver
 
 ### aidakit:readiness
 
-**Purpose:** GATE 1 of the cycle — the kit's strongest review: 13 steps over the plan package (scope, proposal, design, metadata, specs, tasks, omissions, implementation simulation, top-5 likely failures) before any code.
+**Purpose:** GATE 1 of the cycle — the kit's strongest review: 14 steps over the plan package (scope, proposal, design, metadata, specs, tasks, omissions, implementation simulation, top-5 likely failures) before any code.
 **Invocation:** `/aidakit:readiness` (resolves the package by context; without a reliable resolution, it asks the change-id).
 **Example (razor):** reviewing `docs/features/feature-appointment-cancellation/` — if the "up to 2h beforehand, no penalty" policy has no testable WHEN/THEN scenario (what happens at 1h59?), it becomes a `Critical — Mandatory before implementation` finding and the verdict drops to `NEEDS-REVISION`.
 **Gates:** machine-parseable verdict `Status: APPROVED | NEEDS-REVISION | BLOCKED` + `Ready to implement: yes|no` ([GOVERNANCE.md](../../GOVERNANCE.md) §3); a mandatory artifact absent → `BLOCKED`; >3 serious doubts → not ready; report, don't fix; only persists `planning-review.md` on request.
