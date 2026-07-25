@@ -16,6 +16,10 @@ _(nada planejado)_
 
 - Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
 
+### Automação de entrega (PR → merge) — **backlog**
+
+- Sweep pós-merge — arquiva, apaga branch, remove worktree — `post-merge-sweep` → backlog
+
 ### Endurecimento da disciplina do próprio kit — **backlog**
 
 - Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → backlog
