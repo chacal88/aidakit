@@ -100,14 +100,7 @@ Post-fix checks: none of `dispatch-cost.md`/`EPIC-context-caching.md`/this file 
 - `node governance/validators/check-links.js docs/features/workflow-script-optimization/` → exit 0. `node governance/validators/check-links.js docs/roadmap/` → exit 0.
 - `git diff HEAD --stat -- governance/ agents/ skills/ commands/ hooks/` → empty — audit-only guard holds.
 
-`git diff HEAD --stat` for this round only (relative to `3f5e150`), captured last and iterated to the fixpoint:
-
-```
- .../workflow-script-optimization/dispatch-cost.md  | 10 +++----
- .../workflow-script-optimization/evidence.md       | 32 ++++++++++++++++------
- docs/roadmap/epics/EPIC-context-caching.md         |  2 +-
- 3 files changed, 30 insertions(+), 14 deletions(-)
-```
+**Historical record (commit `09d1939`, superseded by its own commit — recorded as prose, not a fenced block).** `git diff HEAD --stat` for the round-2 fix (relative to `3f5e150`), captured last and iterated to the fixpoint before committing, reported 3 files changed — `dispatch-cost.md` (10 ±), `evidence.md` (32 ±), `docs/roadmap/epics/EPIC-context-caching.md` (2 ±) — 30 insertions(+), 14 deletions(-), matching `git show 09d1939 --stat` exactly (the permanent, commit-anchored reproduction command). Deliberately de-fenced after the commit landed, mirroring the `856351f` record above: a fenced `N files changed` block is gated by `check-evidence-stat.js` against the LIVE `git diff HEAD`, which is empty on a clean committed tree — the late-hardening pass reproduced exactly that (validator exit 1, `evidence-stat-stale`, on content that matches `git show 09d1939 --stat` byte-for-byte), the same commit-timing semantics documented for `856351f`.
 
 ## Raw dispatch telemetry (verbatim JSONL)
 
