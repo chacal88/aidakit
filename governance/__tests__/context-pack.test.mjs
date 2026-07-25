@@ -10,7 +10,7 @@
 //
 // Pure Node, no framework — mirrors governance/__tests__/engine.test.mjs / check-docs.test.mjs.
 
-import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync, symlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync, readdirSync, writeFileSync, readFileSync, appendFileSync, copyFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -709,8 +709,60 @@ for (const rel of DISPATCHER_FILES) {
 // bullets (7 agents + 3 skills, previously dropped by the multi-backtick
 // bug, Fix C) and ADR-006 + ADR-009 (previously dropped by the relative-link
 // bug, Fix D — design.md's own Dependencies section cites both).
+//
+// Archive-proofing: a change's artifacts live at docs/features/<id>/ only
+// while it is in flight — `aidakit:docs archive` moves them to
+// docs/archive/<YYYY-MM-DD>-<id>/ the moment it ships. Reading the live
+// path directly would turn this dogfood into a time bomb that detonates on
+// the archiving commit (it did: ab037b7). resolveChangeSourceDir finds the
+// change wherever it currently lives, and stageChangeSources re-materializes
+// its three build inputs under a temp root at the canonical
+// docs/features/<id>/ path the builder expects — with docs/decisions/ and
+// docs/specs/ symlinked back to the real repo, so cited-ADR discovery still
+// resolves against real files. The staged build is byte-identical to an
+// in-repo one (every path the builder records is repo-relative), so this
+// keeps testing REAL repo content, not a frozen fixture.
+
+/** Repo-relative dir holding a change's proposal/design/tasks — docs/features/<id>/
+ * while in flight, docs/archive/<YYYY-MM-DD>-<id>/ once archived (newest wins
+ * if a change was archived more than once). Returns "" when neither exists. */
+function resolveChangeSourceDir(repoRoot, changeId) {
+  const live = join("docs", "features", changeId);
+  if (existsSync(join(repoRoot, live, "design.md"))) return live;
+  const archiveRoot = join(repoRoot, "docs", "archive");
+  if (!existsSync(archiveRoot)) return "";
+  const re = new RegExp(`^\\d{4}-\\d{2}-\\d{2}-${changeId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+  const matches = readdirSync(archiveRoot).filter((d) => re.test(d)).sort();
+  if (matches.length === 0) return "";
+  return join("docs", "archive", matches[matches.length - 1]);
+}
+
+/** Copies a change's three build inputs into a temp root at the canonical
+ * docs/features/<id>/ path and symlinks the shared docs the builder cites,
+ * so buildPackContent() sees the real content wherever it actually lives. */
+function stageChangeSources(repoRoot, changeId, sourceDir) {
+  const root = mkdtempSync(join(tmpdir(), `dogfood-${changeId}-`));
+  const staged = join(root, "docs", "features", changeId);
+  mkdirSync(staged, { recursive: true });
+  for (const file of ["proposal.md", "design.md", "tasks.md"]) {
+    const from = join(repoRoot, sourceDir, file);
+    if (existsSync(from)) copyFileSync(from, join(staged, file));
+  }
+  for (const shared of [join("docs", "decisions"), join("docs", "specs"), join("openspec", "specs")]) {
+    const from = join(repoRoot, shared);
+    if (!existsSync(from)) continue;
+    mkdirSync(dirname(join(root, shared)), { recursive: true });
+    symlinkSync(from, join(root, shared));
+  }
+  return root;
+}
+
 {
-  const { content } = buildPackContent({ root: REPO, changeId: "context-pack-l1" });
+  const DOGFOOD_ID = "context-pack-l1";
+  const sourceDir = resolveChangeSourceDir(REPO, DOGFOOD_ID);
+  ok(sourceDir !== "", `§dogfood-regression-sources-resolvable: ${DOGFOOD_ID} found under docs/features/ or docs/archive/`);
+  const stagedRoot = stageChangeSources(REPO, DOGFOOD_ID, sourceDir || join("docs", "features", DOGFOOD_ID));
+  const { content } = buildPackContent({ root: stagedRoot, changeId: DOGFOOD_ID });
   const pointers = content.split("## code-map-pointers")[1].split("## DoD")[0];
   for (const rel of DISPATCHER_FILES) {
     ok(pointers.includes(rel), `§dogfood-regression-code-map-pointers: code-map-pointers includes ${rel}`);
@@ -718,6 +770,7 @@ for (const rel of DISPATCHER_FILES) {
   const adrs = content.split("## ADRs")[1].split("## specs")[0];
   ok(/\[ADR-006\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-006 (design.md Dependencies, relative link)");
   ok(/\[ADR-009\]/.test(adrs), "§dogfood-regression-adrs: ADRs section lists ADR-009 (design.md Dependencies, relative link)");
+  rmSync(stagedRoot, { recursive: true, force: true });
 }
 
 // ── §7 telemetry: JSONL append helper ─────────────────────────────────────
