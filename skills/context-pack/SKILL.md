@@ -21,12 +21,14 @@ Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../..
 
 `docs/features/<change-id>/.context-pack.md` — frontmatter (`change_id`, `built_at_source_hash`, `pack_version`, `sources[]` of `{path, sha256}`, path-sorted) followed by six fixed sections, in this exact order:
 
-1. `## identity` — change-id, date, owner, phase, one-line summary.
+1. `## identity` — change-id, date, owner, phase, one-line summary (the first sentence of `proposal.md`'s `## Why`; the legacy `## Problem` is accepted as a fallback).
 2. `## decisions` — the local planning decisions from `design.md`, one bullet per decision with a `file:line` pointer.
 3. `## ADRs` — every ADR the change cites, as a read-once address (`- [ADR-NNN](path) — role`).
 4. `## specs` — the capability specs the change extends, pointers only.
 5. `## code-map-pointers` — the files the implementation creates/modifies, pointers only.
-6. `## DoD` — the Definition of Done, lifted verbatim from `proposal.md`'s `## Success criteria`.
+6. `## DoD` — the Definition of Done, lifted verbatim from `proposal.md`'s `## Acceptance criteria` — the section [ADR-010](../../docs/decisions/ADR-010-acceptance-leash.md) §Decision-3 makes mandatory — parsed through [parse-criteria.js](../../governance/acceptance/parse-criteria.js), the single owner of that section's grammar. The legacy `## Success criteria` list is accepted as a fallback. `## Exit criteria` is **never** folded in: ADR-010 keeps validator commands (Exit) and observable-effect promises (Acceptance) as separate sections that do not merge. A change carrying neither criteria section builds `- (no acceptance criteria found)` — a signal to fix the proposal, not the pack.
+
+> The pack is **derived, never hand-edited.** Both the summary and the DoD come from headings in `proposal.md`; if either renders empty, the fix is the proposal's headings followed by a `rebuild` — editing `.context-pack.md` directly desynchronizes it from its own `sources[]` hashes and the next freshness check will contradict you.
 
 **Pointers only — excerpts are banned.** A copied paragraph drifts from its source without the source's `sha256` changing, which silently defeats invalidation. If you need the detail, open the pointed-at file — that's the whole point of the design.
 

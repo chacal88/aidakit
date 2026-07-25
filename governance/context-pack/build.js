@@ -33,6 +33,7 @@ import { resolve, dirname, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import { resolveProjectRoot } from "../engine/project-root.js";
 import { assertValidChangeId } from "../engine/change-id.js";
+import { parseAcceptanceCriteriaText } from "../acceptance/parse-criteria.js";
 
 const REQUIRED_SECTIONS = ["identity", "decisions", "ADRs", "specs", "code-map-pointers", "DoD"];
 
@@ -94,15 +95,30 @@ function extractField(text, label) {
   return m ? m[1] : "";
 }
 
-/** Text of a `## <name>` section (until the next `## `), or "" if absent. */
+/** Text of a `## <name>` section (until the next `## `), or "" if absent.
+ * Case-insensitive on the heading text: real proposals in this repo carry both
+ * `## Success criteria` and `## Success Criteria`, and a case-sensitive match
+ * silently returned "" for the latter. */
 function sectionBody(text, name) {
-  const re = new RegExp(`^##\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "m");
+  const re = new RegExp(`^##\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "mi");
   const m = re.exec(text);
   if (!m) return "";
   const start = m.index + m[0].length;
   const rest = text.slice(start);
   const next = /^##\s+/m.exec(rest);
   return next ? rest.slice(0, next.index) : rest;
+}
+
+/** Body of the first section among `names` (preference order) that exists AND
+ * is non-empty — the mechanism behind "read the mandated heading, tolerate the
+ * legacy one". A present-but-empty heading falls through to the next candidate
+ * rather than shadowing it. */
+function firstSectionBody(text, names) {
+  for (const name of names) {
+    const body = sectionBody(text, name);
+    if (body.trim()) return body;
+  }
+  return "";
 }
 
 function firstSentence(text) {
@@ -166,11 +182,51 @@ function bulletPathsInSubsection(text, subsectionHeadingRe) {
   return [...new Set(out)];
 }
 
-function extractSuccessCriteria(proposalText) {
-  const body = sectionBody(proposalText, "Success criteria");
+// Heading names, in preference order: the one the kit MANDATES first, the
+// legacy name it replaced as a tolerated fallback. Both derivations below used
+// to name ONLY the legacy heading, so every conforming change built a pack with
+// an empty `summary` and a placeholder `DoD` — the two things ADR-013 created
+// the pack to carry into each dispatch.
+
+// `## Why` is what skills/plan/SKILL.md emits and what every non-archived
+// proposal in this repo carries; `## Problem` is the legacy name (still used by
+// the context-pack-l1 proposal that introduced this builder).
+const SUMMARY_SECTIONS = ["Why", "Problem"];
+
+// The DoD's mandated source is `## Acceptance criteria` (ADR-010 §Decision-3),
+// parsed by its single owner — see extractDoD. These are the LEGACY fallbacks
+// only. `## Exit criteria` is deliberately absent: ADR-010 §Decision-3 keeps
+// validator commands (Exit) and observable-effect promises (Acceptance) as
+// separate sections that "do not merge", so folding Exit in here would put
+// shell invocations under the pack's `## DoD`.
+const LEGACY_DOD_SECTIONS = ["Success criteria"];
+
+/** The DoD lines for the pack.
+ *
+ * Primary source: `## Acceptance criteria`, the section ADR-010 §Decision-3
+ * makes mandatory for fast-flow changes — parsed through
+ * `parseAcceptanceCriteriaText`, the single owner of that grammar, so the
+ * accepted bullet shapes cannot drift between the acceptance leash and the pack.
+ *
+ * Deliberately proposal.md-ONLY, which is why this calls the text-level parser
+ * instead of `parseCriteria()`: that entry point prefers
+ * `.aidakit/tasks/<id>/brainstorm.json`, but `.aidakit/` is gitignored, so a
+ * DoD derived from it could never appear in the pack's `sources[]` — it would
+ * be invisible to the freshness validator and would differ between machines
+ * building the same commit. Both are byte-stability violations (ADR-013
+ * §Decision-1 and §Decision-4).
+ *
+ * Fallback: the legacy `## Success criteria` list, accepting numbered `1.` as
+ * well as `-`/`*` bullets so an in-flight change written either way still
+ * yields a DoD. */
+function extractDoD(proposalText) {
+  const mandated = parseAcceptanceCriteriaText(proposalText);
+  if (mandated.length > 0) return mandated.map((c) => c.criterion);
+
+  const body = firstSectionBody(proposalText, LEGACY_DOD_SECTIONS);
   const out = [];
   for (const line of body.split(/\r?\n/)) {
-    const m = /^\s*\d+\.\s+(.+)$/.exec(line);
+    const m = /^\s*(?:\d+\.|[-*])\s+(.+)$/.exec(line);
     if (m) out.push(m[1].trim());
   }
   return out;
@@ -183,7 +239,7 @@ function renderIdentity(proposalText) {
   const date = extractField(proposalText, "Date");
   const owner = extractField(proposalText, "Owner");
   const phase = extractField(proposalText, "Phase / Package");
-  const summary = firstSentence(sectionBody(proposalText, "Problem"));
+  const summary = firstSentence(firstSectionBody(proposalText, SUMMARY_SECTIONS));
   const lines = [
     `- change_id: ${changeId}`,
     `- date: ${date}`,
@@ -234,8 +290,8 @@ function renderCodeMapPointers(designText) {
 }
 
 function renderDoD(proposalText) {
-  const criteria = extractSuccessCriteria(proposalText);
-  if (criteria.length === 0) return "- (no success criteria found)";
+  const criteria = extractDoD(proposalText);
+  if (criteria.length === 0) return "- (no acceptance criteria found)";
   return criteria.map((c) => `- ${c}`).join("\n");
 }
 

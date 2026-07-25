@@ -77,12 +77,22 @@ function fromBrainstorm(brainstormPath) {
   return { criteria };
 }
 
-/** Reads docs/features/<change-id>/proposal.md's `## Acceptance criteria` section. */
-function fromProposal(proposalPath) {
-  if (!existsSync(proposalPath)) return null;
-  const lines = readFileSync(proposalPath, "utf8").split(/\r?\n/);
+/**
+ * Parses a proposal's `## Acceptance criteria` section out of raw markdown
+ * TEXT (no disk access), returning `[{ id, criterion }]` — `[]` when the
+ * section is absent or carries no bullets.
+ *
+ * Exported so that every consumer of this section's grammar goes through this
+ * one function rather than re-deriving the bullet shapes, which is ADR-010
+ * §Decision-3's single-owner rule applied to code as well as to the agent:
+ * `governance/context-pack/build.js` reuses it to render the pack's `## DoD`
+ * section, so a change to the accepted bullet shapes lands in both places at
+ * once instead of drifting between them.
+ */
+export function parseAcceptanceCriteriaText(text) {
+  const lines = text.split(/\r?\n/);
   const headingIdx = lines.findIndex((l) => /^#+\s*Acceptance criteria\s*$/i.test(l.trim()));
-  if (headingIdx === -1) return null;
+  if (headingIdx === -1) return [];
 
   const seen = new Set();
   const criteria = [];
@@ -92,7 +102,7 @@ function fromProposal(proposalPath) {
     if (/^#+\s/.test(line)) break; // next section — stop
     const explicit = line.match(EXPLICIT_BULLET_RE);
     if (explicit) {
-      criteria.push({ id: dedupeSlug(explicit[1], seen), criterion: explicit[2].trim(), source: "plan" });
+      criteria.push({ id: dedupeSlug(explicit[1], seen), criterion: explicit[2].trim() });
       bulletIndex++;
       continue;
     }
@@ -102,12 +112,19 @@ function fromProposal(proposalPath) {
       // Same empty-slug fallback as fromBrainstorm() above — blank/punctuation-only
       // bullet prose falls back to a positional id instead of an empty/dash-only slug.
       const base = slugify(criterion) || `criterion-${bulletIndex}`;
-      criteria.push({ id: dedupeSlug(base, seen), criterion, source: "plan" });
+      criteria.push({ id: dedupeSlug(base, seen), criterion });
       bulletIndex++;
     }
   }
+  return criteria;
+}
+
+/** Reads docs/features/<change-id>/proposal.md's `## Acceptance criteria` section. */
+function fromProposal(proposalPath) {
+  if (!existsSync(proposalPath)) return null;
+  const criteria = parseAcceptanceCriteriaText(readFileSync(proposalPath, "utf8"));
   if (criteria.length === 0) return null;
-  return { criteria };
+  return { criteria: criteria.map((c) => ({ ...c, source: "plan" })) };
 }
 
 /**
