@@ -110,6 +110,28 @@ writeManifest([
   ok(r.code === 1 && r.json.errors[0].rule === "adr-format", "leash: required ADR malformed → blocks");
 }
 
+// (5) status: n/a WITHOUT a condition → exit 2, manifest-invalid (a waiver requires
+// a written justification — same fail-closed semantics as check-acceptance, ADR-010).
+writeManifest([
+  { doc: "proposal", path: "docs/features/feat-x/proposal.md", status: "resolved", kind: "doc" },
+  { doc: "ADR", path: "docs/decisions/ADR-999-x.md", status: "n/a", kind: "adr" },
+]);
+{
+  const r = run(manVal, [manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 2 && !r.json.ok, "leash: n/a WITHOUT condition → exit 2");
+  ok(r.json.errors.some((e) => e.rule === "manifest-invalid"), "leash: n/a without condition is 'manifest-invalid'");
+  ok(r.json.required === 1, "leash: unjustified n/a still excluded from the required count");
+}
+
+// (6) status: n/a with an EMPTY condition → same block (empty string is not a justification).
+writeManifest([
+  { doc: "ADR", path: "docs/decisions/ADR-999-x.md", status: "n/a", condition: "", kind: "adr" },
+]);
+{
+  const r = run(manVal, [manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 2 && r.json.errors.some((e) => e.rule === "manifest-invalid"), "leash: n/a with empty condition → manifest-invalid");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
