@@ -72,7 +72,7 @@ Therefore the obvious pin — *"a validator that greps every `file.js:NN` in `de
 ## References
 
 - [EPIC-kit-discipline-hardening](../../roadmap/epics/EPIC-kit-discipline-hardening.md) — the parent epic and its three Não-goals (minimal surgery, no DNA, no bundling).
-- [`.aidakit/tasks/plan-gate-executor-internals-check/brainstorm.json`](../../../.aidakit/tasks/plan-gate-executor-internals-check/brainstorm.json) — the locked assumptions, the owner's decisions of 2026-07-25, and the 2026-07-25 split ruling recorded in `decision.split_2026_07_25`.
+- `.aidakit/tasks/plan-gate-executor-internals-check/brainstorm.json` (gitignored runtime artifact, not a tracked path) — the locked assumptions, the owner's decisions of 2026-07-25, and the 2026-07-25 split ruling recorded in `decision.split_2026_07_25`.
 - [classification.json](classification.json) — domain `product`, type `feature`, flags `architecture` + `contract` (flow-authored before the brainstorm/split, not rewritten).
 - [flow-step-summaries](../../archive/2026-07-24-flow-step-summaries/design.md) — the incident: the false generalization at `design.md:92`, its origin at `proposal.md:21`, the anchor re-check that passed at `evidence.md:8-18`.
 - [ADR-015](../../decisions/ADR-015-readiness-owns-internals-claims-gate.md) — this change's own decision record: gate ownership ships now; the mechanical check's standalone wiring is deferred to the successor change, per the 2026-07-25 split.
