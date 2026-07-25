@@ -262,20 +262,21 @@ Full suite after edits (identical to baseline, no new red — same 23 files, sam
   OK — 7 file(s), no broken links.
   ```
   exit code: `0`
-- `git diff --stat`:
+- `git diff --stat` at the **first commit** (the trim itself, before the merge-gate version-leash fix): `agents/doc-planner.md` (39 lines) + `docs/features/workflow-script-optimization/dispatch-cost.md` (10 lines), 2 files, +25/−24 — exactly the two declared surfaces plus this change directory.
+- `git diff --stat` vs the merge-base **after the forced `check-plugin-version` fix** (see §Unresolved Deviations):
   ```
-   agents/doc-planner.md                              | 39 +++++++++++-----------
-   .../workflow-script-optimization/dispatch-cost.md  | 10 +++---
-   2 files changed, 25 insertions(+), 24 deletions(-)
+   .claude-plugin/plugin.json                         |   2 +-
+   agents/doc-planner.md                              |  39 ++-
+   .../trim-doc-planner-agent-prompt/.context-pack.md |  64 +++++
+   .../trim-doc-planner-agent-prompt/design.md        |  92 +++++++
+   .../trim-doc-planner-agent-prompt/evidence.md      | 295 +++++++++++++++++++++
+   .../trim-doc-planner-agent-prompt/proposal.md      |  92 +++++++
+   .../trim-doc-planner-agent-prompt/tasks.md         |  65 +++++
+   .../workflow-script-optimization/dispatch-cost.md  |  10 +-
+   8 files changed, 634 insertions(+), 25 deletions(-)
   ```
-  `git status --porcelain`:
-  ```
-   M agents/doc-planner.md
-   M docs/features/workflow-script-optimization/dispatch-cost.md
-  ?? docs/features/trim-doc-planner-agent-prompt/
-  ```
-  → exactly the two declared files plus this change directory. No `.js`/`.mjs`/`.yaml`, no `governance/**`.
-- `git diff --exit-code $(git merge-base HEAD origin/main) -- governance/` → exit code `0` (no diff, `governance/**` byte-identical to the merge-base).
+  → `agents/doc-planner.md`, `docs/features/workflow-script-optimization/dispatch-cost.md`, `.claude-plugin/plugin.json` (the forced 1-line version bump) plus this change directory. No `.js`/`.mjs`/`.yaml`, no `governance/**`.
+- `git diff --exit-code $(git merge-base HEAD origin/main) -- governance/` → exit code `0` (no diff, `governance/**` byte-identical to the merge-base, before and after the version-leash fix).
 
 ## Files Touched
 
@@ -284,9 +285,12 @@ Full suite after edits (identical to baseline, no new red — same 23 files, sam
 | `agents/doc-planner.md` | modify | body-prose trim (dedupe LIST/`n/a`/escalation restatements, drop parentheticals; frozen leash regions byte-preserved) + appended `v0.10` provenance footer. Before: `2198 words / 15105 bytes`. After: `1962 words / 13854 bytes` (−236 words / −1251 bytes). |
 | `docs/features/workflow-script-optimization/dispatch-cost.md` | modify | cascade re-measure: §1 line 27 fenced row + line 37 total; §2 line 52 ranking cell + line 68 prose; new §1 dated trim note (line 40's PR-#54 drift note preserved verbatim). |
 | `docs/features/trim-doc-planner-agent-prompt/{proposal,design,tasks,evidence}.md` | create | this change directory (evidence filled during execution). |
+| `.claude-plugin/plugin.json` | modify | `version` `0.9.2` → `0.10.0` — **forced by `check-plugin-version`** (CI `version-leashes`): the trim's appended `v0.10` provenance footer raised the highest doctrine footer to `v0.10`, so the manifest had to cover it or `claude plugin update` would copy nothing. Caught at the merge gate (see §Unresolved Deviations); not a runtime change, so `check-runtime-bump`/ADR-016 stays green either way. |
 | `governance/**` | untouched | confirmed byte-identical to the merge-base (`git diff --exit-code` exit 0). |
 | `docs/decisions/**`, `docs/specs/**` | untouched | no ADR, no spec delta. |
 
 ## Unresolved Deviations
 
-None. HEAD, `origin/main` and the merge-base were identical at baseline (`7cfbb1f`), so there was no sibling-PR drift to reconcile on any row. No other doc was found needing an edit (per tasks.md §4). The "largest single agent file" superlative case that held: `B (13854) ≥ 13470`, so `doc-planner` is still the largest single agent file — the framing was kept, only the gap (~12% → ~2.9%) was reconciled to the measured tree.
+**Version-leash bump (`.claude-plugin/plugin.json` `0.9.2` → `0.10.0`), caught at the merge gate — a plan gap, now closed.** The plan (tasks.md §6, proposal.md non-goal 2 / Impact table) asserted "no `.claude-plugin/plugin.json` bump" reasoning only from `check-runtime-bump`/ADR-016 (which fires on `hooks/`/`governance/` changes — genuinely not touched). It **missed `check-plugin-version`** (a separate CI leash in the `version-leashes` job), which requires the manifest `version` to be ≥ the highest doctrine footer across the plugin. The trim's own appended `v0.10` footer on `agents/doc-planner.md` raised that highest footer to `v0.10` while the manifest was `0.9.2` → CI FAIL on PR #64 (`manifest 0.9.2 is BEHIND the doctrine (highest footer v0.10)`). The full local `governance/__tests__/` suite did NOT catch it because `check-plugin-version.js` runs as a CI validator against the whole live tree, not as one of the `*.test.mjs` files. Fix-forward: bumped the manifest to `0.10.0` (the footer is monotonic on `doc-planner.md` — v0.3→v0.4→v0.9→v0.10 — so re-using v0.9 was not an option; the bump is mechanically forced, not a judgment call). Re-verified: `check-plugin-version.js .` → exit 0 (`manifest 0.10.0 covers the highest footer (v0.10)`), `check-runtime-bump.js .` → exit 0 (no runtime file changed), `plugin-version.test.mjs` → `12 passed, 0 failed`. No measured byte number changes (plugin.json is not on any `dispatch-cost.md` row; `agents/doc-planner.md` is unchanged by the bump).
+
+No sibling-PR drift: HEAD, `origin/main` and the merge-base were identical at baseline (`7cfbb1f`). The "largest single agent file" superlative case that held: `B (13854) ≥ 13470`, so `doc-planner` is still the largest single agent file — the framing was kept, only the gap (~12% → ~2.9%) reconciled to the measured tree.

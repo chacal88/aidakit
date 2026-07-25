@@ -45,7 +45,8 @@ The Feature is already declared on the roadmap ([EPIC-context-caching](../../roa
 | `docs/specs/` | **none** — absent; no capability touched (non-goal 4). |
 | `docs/roadmap/epics/EPIC-context-caching.md` | **none** — status derives from disk ([ADR-002](../../decisions/ADR-002-roadmap-status-derived-from-disk.md)/[ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md)); the `15105`/`45315` acceptance figure is the FROM baseline, left intact (non-goal 6). |
 | `docs/features/trim-doc-planner-agent-prompt/` | this change directory (proposal/design/tasks/evidence). |
-| `commands/`, `hooks/`, `skills/`, `.claude-plugin/` | none. |
+| `.claude-plugin/plugin.json` | 1 line: `version` `0.9.2` → `0.10.0` — **forced by `check-plugin-version`** (the appended `v0.10` doctrine footer on `agents/doc-planner.md` raised the highest footer past the manifest; the CI `version-leashes` job fails until the manifest covers it). Not a runtime change (`check-runtime-bump`/ADR-016 unaffected). See [evidence.md](evidence.md) §Unresolved Deviations. |
+| `commands/`, `hooks/`, `skills/` | none. |
 
 ## Dependencies
 
@@ -62,7 +63,7 @@ The Feature is already declared on the roadmap ([EPIC-context-caching](../../roa
 - `dna-gate-green-after-remeasure` — after the trim, [`dispatch-cost.md`](../workflow-script-optimization/dispatch-cost.md) line 27 carries the new measured `<words> <bytes> agents/doc-planner.md`, line 37 the new `total`, line 52 the new ranking cell, line 68 the reconciled prose; [`regression-measured-body-size-tables-match-live-tree.test.mjs`](../../../governance/__tests__/regression-measured-body-size-tables-match-live-tree.test.mjs) is `0 failed`.
 - `ranking-order-preserved` — with the measured new byte count `B`, `B × 3 > 26940` holds (doc-planner stays rank 1 over `reviewer-quality`), verified arithmetically in evidence; the §2 "largest single agent file" prose is reconciled to the measured `B` vs `reviewer-quality`'s `13470` (flip the wording if `B < 13470` — the ranking stays 1 either way, driven by reuse, but the body-size superlative is measured, not assumed).
 - `dated-trim-note-added` — a new dated trim note in §1 records the `15105 → B` reduction and the ranking `45315 → B×3`, mirroring the existing drift note's shape; the line-40 PR #54 drift note (14752→15105) is preserved verbatim.
-- `anatomy-and-scope-clean` — the six GOVERNANCE §7 sections (`Role` · `Protocol` · `What you decide on your own` · `Escalation triggers` · `What you do NOT do` · `Output format`) survive in order; `git diff --stat` shows exactly `agents/doc-planner.md`, `docs/features/workflow-script-optimization/dispatch-cost.md`, plus this change directory — no `.js`/`.mjs`/`.yaml`, no history file rewritten.
+- `anatomy-and-scope-clean` — the six GOVERNANCE §7 sections (`Role` · `Protocol` · `What you decide on your own` · `Escalation triggers` · `What you do NOT do` · `Output format`) survive in order; `git diff --stat` shows exactly `agents/doc-planner.md`, `docs/features/workflow-script-optimization/dispatch-cost.md`, `.claude-plugin/plugin.json` (the forced version-leash bump), plus this change directory — no `.js`/`.mjs`/`.yaml`, no `governance/**` change, no history file rewritten.
 
 ## Exit criteria
 
@@ -73,7 +74,7 @@ The Feature is already declared on the roadmap ([EPIC-context-caching](../../roa
 - Full governance suite `for f in governance/__tests__/*.test.mjs; do echo "== $f"; node "$f" 2>&1 | tail -1; done` → every file `0 failed`, **against a baseline captured before any edit** — any file already red at baseline is a pre-existing condition named in evidence, not attributed to this change (the `context-pack.test.mjs` merge-base caveat is the known candidate; baseline first, do not recall its state).
 - `check-doc-manifest.js` smoke run on a fixture manifest derived from the trimmed Step 3 block: exit 0 for the well-formed manifest, exit 2 (`manifest-invalid`) for an `n/a` item without a `condition`.
 - `node governance/validators/check-links.js docs/features/trim-doc-planner-agent-prompt agents/doc-planner.md docs/features/workflow-script-optimization/dispatch-cost.md` → exit 0.
-- `git diff --stat` paired with `git status --porcelain` matches §Impact per surface — exactly the two files + this change directory, no stray edits, no `governance/**` change.
+- `git diff --stat` paired with `git status --porcelain` matches §Impact per surface — `agents/doc-planner.md`, `docs/features/workflow-script-optimization/dispatch-cost.md`, `.claude-plugin/plugin.json` (the forced version-leash bump) + this change directory, no stray edits, no `governance/**` change.
 
 ## Unblocks
 
