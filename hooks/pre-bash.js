@@ -127,7 +127,7 @@ function readStdin() {
  * Deliberately conservative: any construct this doesn't fully reason about —
  * variable expansion (`$...`), command/process substitution (`$(...)`,
  * `` `...` ``, `<(...)`), subshells/brace groups (`(...)`, `{...}`),
- * redirection (`<`/`>`), or an unterminated quote/escape — marks the WHOLE
+ * INPUT redirection (`<`), or an unterminated quote/escape — marks the WHOLE
  * parse `ambiguous`. The caller fail-closes on `ambiguous` (never guesses
  * what an obfuscated or dynamic command might resolve to at runtime — this is
  * also how a statically-visible variable indirection like `gh pr merge
@@ -141,6 +141,24 @@ function readStdin() {
  * see. `source`/`.` are deliberately NOT among those checks — see this
  * file's header for why (they take a filename, not inline text; see the
  * honest residual disclosure there).
+ *
+ * Round-6 fix (false-block, reproduced live): OUTPUT redirection (`>`, `>>`,
+ * `>|`, `N>`, `N>&M`, `&>`) is PARSED as structure and dropped, no longer
+ * treated as ambiguity. Rationale — an output redirection is plumbing, not
+ * content: it cannot change a single byte of what the program receives in
+ * argv or on stdin, so it carries none of the argument-injection risk that
+ * makes `$(...)`/eval/xargs ambiguous. Treating it as ambiguity false-blocked
+ * the kit's OWN documented read-only mergeability query (`gh pr view --json
+ * mergeable,mergeStateStatus,... 2>&1`, skills/merge/SKILL.md §Process step
+ * 2): the JSON FIELD NAMES `mergeable`/`mergeStateStatus` satisfy the
+ * deliberately broad gh+merge trigger (isSubjectToMergeRule), and the
+ * redirect then killed the parse before `mergeInvocationFound: false` could
+ * let the read-only command through. Dropping the operator and its target
+ * word neither hides nor introduces an invocation — `gh pr merge --admin
+ * 2>/dev/null` still tokenizes to the `--admin` the allowlist rejects (locked
+ * by the round-6 tests). INPUT redirection (`<`) deliberately STAYS
+ * ambiguous: it feeds external content INTO the command, the same
+ * stdin-injection class as the round-5 xargs bypass.
  * @param {string} command
  * @returns {{commands: string[][], ambiguous: boolean}}
  */
@@ -150,18 +168,36 @@ function splitShellCommands(command) {
   let word = '';
   let wordStarted = false;
   let ambiguous = false;
+  let pendingRedirectTarget = false; // the next word is a redirection target, not an argument
 
   const flushWord = () => {
     if (wordStarted) {
-      tokens.push(word);
+      // A word consumed as an output-redirection TARGET (`> out`, the `1` of
+      // `2>&1`) is filesystem/fd plumbing, never an argument to the program.
+      if (pendingRedirectTarget) pendingRedirectTarget = false;
+      else tokens.push(word);
       word = '';
       wordStarted = false;
     }
   };
   const flushCommand = () => {
     flushWord();
+    // A redirection with no target (`gh pr merge >`) is a syntax error we
+    // refuse to guess about — fail-closed, like any other unparseable input.
+    if (pendingRedirectTarget) { ambiguous = true; return; }
     if (tokens.length) commands.push(tokens);
     tokens = [];
+  };
+  /** Consumes an output-redirection operator whose first char is at `i` and
+   * arms the next word to be discarded as its target. */
+  const startOutputRedirect = () => {
+    // `2>&1`: an all-digit word immediately before `>` is the operator's fd
+    // prefix, not an argument (POSIX shell word rules).
+    if (wordStarted && /^[0-9]+$/.test(word)) { word = ''; wordStarted = false; }
+    flushWord();
+    i++; // the `>` itself
+    if (command[i] === '>' || command[i] === '|' || command[i] === '&') i++; // `>>`, `>|`, `>&`
+    pendingRedirectTarget = true;
   };
 
   let i = 0;
@@ -213,7 +249,11 @@ function splitShellCommands(command) {
       continue;
     }
 
-    if (c === '$' || c === '`' || c === '(' || c === ')' || c === '<' || c === '>' || c === '{' || c === '}') {
+    // Output redirection is structure, not ambiguity — see the doc comment
+    // above. `<` is NOT here: input redirection stays ambiguous below.
+    if (c === '>') { startOutputRedirect(); continue; }
+
+    if (c === '$' || c === '`' || c === '(' || c === ')' || c === '<' || c === '{' || c === '}') {
       ambiguous = true;
       break;
     }
@@ -221,6 +261,8 @@ function splitShellCommands(command) {
     if (c === ';' || c === '\n') { flushCommand(); i++; continue; }
     if (c === '&') {
       if (command[i + 1] === '&') { flushCommand(); i += 2; continue; }
+      // `&>` / `&>>` — both streams to a file; still pure output plumbing.
+      if (command[i + 1] === '>') { flushWord(); i++; startOutputRedirect(); continue; }
       flushCommand(); i++; continue; // background operator — also a command boundary
     }
     if (c === '|') {
@@ -416,13 +458,20 @@ function isSubjectToMergeRule(command) {
  * command that merely shares the "gh"/"merge" substrings) — the caller must
  * let it fall through as if this rule never matched, not fall into the
  * default-deny path for a merge attempt that was never really there.
+ *
+ * `reason` (only meaningful when `forbidden`) says WHICH condition actually
+ * fired, so the block message can name it instead of reciting every
+ * possibility — round-6 fix: an operator whose read-only `gh pr view` was
+ * blocked for AMBIGUITY read the old `--admin/--no-verify` wording as a claim
+ * that their command contained one of those flags.
  * @param {string} command
- * @returns {{forbidden: boolean, mergeInvocationFound: boolean}}
+ * @returns {{forbidden: boolean, mergeInvocationFound: boolean, reason?: 'ambiguous'|'forbidden-args'}}
  */
 function analyzeMergeCommand(command) {
   const { commands, ambiguous } = splitShellCommands(command);
   if (ambiguous || commands.some(hasSemanticAmbiguity)) {
-    return { forbidden: true, mergeInvocationFound: true }; // conservative: can't disprove one is hiding inside
+    // conservative: can't disprove an invocation is hiding inside
+    return { forbidden: true, mergeInvocationFound: true, reason: 'ambiguous' };
   }
   let mergeInvocationFound = false;
   for (const rawTokens of commands) {
@@ -430,7 +479,9 @@ function analyzeMergeCommand(command) {
     const args = findGhPrMergeArgs(tokens);
     if (args !== null) {
       mergeInvocationFound = true;
-      if (!isSafeGhPrMergeArgs(args)) return { forbidden: true, mergeInvocationFound: true };
+      if (!isSafeGhPrMergeArgs(args)) {
+        return { forbidden: true, mergeInvocationFound: true, reason: 'forbidden-args' };
+      }
     }
   }
   return { forbidden: false, mergeInvocationFound };
@@ -476,12 +527,30 @@ async function main() {
         // construct) on gh pr merge is NEVER allowed through — this check
         // runs BEFORE the bypass check below and short-circuits with its own
         // exit, so AIDAKIT_BYPASS cannot rescue it either.
+        //
+        // Round-6 fix: the two conditions get DISTINCT messages. The old
+        // single message named --admin/--no-verify in both cases, so an
+        // operator blocked for ambiguity on a read-only command reasonably
+        // read it as "the hook thinks I passed --admin".
         process.stderr.write(
-          '[aidakit governance] BLOCKED: gh pr merge with a disallowed flag (--admin/--admin=.../--no-verify) ' +
-            'or an unparseable/ambiguous/obfuscated shell construct is NEVER allowed — not via pr.auto_merge: true, ' +
-            'not via AIDAKIT_BYPASS (ADR-008). Use a plain `gh pr merge` (optionally --merge/--squash/--rebase/' +
-            '--delete-branch/--auto and a PR number/branch), or merge on the host UI.\n' +
-            'Reference: GOVERNANCE.md of the aidakit plugin, section 4.\n'
+          analysis.reason === 'forbidden-args'
+            ? '[aidakit governance] BLOCKED: this command invokes `gh pr merge` with an argument outside the ' +
+                'allowlist — a forbidden flag (--admin/--admin=.../--no-verify), an unrecognized flag, or a second ' +
+                'positional. NEVER allowed — not via pr.auto_merge: true, not via AIDAKIT_BYPASS (ADR-008). Use a ' +
+                'plain `gh pr merge` (optionally --merge/--squash/--rebase/--delete-branch/--auto and ONE PR ' +
+                'number/branch), or merge on the host UI.\n' +
+                'Reference: GOVERNANCE.md of the aidakit plugin, section 4.\n'
+            : '[aidakit governance] BLOCKED (ambiguous construct, NOT a forbidden flag): this command mentions ' +
+                'both "gh" and "merge", and contains a shell construct this hook cannot resolve statically — ' +
+                'variable or command substitution ($VAR, $(...), `...`), a subshell/brace group, a shell reserved ' +
+                'word, eval/sh -c/bash -c, xargs, or an INPUT redirection (<). It is blocked fail-closed because ' +
+                'an unreadable construct cannot be proven NOT to hide a `gh pr merge --admin` (ADR-008) — no ' +
+                'forbidden flag has to be present for this to fire.\n' +
+                'If this is a READ-ONLY query (e.g. `gh pr view --json mergeable,mergeStateStatus`), it reached ' +
+                'this rule only because a JSON field name contains the "merge" substring: re-run it with LITERAL ' +
+                'values instead of variables/substitutions. Pipes (|) and output redirections (2>&1, >, >>) are ' +
+                'fine and do not trigger this.\n' +
+                'Reference: GOVERNANCE.md of the aidakit plugin, section 4.\n'
         );
         process.exit(2);
       }
