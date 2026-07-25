@@ -24,7 +24,7 @@ wc -c -w agents/*.md
     1156    8127 agents/acceptance-planner.md
      983    6474 agents/adr-reviewer.md
     1544   10635 agents/brainstorm.md
-    2198   15105 agents/doc-planner.md
+    1962   13854 agents/doc-planner.md
     1791   11532 agents/implementer.md
     1834   12564 agents/orchestrator.md
     1902   12766 agents/planner.md
@@ -34,10 +34,12 @@ wc -c -w agents/*.md
     1592   10786 agents/reviewer-security.md
     1129    7573 agents/spec-reviewer.md
     2030   12676 agents/tester.md
-   20837  140150 total
+   20601  138899 total
 ```
 
 **Drift note (`agents/doc-planner.md`, caught in review-bench round 2, the same drift class round 1 caught for `skills/readiness/SKILL.md` — see §4's note below):** the plan-time/first-draft figure (2161 words / 14752 bytes) is stale. `48f4731` (PR #54, "fix(doc-leash): align condicao→condition and make waiver justification mechanical") — an ancestor of the `6af0e7a` base this change's second rebase landed on — changed `agents/doc-planner.md` (25 lines) before this table's first draft, and the file was never re-measured after that rebase pulled it in. Re-measured this pass: **2198 words / 15105 bytes** (+37 words / +353 bytes). The 13-file total moves from 20800/139797 to **20837 words / 140150 bytes**. The other 12 `agents/*.md` files are byte-identical to the first-draft measurement, re-confirmed this pass (`wc -c -w agents/*.md`, diffed line by line against the table above). Bytes and words are both recorded; neither is converted to tokens.
+
+**Trim note (`agents/doc-planner.md`, `trim-doc-planner-agent-prompt`, 2026-07-25):** the change de-duplicated the 3–4× restatements of the same doctrine across the body (the LIST/`n/a`/escalation echoes) and dropped long parentheticals, with the frozen leash regions (Step 3 schema + envelope, the two manifest paths, the `status`/`kind` enums, the Output-format step-5 guard sentence) byte-preserved. Re-measured this pass: **1962 words / 13854 bytes** (−236 words / −1251 bytes from the 2198/15105 figure above). The 13-file total moves from 20837/140150 to **20601 words / 138899 bytes**. The other 12 `agents/*.md` files are unchanged (re-confirmed via `wc -c -w agents/*.md`, diffed line by line). §2's ranking cell and "Reading the extremes" prose were re-measured in the same commit; `doc-planner` remains rank 1 (`13854 × 3 = 41562` > `reviewer-quality`'s `26940`).
 
 ## §2 — Agent dispatch-frequency table
 
@@ -49,7 +51,7 @@ wc -c -w agents/*.md
 
 | Agent | Tier | static (full / fast / design / docs-onboarding) | happy-path (full / fast / design / docs-onboarding) | Σ happy-path (4 flows) | observed (full, prefix) | observed (fast / design / docs-onboarding) | Ranking (bytes × Σ happy-path) |
 |---|---|---|---|---|---|---|---|
-| `aidakit:doc-planner` | agent | 1 / 1 / 0 / 1 | 1 / 1 / 0 / 1 | 3 | 0 (prefix: not yet reached) | n/a (not exercised) | **45315** (15105 × 3; was 44256 before the `agents/doc-planner.md` drift note above) |
+| `aidakit:doc-planner` | agent | 1 / 1 / 0 / 1 | 1 / 1 / 0 / 1 | 3 | 0 (prefix: not yet reached) | n/a (not exercised) | **41562** (13854 × 3; was 45315 (15105×3) before trim-doc-planner-agent-prompt; was 44256 before the `agents/doc-planner.md` drift note above) |
 | `aidakit:reviewer-quality` | agent (2nd-order) | 0 / 0 / 0 / 0 | 1 / 1 / 0 / 0 | 2 | n/a (not individually metered) | n/a (not individually metered) | **26940** |
 | `aidakit:reviewer-architecture` | agent (2nd-order) | 0 / 0 / 0 / 0 | 1 (cond.) / 1 (cond.) / 0 / 0 | 2 | n/a (not individually metered) | n/a (not individually metered) | **26308** |
 | `aidakit:planner` | agent (2nd-order) | 0 / 0 / 0 / 0 | 1 / 1 / 0 / 0 | 2 | n/a (not individually metered) | n/a (not individually metered) | **25532** |
@@ -65,7 +67,7 @@ wc -c -w agents/*.md
 
 **Reading the extremes, not smoothing them:**
 
-- `aidakit:doc-planner` ranks first not primarily because its body is the largest single agent file (15105 bytes, post-drift-note — `reviewer-quality`'s 13470 is the next largest, a ~12% gap, not a huge one on its own), but because it is *also* the only agent with a non-zero `static` count in **three** of the four flows (`full`, `fast`, `docs-onboarding`) — it is genuinely the most-reused first-order agent body in the kit's own flow graph, and the ranking gap to `reviewer-quality` (45315 vs 26940, a lower-bound ratio of ~1.7×) is driven more by that reuse than by the body-size difference alone. **Ranking order is unaffected by the drift note above** — `doc-planner` was already ranked first before the re-measurement (44256) and remains first after it (45315); no other agent's position changes.
+- `aidakit:doc-planner` ranks first not primarily because its body is the largest single agent file (13854 bytes, post-trim — `reviewer-quality`'s 13470 is the next largest, a ~2.9% gap, down from ~12% before the trim), but because it is *also* the only agent with a non-zero `static` count in **three** of the four flows (`full`, `fast`, `docs-onboarding`) — it is genuinely the most-reused first-order agent body in the kit's own flow graph, and the ranking gap to `reviewer-quality` (41562 vs 26940, a lower-bound ratio of ~1.5×) is driven more by that reuse than by the body-size difference alone. **Ranking order is unaffected by the drift note above** — `doc-planner` was already ranked first before the re-measurement (44256) and remains first after it (45315); no other agent's position changes. **Nor by the `trim-doc-planner-agent-prompt` trim** — the further re-measurement (41562) leaves `doc-planner` first still; no other agent's position changes.
 - `aidakit:research` ranks last at a clean `0`, not because its body is small (5288 bytes, the second-smallest), but because the ranking metric structurally cannot see it: it never sits on any flow's happy path (§3b of `inventory.md`). A `0` ranking here is an artifact of the metric's blind spot for ad hoc/discretionary dispatch, not a claim that `research` is free to run.
 - **`observed` vs `happy-path`, where they already diverge on `full`:** this run's `aidakit:spec-reviewer` observed count (2) already matches its `full` happy-path count (2) numerically, but for a **different reason** — the happy-path "2" comes from `critic` (1) + the review bench's base role (1), while this run's actual 2 dispatches are **both from `critic`** (round 1 `revise`, round 2 `ok` — the `record_critic_cause`→`specify` back-edge in `inventory.md` §2, consumed once this session per `retry-history.json`'s round-1 entry, `cause: "plan-citations-and-methodology-not-yet-measure-dont-recall-clean"`). The review bench has not run yet in this prefix. A coincidental numeric match is not the same claim as a structural one — recorded here explicitly rather than smoothed into "observed matches happy-path."
 - `aidakit:plan` (a skill, not in this agent table — see §3) shows the clearest observed/happy-path gap: happy-path predicts 1 dispatch of the `specify`/`plan` step in a clean traversal; this run observed **2** (`.telemetry.jsonl` has two `aidakit:plan` rows), directly because of the same `critic`-revise back-edge above. The gap is the back-edge, named, not smoothed.
