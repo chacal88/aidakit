@@ -124,6 +124,7 @@ Pure Node, zero dependencies — the "leash" the model cannot argue with. Every 
 | **derive-roadmap-status** | Derives each roadmap item's status from disk (features/ vs archive/ vs PR). | `validators/derive-roadmap-status.js` |
 | **check-dna-freshness** | Flags a crystallized test/rule as stale when its origin ADR is superseded. | `validators/check-dna-freshness.js` |
 | **check-plugin-version** | Release leash: fails when a `<!-- aidakit vX.Y -->` footer declares more than `plugin.json`, which is the only number `claude plugin update` reads. | `validators/check-plugin-version.js` |
+| **check-runtime-bump** | Range leash (ADR-016): fails a PR that changes runtime (`hooks/` or `governance/`, minus `__tests__` and `*.md`) without raising `plugin.json` in the same range. Run on every PR by CI. | `validators/check-runtime-bump.js` |
 | **ledgers + DNA** | Token/error ledgers; `deriveCandidates` spots an error recurring ≥3× and `writeDna` crystallizes the lesson into a regression test/rule. | `governance/ledgers/` · `dna/` |
 
 ---

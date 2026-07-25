@@ -1,0 +1,32 @@
+# pr-checks — the kit's two release leashes, run on every PR to main (ADR-016).
+#
+# check-runtime-bump: runtime changed in this PR's range (hooks/ or governance/,
+#   minus __tests__ and *.md) ⇒ .claude-plugin/plugin.json must have risen in the
+#   same range — otherwise `claude plugin update` no-ops and installed sessions
+#   keep running the old hooks/governance (the 2026-07-25 incident, PR #59).
+# check-plugin-version: the manifest may never sit behind the highest doctrine
+#   footer in the tree (PROCESS.md §5).
+#
+# Registered as the repository's FIRST CI dependency in ADR-016 (GOVERNANCE.md §4).
+name: pr-checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-leashes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # check-runtime-bump diffs against the merge-base of the PR base —
+          # a shallow clone has no history to compute it from.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: check-runtime-bump — runtime change ⇒ plugin.json bump in the same range
+        run: node governance/validators/check-runtime-bump.js . --base "origin/${GITHUB_BASE_REF}"
+      - name: check-plugin-version — manifest covers every doctrine footer
+        run: node governance/validators/check-plugin-version.js .

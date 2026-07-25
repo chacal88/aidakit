@@ -296,7 +296,19 @@ So the release step is:
 
 The rule is one-directional: the manifest may be **ahead** of the footers (not every file changes in a release), never **behind**.
 
-> **Why this validator is not a step in `fast.yaml`/`full.yaml`:** those flows run inside *target* repos, which have no `.claude-plugin/plugin.json` — the validator would exit 2 (usage) on every change. It is a release-time check for this repository, not a per-change gate.
+The footer leash guards one edge; the other fired on 2026-07-25: commits changing **runtime code** (`hooks/pre-bash.js`, `governance/engine/*`) landed without any footer moving, the manifest sat still, and installed sessions kept running a stale plugin cache against a newer main. Since then both edges are enforced **per PR** by the repository's first CI workflow (`.github/workflows/pr-checks.yml`, [ADR-016](docs/decisions/ADR-016-runtime-change-requires-plugin-bump.md)):
+
+- `check-runtime-bump` — fails a PR whose range changes runtime (files under `hooks/` or `governance/`, minus `__tests__/` and `*.md`) without raising the manifest version in that same range. The base ref is the trusted one (same resolution as ADR-008's merge carve-out).
+- `check-plugin-version` — the footer rule above.
+
+The range leash also runs locally, against the working tree, so it catches the miss before the commit:
+
+```
+node governance/validators/check-runtime-bump.js .
+```
+
+> **Why these validators are not steps in `fast.yaml`/`full.yaml`:** those flows run inside *target* repos, which have no `.claude-plugin/plugin.json` — both validators exit 2 (usage) there by design, and a target repo's own `hooks/` directory must never trip a kit-release leash. They are per-PR checks for this repository, not per-change gates.
 
 <!-- aidakit v0.3 — reorg 11 agentes + 8 comandos; skills brainstorm/implement/review finas; renome roteiro→design, flow→build, next absorvido pelo build, 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 release: manifest-vs-footer numbering + check-plugin-version leash, 2026-07-23 -->
+<!-- aidakit v0.9 — §5: check-runtime-bump range leash + first CI workflow (ADR-016), 2026-07-25 -->
