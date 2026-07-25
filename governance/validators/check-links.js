@@ -12,6 +12,11 @@
 // query (?...) are stripped before resolving the path. A link to a directory resolves
 // if the directory exists. It does NOT follow the external link (that's network — out of scope).
 //
+// Code is not an address: a link inside a fenced block (```) or an inline code span
+// (`[ADR-NNN](path)`) is ILLUSTRATING a format, not pointing at a file, so it is skipped.
+// Without that, a doc that documents the link format it emits could never pass — and a
+// validator that always fails is a validator nobody reads.
+//
 // The directory walk skips node_modules, .git*, .claude/ (nested worktree checkouts are
 // other branches' files, same skip as check-plugin-version.js) and docs/archive/ (WORM
 // jurisprudence — an archived doc's links reflect the tree at archive time, not today's).
@@ -98,16 +103,55 @@ function resolveArchived(target) {
   return existsSync(candidate) ? candidate : null;
 }
 
-/** Extracts internal links from a file, ignoring fenced code blocks (```). */
+/**
+ * Blanks out inline code spans so a link SHAPE illustrated in code is not read as a
+ * navigable link — `[ADR-NNN](path)` in prose documents the format a tool emits, it is
+ * not an address to resolve. Same jurisprudence as the fenced-block skip below, one
+ * granularity down.
+ *
+ * Follows CommonMark's code-span rule: a run of N backticks opens a span, closed by the
+ * next run of EXACTLY N backticks. A run with no matching closer is literal text, so the
+ * link after a stray backtick still gets checked — the fail-open side (it may report a
+ * placeholder, it never silently skips a real link). Scoped to the line, like the fence
+ * toggle: a code span wrapping lines stays literal, which errs the same safe way.
+ *
+ * Spans are replaced by spaces, not removed, so the surrounding text cannot be spliced
+ * into a link that was never written, and a real link whose TEXT is a code span
+ * (`[`foo.js`](path.md)` → `[       ](path.md)`) still resolves.
+ */
+function stripInlineCode(line) {
+  let out = "";
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] !== "`") { out += line[i++]; continue; }
+    let n = 0;
+    while (line[i + n] === "`") n++;
+    let close = -1;
+    for (let j = i + n; j < line.length; ) {
+      if (line[j] !== "`") { j++; continue; }
+      let m = 0;
+      while (line[j + m] === "`") m++;
+      if (m === n) { close = j; break; }
+      j += m;
+    }
+    if (close === -1) { out += "`".repeat(n); i += n; continue; } // unclosed run → literal
+    out += " ".repeat(close + n - i);
+    i = close + n;
+  }
+  return out;
+}
+
+/** Extracts internal links from a file, ignoring fenced code blocks (```) and inline code spans. */
 function internalLinks(file) {
   const content = readFileSync(file, "utf8");
   if (isExempt(content)) return [];
   const lines = content.split(/\r?\n/);
   const links = [];
   let fenced = false;
-  lines.forEach((line, i) => {
-    if (line.trim().startsWith("```")) { fenced = !fenced; return; }
+  lines.forEach((raw, i) => {
+    if (raw.trim().startsWith("```")) { fenced = !fenced; return; }
     if (fenced) return;
+    const line = stripInlineCode(raw);
     let m;
     LINK_RE.lastIndex = 0;
     while ((m = LINK_RE.exec(line)) !== null) {
