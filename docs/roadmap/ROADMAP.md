@@ -7,7 +7,6 @@
 ### Endurecimento da disciplina do próprio kit — **in-progress**
 
 - Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → in-progress
-- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → in-progress
 
 ## Next (planned)
 
@@ -60,6 +59,7 @@ _(nada planejado)_
 
 ### Endurecimento da disciplina do próprio kit
 
+- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → done (2026-07-25)
 - Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → done (2026-07-25)
 - Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → done (2026-07-25)
 - Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → done (2026-07-25)
