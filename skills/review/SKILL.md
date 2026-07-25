@@ -59,7 +59,7 @@ Invocation forms:
 
 5. **Summon the adversarial bench by a role×flag matrix — each role is a concrete isolated-context AGENT.** The matrix dispatches the real agents: the two base ones from step 4 run **always**; the rest come in by the classification's flag ([aidakit:identify-domain](../identify-domain/SKILL.md)). Do not summon anyone who doesn't add value (each subagent costs ~15× a chat turn; a superfluous summon is waste — GOVERNANCE.md and the aida cost doctrine).
 
-   **Before dispatching anyone, write the bench manifest** (`recordBenchManifest` in [governance/ledgers/ledger.js](../../governance/ledgers/ledger.js)) — the full list of roles this round is committing to, appended to `.aidakit/tasks/<change-id>/bench.ndjson` as `{ bench: "review", round: N, role: "__manifest__", roles: [...] }`. This is what [check-bench.js](../../governance/validators/check-bench.js) (the PARALLELISM LEASH, wired into the flows right after this step) treats as the source of truth for who was expected — it must be the round's **earliest** record, precisely so the manifest can't be shrunk after seeing which role failed. Write it, THEN dispatch.
+   **Before dispatching anyone, write the bench manifest** (`recordBenchManifest` in [governance/ledgers/ledger.js](../../governance/ledgers/ledger.js)) — the full list of roles this round is committing to, appended to `.aidakit/tasks/<change-id>/bench.ndjson` as `{ bench: "review", round: N, role: "__manifest__", roles: [...] }`. This is what [check-bench.js](../../governance/validators/check-bench.js) (the PARALLELISM LEASH, wired into the flows right after this step) treats as the source of truth for who was expected — it must be the round's **earliest** record, precisely so the manifest can't be shrunk after seeing which role failed. Write it, THEN dispatch — copy-paste shape at the end of this step.
 
    Each role gets the `{diff}` (or the change-id) and returns ONE structured verdict — the judgment lives in the isolated agent, not here:
 
@@ -74,6 +74,54 @@ Invocation forms:
    | performance | — (no dedicated agent; the role is covered by the perf gate of `aidakit:reviewer-quality`, phase 2) | flag `ui`, type `migration`, or a "I optimized" claim | reinforce the perf focus in the `aidakit:reviewer-quality` prompt (N+1, pagination, `COUNT(*)` on a hot path); if and when a performance agent exists, plug it in here |
 
    **All summoned agents run in parallel, in a single message** — one `Agent` tool call per role in the SAME turn, never sequential. That is what keeps each judgment independent and out of the main context (per-role context isolation), and it's what the leash mechanically checks (see step 7): record each role's real `dispatched_at` (when you fired the `Agent` call) and `returned_at` (when it returned), not the ledger-write time — a sequential dispatch dressed up as a bench shows up as non-overlapping windows and the gate rejects it. The project can declare the matrix in `aidakit.config.yaml` (mapping `flag → agents`); without it, use the table above. Suggested prompts per agent: those from step 4 for the two base ones; for the rest, pass the target (`<change-id>` or "the current diff, via `git diff`/`git diff --cached`"), the change package (proposal/tasks/DoD when it exists), and the instruction to emit ONE verdict in the agent's own output format.
+
+   **Copy-paste dispatch shape.** The mechanical source of truth is [ledger.js](../../governance/ledgers/ledger.js) (what gets written) and [check-bench.js](../../governance/validators/check-bench.js) (what gets checked); this is the minimal sequence that satisfies both.
+
+   1. **Write the manifest first** — before any `Agent` call:
+
+   ```bash
+   : "${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}"
+   node --input-type=module -e "
+   import { recordBenchManifest } from '$AIDAKIT_GOVERNANCE/ledgers/ledger.js';
+   recordBenchManifest(<CHANGE-ID STRING — quoted, e.g. 'review-usage-bench-manifest'>, { bench: 'review', round: <N — 1, or bumped for a re-summon>,
+     roles: [<EXACTLY the roles the matrix above selected for THIS change>] });
+   "
+   ```
+
+   **Every `<…>` above is deliberately unquoted, so an unsubstituted paste dies with a `SyntaxError` instead of running.** It closes exactly one failure mode — the verbatim paste — and that is worth having, because a template that runs unedited is the one a hurried caller actually ships. It does not make the block safe against a caller who edits it wrongly; see the invariants below for what the machine does and does not catch.
+
+   The `roles[]` array is the one field you must **derive**, not copy. With every flag on it is the full six (`'adr-reviewer','spec-reviewer','reviewer-quality','reviewer-security','reviewer-architecture','tester'`); for a change with no flags and no code diff it may be just the two base roles. Manifesting a role you then don't dispatch trips `role-missing`. Under-sizing the manifest is the direction that hides: the presence check only asks whether every *expected* role reported, so a role you never listed is never missed. It is not a free pass — with no verdicts at all the mechanical consensus is `fail`, so reporting `consensus` over an empty manifest still trips `consensus-mismatch` — but the presence check alone will not catch you.
+
+   2. **Then dispatch** — one `Agent` call per manifested role, all in the SAME message. Note the wall-clock time you fire them and the time each returns; those are the `dispatched_at`/`returned_at` below.
+
+   3. **Record each verdict as it returns** (one call per role, or one batched script):
+
+   ```bash
+   : "${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}"
+   node --input-type=module -e "
+   import { recordBench } from '$AIDAKIT_GOVERNANCE/ledgers/ledger.js';
+   recordBench(<CHANGE-ID STRING — quoted>, { bench: 'review', round: <N — same round as the manifest>, role: 'adr-reviewer',
+     agent: 'aidakit:adr-reviewer',
+     verdict_raw: <the role's OWN verdict line, quoted — e.g. 'Status: APPROVED'>,
+     verdict: <'pass' or 'fail', normalized per step 7>,
+     dispatched_at: <ISO STRING — when you fired the Agent call for this role>,
+     returned_at:   <ISO STRING — when it returned> });
+   "
+   ```
+
+   **The parallelism check is opt-out by omission — know this before you edit the block.** `dispatched_at`/`returned_at` must be real, parseable ISO strings. A value the machine cannot parse, *or a field you simply delete*, is not rejected — it is **skipped**: the overlap check drops any record it cannot read a window from, and with fewer than two usable windows left it reports "not checked" and **passes**. So a sequential bench whose timestamps were dropped rather than filled clears the genuine-parallelism gate without ever proving parallelism. Unquoting the placeholders stops the unedited paste; it does **not** stop this. Nothing at the doc layer can — closing it means teaching `check-bench.js` to treat a role record missing either timestamp as an error, which is registered as part of `review-bench-manifest-mechanical-writer`. Until then: filling these two fields honestly is on you, not on the machine.
+
+   (For a single-role round the check is vacuous by construction — there is no second window to overlap with — and the gate still prints "dispatch genuinely parallel". Read that as "nothing contradicted it", not as proof.)
+
+   Both snippets guard `$AIDAKIT_GOVERNANCE` with the fail-closed idiom locked by [ADR-012](../../docs/decisions/ADR-012-aidakit-governance-session-wide.md) — without it a missing `SessionStart` hook expands the variable to empty and the caller gets `ERR_MODULE_NOT_FOUND: /ledgers/ledger.js`, a diagnostic naming neither the hook nor the variable.
+
+   **The three invariants callers trip most.** `check-bench.js` enforces seven rules in all — `manifest-missing`, `manifest-duplicate`, `manifest-not-first`, `role-missing`, `role-duplicate`, `consensus-mismatch`, `not-parallel`; its error messages are self-explaining. These three are the ones a hand-written round actually gets wrong:
+
+   - **Role strings match byte-for-byte** between the manifest's `roles[]` and each `recordBench` `role` — the convention is the `subagent_type` minus the `aidakit:` prefix. A rename between the two lists surfaces as `role-missing`, indistinguishable from a role that never ran.
+   - **Every `dispatched_at` is later than the manifest write.** The manifest must be the round's earliest record; a backfilled or rounded-down timestamp trips `manifest-not-first` even when all roles reported and the consensus was right.
+   - **Exactly one manifest per round.** You cannot top one up after seeing a verdict — a second `__manifest__` in the same round is `manifest-duplicate`. Re-summoning only the failed roles (step 8) is a **new round**: `round: 2`, a fresh manifest listing only those roles, written before that round's dispatch.
+
+   **If you skip the manifest:** `check-bench.js` exits 1 with `manifest-missing`, `check_review_bench` back-edges to the review step — `review_bench` in [full.yaml](../../governance/flows/full.yaml), `review` in [fast.yaml](../../governance/flows/fast.yaml) — and the **whole bench re-runs**: every role re-dispatched, one full extra round of subagent cost, for a record that takes one line.
 
 6. **Adversarial posture — refute, don't confirm.** Each agent hunts for the solution's flaws in its specialty, it does not approve it (the posture belongs to the agent itself; the skill only requires and collects it). Push-back on a finding is only valid **with technical evidence** (real code/test/output that disproves it). A generic approval ("LGTM", "looks good") is an **invalid** verdict and goes back for re-emission. The quality and architecture agents name at least one good point (praise) — this avoids the hunt-only bias.
 
@@ -126,3 +174,4 @@ Invocation forms:
 - `/aidakit:flow-build` — the execution flow decides the next step after a verdict (the `aidakit:orchestrator` at the 1st step, logic previously exposed as `aidakit:orchestrator` (1st step of `/aidakit:flow-build`)).
 
 <!-- aidakit v0.3 — the summon matrix dispatches the bench of concrete agents (adr/spec/quality/security/architecture/tester) in parallel; mx base + adversarial bench (codeflow/psim) 2026-07-17 — translated to EN -->
+<!-- aidakit v0.9 — review-usage-bench-manifest: copy-paste manifest → dispatch → recordBench shape in step 5, 2026-07-25 -->

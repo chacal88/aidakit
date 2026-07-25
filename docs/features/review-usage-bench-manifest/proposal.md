@@ -45,7 +45,7 @@ No `docs/specs/` exists in this repo, so **no spec delta** — same precedent as
 |---|---|
 | `commands/` | `review.md` only — 1 line added to `## Usage` + 1 doctrine footer. No other command touched. |
 | `skills/` | `review/SKILL.md` only — step 5 gains the copy-paste block (+ a forward pointer in the existing line-62 paragraph) + 1 doctrine footer. `skills/implement/SKILL.md` explicitly untouched (non-goal). |
-| `docs/roadmap/` | `epics/EPIC-kit-discipline-hardening.md` gains one `- **Feature:**` line + acceptance sub-bullet for `review-bench-manifest-mechanical-writer`; `ROADMAP.md` **regenerated**, never hand-edited ([ADR-002](../../decisions/ADR-002-roadmap-status-derived-from-disk.md), [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md)). `docs/roadmap/README.md` needs no row — the epic is already listed. |
+| `docs/roadmap/` | `epics/EPIC-kit-discipline-hardening.md` gains one `- **Feature:**` line + acceptance sub-bullet for `review-bench-manifest-mechanical-writer`; `ROADMAP.md` **hand-assembled from the tree's own committed file + one inserted line, then verified derivable** (0 orphans / 0 missing vs `derive-roadmap-status.js`, against the tree it ships in) — not "regenerated", because `derive-roadmap-status.js` only reports and does not write the file ([ADR-002](../../decisions/ADR-002-roadmap-status-derived-from-disk.md), [ADR-007](../../decisions/ADR-007-roadmap-status-from-shared-git.md)). `docs/roadmap/README.md` needs no row — the epic is already listed. |
 | `docs/features/` | this change package (proposal/design/tasks/evidence). |
 | `.claude-plugin/plugin.json` | `version` bumped strictly above the manifest on `main` at implementation start (`0.9.0` at plan time). |
 | `governance/` | **none.** No validator, no flow step, no test, no ledger change — the load-bearing non-goal. |
@@ -70,7 +70,7 @@ Minted at the brainstorm gate; ids are the correlation key consumed by [governan
 
 Validator commands and mechanical gates; outputs recorded in [evidence.md](evidence.md).
 
-- `node governance/validators/check-links.js .` → exit 0 (no new broken link; the pre-implementation baseline captured in Task 1 is authoritative — only NEW breaks fail this change).
+- `node governance/validators/check-links.js .` → **exit 0**, flatly. This bullet originally carried a "no NEW break vs. the Task 1 baseline" hedge, because the baseline was exit 1 with 13 pre-existing broken links pointing at archived feature dirs. That hedge is now obsolete: rebasing onto `origin/main` pulled [ADR-014](../../decisions/ADR-014-archive-aware-link-resolution.md) (archive-aware link resolution, PR #46), which resolves all 13. The baseline is zero, so the criterion is the strict one again.
 - `node governance/validators/check-plugin-version.js .` → exit 0 with the bumped manifest (`main` was `0.9.0` at plan time — **re-read, do not assume**).
 - `node governance/validators/derive-roadmap-status.js --root .` → exit 0; `review-usage-bench-manifest` derives `in-progress`, `review-bench-manifest-mechanical-writer` derives `backlog`.
 - The example in step 5 is **executed verbatim** against a throwaway change-id under an `AIDAKIT_PROJECT_ROOT` scratch dir, and `check-bench.js … --bench review --outcome consensus` on the resulting ndjson → **exit 0**. A copy-paste example that does not run is a regression, not a doc.
