@@ -4,7 +4,12 @@
 
 ## Now (in-progress / in-review)
 
-_(nada em andamento)_
+### Endurecimento da disciplina do próprio kit — **in-progress**
+
+- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → in-progress
+- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → in-progress
+- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → in-progress
+- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → in-progress
 
 ## Next (planned)
 
@@ -22,11 +27,9 @@ _(nada planejado)_
 
 ### Endurecimento da disciplina do próprio kit — **backlog**
 
-- Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → backlog
-- Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → backlog
-- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → backlog
-- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → backlog
+- Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → backlog
 - Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → backlog
+- `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → backlog
 
 ## Done
 
