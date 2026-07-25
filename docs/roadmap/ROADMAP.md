@@ -8,8 +8,6 @@
 
 - Usage do `aidakit:review` mostra o requisito do bench manifest — `review-usage-bench-manifest` → in-progress
 - Gate do plano verifica claims sobre internals dos executors — `plan-gate-executor-internals-check` → in-progress
-- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → in-progress
-- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → in-progress
 
 ## Next (planned)
 
@@ -29,9 +27,6 @@ _(nada planejado)_
 
 - `aidakit:review` grava o bench manifest mecanicamente — `review-bench-manifest-mechanical-writer` → backlog
 - Validador mecânico de anchors das citações do plano — `design-claims-anchor-validator` → backlog
-- Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → backlog
-- Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → backlog
-- `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → backlog
 
 ## Done
 
@@ -62,3 +57,11 @@ _(nada planejado)_
 - Caminho de validador para invocações diretas de agente/skill/command — `agent-validator-paths` → done (2026-07-24)
 - Status derivado do git compartilhado (single-valued entre worktrees) — `roadmap-status-from-shared-git` → done (2026-07-24)
 - Commit precoce do plano no `full` flow (fecha a janela do ADR-007) — `flow-commit-plan-early` → done (2026-07-24)
+
+### Endurecimento da disciplina do próprio kit
+
+- Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → done (2026-07-25)
+- Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → done (2026-07-25)
+- Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → done (2026-07-25)
+- Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → done (2026-07-25)
+- `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → done (2026-07-25)
