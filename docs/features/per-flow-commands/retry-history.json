@@ -3,5 +3,10 @@
     "round": 1,
     "step_id": "specify",
     "cause": "flow-build-refs-in-design-yaml-unmigrated"
+  },
+  {
+    "round": 2,
+    "step_id": "specify",
+    "cause": "finding-1-stale-duplicate-claims"
   }
 ]

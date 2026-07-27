@@ -7,7 +7,7 @@
 **PRD:** `n/a`
 **Tech Spec:** `n/a`
 
-> Scope is the `/aidakit:*` **command surface** (`commands/*.md`) plus a new **generator** that produces it, shipped as runtime under `governance/`. The engine (`governance/engine/*`) and every flow's `steps:` graph are untouched; the only flow-YAML edit is a one-line opt-out marker on [`docs-onboarding.yaml`](../../../governance/flows/docs-onboarding.yaml). This change extends [ADR-005](../../decisions/ADR-005-command-namespacing.md) on two points, recorded in the new WORM **[ADR-017](#10-adr-017--the-recorded-contract-change-required-deliverable)** (§10). Precedence: if this file diverges from ADR-005/ADR-017, the ADR wins and this file is corrected.
+> Scope is the `/aidakit:*` **command surface** (`commands/*.md`) plus a new **generator** that produces it, shipped as runtime under `governance/`. The engine (`governance/engine/*`) and every flow's `steps:` graph are untouched; the only *structural* flow-YAML edit is a one-line opt-out marker on [`docs-onboarding.yaml`](../../../governance/flows/docs-onboarding.yaml) — [`design.yaml`](../../../governance/flows/design.yaml) additionally gets a prose-only 3-field cross-reference edit (§9), which changes no step behavior. This change extends [ADR-005](../../decisions/ADR-005-command-namespacing.md) on two points, recorded in the new WORM **[ADR-017](#10-adr-017--the-recorded-contract-change-required-deliverable)** (§10). Precedence: if this file diverges from ADR-005/ADR-017, the ADR wins and this file is corrected.
 
 ## 1. Shape of the change
 
