@@ -1,0 +1,214 @@
+# Design — per-flow-commands
+
+**Change ID:** `per-flow-commands`
+**Date:** `2026-07-27`
+**Owner:** `@chacal88`
+**Phase / Package:** `n/a (command-surface + generator; classification: domain=process, type=feature, flags=[architecture, contract], confirmed)`
+**PRD:** `n/a`
+**Tech Spec:** `n/a`
+
+> Scope is the `/aidakit:*` **command surface** (`commands/*.md`) plus a new **generator** that produces it, shipped as runtime under `governance/`. The engine (`governance/engine/*`) and every flow's `steps:` graph are untouched; the only flow-YAML edit is a one-line opt-out marker on [`docs-onboarding.yaml`](../../../governance/flows/docs-onboarding.yaml). This change extends [ADR-005](../../decisions/ADR-005-command-namespacing.md) on two points, recorded in the new WORM **[ADR-017](#10-adr-017--the-recorded-contract-change-required-deliverable)** (§10). Precedence: if this file diverges from ADR-005/ADR-017, the ADR wins and this file is corrected.
+
+## 1. Shape of the change
+
+| Before | After |
+|---|---|
+| `commands/flow-build.md` — drives `fast` *and* `full` (`start fast …` / `start full …`), carries `register` | **removed** |
+| `commands/flow-design.md` — hand-authored | **generated** from `governance/flows/design.yaml` |
+| — | `commands/flow-fast.md` — generated from `fast.yaml`, carries `register` |
+| — | `commands/flow-full.md` — generated from `full.yaml` |
+| — | `commands/flow-sync.md` — hand-authored single-shot utility (drives the generator in consumer mode) |
+| — | `governance/commands/render-flow-command.js` — the ONE template (pure) |
+| — | `governance/commands/generate-flow-commands.js` — the generator + thin CLI (IO, modes, sentinel/collision) |
+| — | `governance/__tests__/flow-command-generation.test.mjs` — the byte-drift + behavior test |
+| — | `docs/decisions/ADR-017-flow-command-generation.md` + README index row |
+
+The three generated built-ins (`flow-fast`, `flow-full`, `flow-design`) are the committed output of running the generator in **kit-dev mode** over `governance/flows/*.yaml`. `flow-sync` is *not* generated (it does not wrap a flow — it *is* the generator's consumer front, so it is authored by hand and classified as a single-shot utility per ADR-005's mechanical rule).
+
+## 2. Generator: module layout (pure template vs IO orchestration)
+
+Two runtime modules under `governance/commands/`, split so the template is trivially unit-testable and reused by the drift test without touching the filesystem:
+
+- **`governance/commands/render-flow-command.js`** — pure, no IO. Exports `renderFlowCommand(meta) → string`, where `meta = { flowName, description, inputs, positionalKey, hasRegister, sentinelSource, footerVersion }`. This is **the ONE template** (§3). Given the same `meta`, it returns byte-identical output — the property the drift test rests on.
+- **`governance/commands/generate-flow-commands.js`** — the generator: resolves the source/target pair from `--mode` (§4), loads each flow YAML, derives `meta`, calls `renderFlowCommand`, and performs the sentinel/collision/idempotency write algorithm (§7). Thin CLI at the bottom guarded by `if (import.meta.url === pathToFileURL(process.argv[1]).href)`, same shape as the validators in `governance/validators/`. Contract mirrors the validators: exit 0 (all flows written/unchanged), exit 1 (one or more refusals — collision or sentinel-less target), exit 2 (usage/IO error); JSON summary on stdout, human report on stderr.
+
+**Reuse, don't re-parse (ADR-016 "cut, don't copy" discipline).** The generator loads each flow through the engine's existing [`parseFlowFile`](../../../governance/engine/parser.js) (which itself uses [`yaml-min.js`](../../../governance/engine/yaml-min.js)) rather than growing a second YAML reader. `parseFlowFile` validates flow shape *and* enforces `flow.flow === basename` — the identity the collision check keys on — and returns the whole parsed object, so `flow.flow`, `flow.description`, and `flow.inputs` are read straight off it. A malformed consumer flow is therefore refused with the engine's own error, not silently mis-rendered. (`validateFlowShape` does not police `inputs:`, so the generator reads `flow.inputs` defensively — see §5.)
+
+## 3. The ONE template (`renderFlowCommand`) — ADR-005 conventions preserved
+
+Every generated `flow-<name>.md` has this fixed structure. The literal wrapper prose is lifted from today's [`flow-build.md`](../../../commands/flow-build.md)/[`flow-design.md`](../../../commands/flow-design.md) so no behavior is lost; only the flow-specific tokens are interpolated from `meta`. Each of the following is a template invariant the drift test and the `adr005-conventions-preserved` criterion assert:
+
+1. **Sentinel header (line 1)** — `<!-- aidakit:generated flow=<flowName> template=<footerVersion> source=<sentinelSource> -->`. Machine-detectable; the write algorithm (§7) keys on the literal prefix `<!-- aidakit:generated `.
+2. **`description:` frontmatter carrying the classification word** — `Flow orchestrator — drives the <flowName> flow via the aidakit engine …` (ADR-005: the classification survives even where the prefix is not visible). Sourced from the flow's own `description:` first line, prefixed with the classification.
+3. **The `$ARGUMENTS` guard + `## Usage` block** — printed verbatim on empty/malformed input, with **at least one copy-paste example** (`/aidakit:flow-<name> <realistic request>` and one lifecycle example). Reserved verbs listed: `resume`, `status`, `abort`, `list` (+ `register` iff `hasRegister`).
+4. **Implicit-start dispatch contract** — the body instructs: *if `$ARGUMENTS` begins with a lifecycle verb (`resume`/`status`/`abort`/`list`[/`register`]) treat it as that verb; otherwise treat the whole `$ARGUMENTS` as the start payload* and run `start <flowName> <positionalKey>="$ARGUMENTS"`. This is what makes start the **implicit/default verb** (`per-flow-start-shortcut`) while keeping the full lifecycle (`full-lifecycle-self-contained`).
+5. **Fail-closed `AIDAKIT_GOVERNANCE` guard chained ahead of every `cli.js` call** — `: "${AIDAKIT_GOVERNANCE?agent-validator-paths: AIDAKIT_GOVERNANCE not set — SessionStart hook missing (see docs/guides/flows.md §6)}"; node "$AIDAKIT_GOVERNANCE/cli.js" …` on every bullet, per the round-2 agent-validator-paths doctrine already in the built-ins ([ADR-012](../../decisions/ADR-012-aidakit-governance-session-wide.md)).
+6. **Trailing doctrine footer** — `<!-- aidakit v<footerVersion> — flow-<name>: generated per-flow command … -->` (the versioned-surface footer `check-plugin-version.js` scans; §11).
+
+The template is a single function producing deterministic text — no per-flow special-casing lives in `generate-flow-commands.js`; the only two flow-shaped switches are `positionalKey` (§5) and `hasRegister` (§6), both *derived from the YAML*, never hardcoded to a flow name.
+
+## 4. The two source/target modes
+
+One template, two `--mode` values (explicit flag; fail-closed default is `consumer`, the installed-user case):
+
+| Mode | Source | Target | Reserved-collision set | Emits built-ins? |
+|---|---|---|---|---|
+| `kit` | `governance/flows/*.yaml` | `commands/flow-<name>.md` (committed) | — (it *is* the built-in producer) | yes, minus opt-outs (§8) |
+| `consumer` | `<root>/.aidakit/flows/*.yaml` | `<root>/.claude/commands/flow-<name>.md` | `{fast, full, design}` | **never** — those ship with the plugin |
+
+- **`kit` mode** produces the committed surface and is what the drift test re-runs. It emits a command for every source flow that does *not* carry the opt-out marker (§8) → exactly `{fast, full, design}`.
+- **`consumer` mode** is what `/aidakit:flow-sync` invokes. It writes to `.claude/commands/` (project-local, git-ignorable), never re-emits the plugin built-ins, and refuses a project flow whose `flow.flow` ∈ `{fast, full, design}` (§7) so a consumer cannot shadow a shipped command.
+- `<root>` is resolved the same way the engine resolves it ([`governance/engine/project-root.js`](../../../governance/engine/project-root.js) / `AIDAKIT_PROJECT_ROOT`), reused not re-implemented.
+
+## 5. Input-key derivation from `inputs:` (`input-key-derived-from-yaml`)
+
+Each flow declares a top-level `inputs:` list of `{ name, type, required, default, values, description }`. The positional key the bare `$ARGUMENTS` maps to is:
+
+```
+positionalKey = (flow.inputs ?? []).find(i => i.required === true)?.name
+```
+
+- `fast.yaml`/`full.yaml` → first required input is `request` → `start <flow> request="$ARGUMENTS"`.
+- `design.yaml` → first required input is `project` → `start design project="$ARGUMENTS"`.
+
+Edge cases the generator handles fail-closed (they don't occur in the three built-ins but a consumer flow can hit them):
+
+- **No required input** → `positionalKey` is undefined; the template emits a start form with no positional payload (`start <flow>`) and the Usage block states the flow takes no free-form request. Not a refusal — a legal flow.
+- **Multiple required inputs** → the **first** required input becomes the positional key; the Usage block documents the remaining required inputs as explicit `key=value` tokens. (A generator that guessed how to split one free-form string across several keys would be inventing data — rejected.)
+
+The key is **always** read from the YAML; there is no lookup table mapping `fast → request`. This is the `input-key-derived-from-yaml` invariant.
+
+## 6. Where `register` lands (data-driven, not hardcoded to "fast")
+
+`register` is fast's `mode=register` ([`fast.yaml`](../../../governance/flows/fast.yaml): `inputs.mode` is an `enum` with `values: [build, register]`). The template emits the `register` verb block **iff** the flow declares an input whose `values` list contains `register`:
+
+```
+hasRegister = (flow.inputs ?? []).some(i => Array.isArray(i.values) && i.values.includes("register"))
+```
+
+- `fast.yaml` → `hasRegister = true` → the `register "<free-form request>"` block (the four-step defer-a-debit prose + the parked-flow resume/discard lines) is emitted **verbatim from today's `flow-build.md`**, dispatching `start fast request=<change-id> mode=register`.
+- `full.yaml`, `design.yaml`, and any generated project flow without such an input → `hasRegister = false` → no register block.
+
+This keeps `register` on `flow-fast` only, driven by the YAML's own declaration rather than a `flowName === "fast"` special case — so a consumer flow that legitimately declares a `register` mode gets the verb too, and the built-ins that don't, don't.
+
+## 7. Sentinel + collision + idempotency algorithm
+
+For each source flow, the generator runs this per-file algorithm (fail-closed; a refusal on one flow does not abort the others, but any refusal makes the overall exit non-zero and is reported):
+
+```
+loadResult = parseFlowFile(sourcePath)
+if loadResult.errors:                          → REFUSE(flow, "invalid flow YAML: <errors>")   # engine's own validation
+name = loadResult.flow.flow
+if mode == consumer and name ∈ {fast,full,design}:
+                                               → REFUSE(name, "collides with a shipped built-in command; rename the project flow")
+if flow carries opt-out marker (§8):           → SKIP(name, "emit_flow_command:false")          # kit mode only, not a refusal
+target = <targetDir>/flow-<name>.md
+rendered = renderFlowCommand(metaFrom(loadResult.flow))
+if exists(target):
+    firstLine = readFirstLine(target)
+    if not firstLine.startsWith("<!-- aidakit:generated "):
+                                               → REFUSE(target, "hand-authored (no sentinel) — left untouched")
+    if readFile(target) == rendered:           → REPORT(name, "unchanged")                      # idempotent no-op
+    else:                                       write(target, rendered); REPORT(name, "updated")
+else:                                           write(target, rendered); REPORT(name, "created")
+```
+
+- **Sentinel** — line 1 literal `<!-- aidakit:generated flow=<name> … -->`. Presence of the prefix authorizes overwrite; absence protects a hand-authored `flow-*.md` (`generator-fail-closed-collision`).
+- **Collision** — in consumer mode a project flow named `fast`/`full`/`design` is refused with a reason (it would otherwise shadow a built-in the plugin ships). Kit mode has no collision set (it is the built-in producer).
+- **Idempotency** (`generator-consumer-sync-command`) — `renderFlowCommand` is a pure function of the flow metadata + template version, so a no-change re-run renders byte-identical text; the algorithm compares bytes and reports `unchanged` (no write, no mtime/git churn). Byte-for-byte reproducibility is exactly what the drift test asserts against the committed built-ins.
+
+## 8. `docs-onboarding` resolution — the AMBIGUOUS assumption (default (b))
+
+The brainstorm's `docs-onboarding-scope` assumption is `AMBIGUOUS`: `governance/flows/` holds **four** YAMLs, but `docs-onboarding` is served today by the `aidakit:docs` single-shot utility skill invoked directly — **not** through the engine ([ADR-005](../../decisions/ADR-005-command-namespacing.md) §Decision classifies `docs` a utility precisely because `commands/docs.md` invokes the skill rather than driving `docs-onboarding.yaml` via `cli.js`). Option (a) would emit a `flow-docs-onboarding` command, opening a **second, engine-driven door** alongside the `docs` utility. Option (b) excludes it via a per-flow opt-out marker so `aidakit:docs` stays the single door and this change's blast radius is the three build/design flows.
+
+**Resolved: (b).** What settled it — the owner's locked decision at the brainstorm gate (recorded in `.aidakit/tasks/per-flow-commands/brainstorm.json`, assumption `docs-onboarding-scope`, "default (b)") **plus** the ADR-005 consistency argument: ADR-005 already made `docs` the single onboarding door as a utility; auto-emitting `flow-docs-onboarding` would create a competing entry point the owner has not sanctioned and would contradict the "single door" intent. Emitting it is therefore an opt-in the owner must make deliberately, not a generator default.
+
+**Mechanism — the opt-out marker.** Add a top-level field to `governance/flows/docs-onboarding.yaml`:
+
+```yaml
+emit_flow_command: false   # aidakit:docs is the single door for onboarding (ADR-005); no generated shortcut.
+```
+
+`validateFlowShape` ignores unknown top-level fields (it validates only `flow`/`description`/`steps`), so the marker is inert to the engine and requires no parser change. The generator's kit-mode loop emits a command for every source flow **unless** `flow.emit_flow_command === false`. This yields `{fast, full, design}` today and is future-proof: a fifth built-in flow gets a command automatically unless it opts out.
+
+**Documented asymmetry (surfaced as a risk, §13):** `docs-onboarding` remains a real engine flow — `cli.js start docs-onboarding …` still works and `flow list` still shows it — yet ships **no** shortcut command. The opt-out marker records *why* (single-door decision) at the flow file itself.
+
+## 9. `flow-build` removal + fast/full split + cross-reference migration
+
+`commands/flow-build.md` is `git rm`'d — no alias (ADR-005's rejected-alias stance; the direct break is recorded in ADR-017's migration note). Its content splits by concern:
+
+- The `start fast …` path + the entire `register`/`resume … plan|discard` prose → **`flow-fast.md`** (generated; `register` block emitted because `fast.yaml` declares the `register` mode, §6).
+- The `start full …` path → **`flow-full.md`** (generated; no `register`).
+
+**Cross-reference migration** (surgical, like [command-grouping-and-inputs](../../archive/2026-07-24-command-grouping-and-inputs/design.md) §"Cross-reference surgery"): every `/aidakit:flow-build` and bare `aidakit:flow-build` mention is repointed:
+
+- `/aidakit:flow-build start fast …` → `/aidakit:flow-fast …` (start now implicit).
+- `/aidakit:flow-build start full …` → `/aidakit:flow-full …`.
+- The generic `design → build` handoff line in `flow-design.md` and the guides ("run `/aidakit:flow-build`") → **`/aidakit:flow-fast` (or `/aidakit:flow-full` for architectural changes)** — design produces a change backlog that can be built either way; the handoff names both rather than silently picking one.
+
+The authoritative enumeration is a bare-token grep, confirmed per-site (never a blanket find-replace): `grep -rnE "\baidakit:flow-build\b" --include="*.md" --include="*.yaml" --include="*.js" .` minus this change's own artifacts and `docs/archive`. The Task-list validation section (tasks.md §Validation) turns this into a leash.
+
+## 10. ADR-017 — the recorded contract change (REQUIRED DELIVERABLE)
+
+**`docs/decisions/ADR-017-flow-command-generation.md`** is a mandatory deliverable of this change (the `document`/`doc-planner` step will formally require it; the body may be authored at implement time). WORM: **ADR-005 is not edited** — ADR-017 supersedes it on the two named points, and `docs/decisions/README.md` records the supersession (index row + a "(§ mechanical rule / naming partially superseded by ADR-017)" note; editing the *index* is allowed — it points and is corrected — while the ADR-005 *file* stays byte-identical). 5-section format (per [ADR-016](../../decisions/ADR-016-runtime-change-requires-plugin-bump.md) shape); Status: `accepted`. Skeleton ready to transcribe:
+
+- **Context** — ADR-005 locked the `flow-` prefix with two derived rules that this change outgrows: (1) group membership = "the command drives the engine (`cli.js start <flow>`)"; (2) the command name derived from the *activity* (`flow-build`), not the flow name. A generator that renders one command per flow YAML, plus a `flow-sync` utility that *is* the generator's front (and does **not** itself drive the engine), needs both rules widened.
+- **Decision** — (a) **group-membership widened**: a command belongs to the `flow-` group iff it belongs to the **flow mechanism family** — the orchestrator shortcuts (`flow-fast`/`flow-full`/`flow-design`) *and* the flow-command generator's front (`flow-sync`) — so `/aidakit:flow-sync` legitimately wears the prefix though it generates rather than drives. (b) **naming shifts activity-based → flow-name-based**: exactly one `flow-<yamlFlowName>` command per non-opted-out flow YAML; `flow-build` is removed, its fast+full coverage split across `flow-fast`/`flow-full`, `flow-design` survives (its name already equals the flow name). Both points **supersede ADR-005** on those specifics; the mechanical-grouping *spirit* and the flat `flow-` syntax are unchanged.
+- **Consequences** — Positive: the surface lines up 1:1 with the flow YAMLs; consumer flows get commands via `flow-sync` with no hand-authoring (ADR-005's extensibility contract finally has a mechanism); a generator + drift test keeps the built-ins honest. Negative *(Accepted)*: `flow-build` is a **breaking rename** for any consumer bound to that name (psim-kernel) — mitigated by the migration note (re-sync + `flow-sync`); mirrors ADR-005's own accepted direct-break. Negative *(Accepted)*: `docs-onboarding` is a real flow with no shortcut command (opt-out, §8) — a documented asymmetry, the price of keeping `docs` the single door.
+- **Alternatives considered** — generic orchestrator command (rejected: owner topology decision, brainstorm Q3); bridge alias for `flow-build` (rejected: doubles the clutter ADR-005 removed); static hand-authored per-flow commands (rejected: no single source of truth, drifts from the YAML); emit `flow-docs-onboarding` too (rejected: second door, §8).
+- **Migration note** — consumers pinned to `/aidakit:flow-build`: after the next plugin sync it no longer resolves; use `/aidakit:flow-fast` (fast, + `register`) or `/aidakit:flow-full` (full). Recorded here, not hidden — same posture as ADR-005's negative-consequences note.
+
+## 11. Version bump + the two CI validators (`plugin-version-bumped`)
+
+`.claude-plugin/plugin.json` is at `0.10.0` at plan time — **re-read at implementation start; the bump is relative to the live manifest on `main`, not this frozen number.** Two independent CI leashes bind — both must pass (they are distinct: `check-runtime-bump` fires on a runtime path change, `check-plugin-version` fires on any footer outranking the manifest):
+
+- **`check-runtime-bump`** ([ADR-016](../../decisions/ADR-016-runtime-change-requires-plugin-bump.md)) fires because the change adds runtime under `governance/` (the generator; `RUNTIME_PREFIXES = ["hooks/","governance/"]`, excluding `__tests__/` and `*.md`). It requires `plugin.json` `version` to rise **in the same PR range**. The drift test under `governance/__tests__/` is excluded (test segment); the committed `commands/*.md` are **not** under a runtime prefix, so they do not themselves trip this leash — they reach installed users purely via the manifest bump that `claude plugin update` reads.
+- **`check-plugin-version`** requires the manifest to be **≥ the highest doctrine footer** in the tree. The regenerated command files each carry a fresh `<!-- aidakit vX.Y — … -->` footer (template invariant §3.6); the bump must be ≥ that footer's `X.Y`.
+
+Recommendation: a **minor** bump (a breaking command rename + new generator surface) and give the generated command footers the matching `vX.Y`. The ship step picks the final number — it must be **strictly greater than the manifest on `main` at that moment**, or `claude plugin update` no-ops and the new surface reaches no one. Run `node governance/validators/check-plugin-version.js .` locally before the PR (the local suite does not run the CI `version-leashes`).
+
+> The `vX.Y` footer belongs only in the shipped **command** files (the generator writes it), never in these WORKING change artifacts — `check-plugin-version.js` scans every `.md` for an `aidakit vX.Y` comment and does not skip code spans.
+
+## 12. The drift test (`generator-single-source-of-truth`)
+
+**`governance/__tests__/flow-command-generation.test.mjs`** — Node table test, no framework, same shape as [`plugin-version.test.mjs`](../../../governance/__tests__/plugin-version.test.mjs) (`spawnSync`/direct import, `ok(cond, name)` counters), run via `node governance/__tests__/flow-command-generation.test.mjs`. Assertions:
+
+- **Byte-drift (the core gate):** for each of `{fast, full, design}`, `renderFlowCommand(metaFrom(parseFlowFile("governance/flows/<name>.yaml")))` equals, byte-for-byte, the committed `commands/flow-<name>.md`. Any drift (a hand-edit to a generated file, or a template change not re-committed) fails.
+- **Opt-out honored:** kit mode does **not** produce `commands/flow-docs-onboarding.md` (marker respected, §8).
+- **ADR-005 conventions (`adr005-conventions-preserved`):** each generated output contains the sentinel line 1, a `description:` with the classification word, a `## Usage` block with ≥1 copy-paste example, and the `: "${AIDAKIT_GOVERNANCE?…}"` guard on every `cli.js` bullet.
+- **Input-key + register:** `flow-design` output contains `project="$ARGUMENTS"` (not `request=`); `flow-fast` contains `request="$ARGUMENTS"` and the `register` block; `flow-full` contains neither `register` nor `project=`.
+- **Consumer-mode behavior (temp dir):** drop `.aidakit/flows/foo.yaml` → `flow-sync` writes `.claude/commands/flow-foo.md` (sentinel present) that starts the `foo` flow; re-run → byte-identical (idempotent). Drop `.aidakit/flows/fast.yaml` → refused with a reason, exit non-zero, no file written. Pre-place a sentinel-less `.claude/commands/flow-bar.md` → preserved untouched.
+
+## 13. Alternatives / Risks
+
+| # | Alternative / Risk | Decision / Mitigation |
+|---|---|---|
+| A1 | Generic orchestrator command + flow arg (`/aidakit:flow start <x>`) | **Rejected** — owner topology decision (brainstorm Q3); each `flow-<x>` is self-contained. The repeated lifecycle prose is accepted duplication. |
+| A2 | Bridge alias so `/aidakit:flow-build` keeps resolving | **Rejected** — doubles the autocomplete clutter ADR-005 removed; ADR-017 records the direct break instead. |
+| A3 | Hand-author each per-flow command (no generator) | **Rejected** — no single source of truth; the command drifts from its flow YAML. The generator + drift test is the whole `generator-single-source-of-truth` value. |
+| A4 | Emit `flow-docs-onboarding` too (option (a)) | **Rejected** — second, engine-driven door contradicting ADR-005's single-door `docs` utility (§8). |
+| A5 | Auto-detect mode instead of `--mode` flag | **Rejected** — explicit is fail-closed and testable; auto-detect could write committed built-ins from a consumer checkout by accident. |
+| R1 | Implicit-start ambiguity: a request whose first word is a reserved verb (`status …`, `resume …`) is mis-read as a lifecycle verb | **Mitigated** — the template's rule treats a token as a verb only when it is the exact first token *and* is followed by a flow_id-shaped argument (or nothing for `list`); otherwise the whole string is the start payload. A genuine collision is rare and the operator disambiguates by rephrasing. Flagged for the reviewers. |
+| R2 | `docs-onboarding` flow exists but has no command (asymmetry) | **Accepted** — the opt-out marker records the single-door rationale at the flow file; the flow stays startable via the raw CLI and visible in `flow list`. |
+| R3 | Consumer `flow-sync` overwrites a file the user hand-authored | **Mitigated** — sentinel check refuses any target lacking `<!-- aidakit:generated `; hand-authored files are preserved (`generator-fail-closed-collision`). |
+| R4 | New template drops an ADR-012 guard or the register prose vs today's `flow-build.md` | **Mitigated** — the wrapper prose is lifted verbatim from the current built-ins; the drift test + the ADR-005-conventions assertions (§12) catch any omission. |
+| R5 | Both version leashes not satisfied (footer outruns manifest, or runtime without bump) | **Mitigated** — §11 pins both; run `check-plugin-version` and `check-runtime-bump` locally before the PR. |
+
+## Rollback
+
+The change is: new runtime files under `governance/commands/` + a test, a removed command file, three generated command files, one new command file, one ADR + index row, a one-line flow-YAML marker, prose repointing, and a version bump — all reversible by reverting the change's commits. A single-commit revert restores `flow-build.md` and the old surface cleanly (direct break, no half-migrated alias state). The generator and drift test leave no runtime state (they only render text).
+
+## Conventions and evidence location
+
+- **Naming (frozen):** command files `commands/flow-<flowName>.md`; generator modules `governance/commands/{render-flow-command,generate-flow-commands}.js`; drift test `governance/__tests__/flow-command-generation.test.mjs`; sentinel literal `<!-- aidakit:generated flow=<name> template=<vX.Y> source=<path> -->`; opt-out marker `emit_flow_command: false`; ADR `docs/decisions/ADR-017-flow-command-generation.md`.
+- **Style:** change artifacts (this directory) follow the [command-grouping-and-inputs](../../archive/2026-07-24-command-grouping-and-inputs/design.md) precedent — header block, terse structured prose, **no** doctrine footer (WORKING artifacts are not part of the versioned surface `check-plugin-version.js` scans).
+- **Canonical validators / test (run from repo root):** `node governance/__tests__/flow-command-generation.test.mjs`, `node governance/validators/check-links.js .`, `node governance/validators/check-adr-format.js docs/decisions/ADR-017-flow-command-generation.md`, `node governance/validators/check-plugin-version.js .`, `node governance/validators/check-runtime-bump.js . --base origin/main`.
+- **Evidence is recorded at the fixed location** [`docs/features/per-flow-commands/evidence.md`](evidence.md).
+
+## Constraining ADRs
+
+- [ADR-005](../../decisions/ADR-005-command-namespacing.md) — the locked `flow-` prefix, mechanical grouping rule, and activity-based naming this change **extends** (superseded on two points by ADR-017); read fully before authoring ADR-017.
+- [ADR-016](../../decisions/ADR-016-runtime-change-requires-plugin-bump.md) — mandates the `plugin.json` bump because the generator ships under `governance/`; constrains §11.
+- [ADR-012](../../decisions/ADR-012-aidakit-governance-session-wide.md) — the session-wide `AIDAKIT_GOVERNANCE` fail-closed guard the template chains ahead of every `cli.js` call (§3.5).
+- [ADR-006](../../decisions/ADR-006-flow-values-as-data.md) — informs the `register` dispatch (`request=<change-id>`, never the free-form sentence) copied into `flow-fast`.
+- Not constraining: ADR-001/002/003/004/007/008/009/010/011/013/014/015 — no bearing on the command surface or the generator (the engine internals they govern are untouched).
