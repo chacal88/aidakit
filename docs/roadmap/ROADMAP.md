@@ -16,7 +16,6 @@ _(nada planejado)_
 
 ### Cacheamento de contexto por change — **in-progress**
 
-- Trim `agents/doc-planner.md`'s prompt body — `trim-doc-planner-agent-prompt` → backlog
 - Trim `agents/reviewer-quality.md`'s prompt body — `trim-reviewer-quality-agent-prompt` → backlog
 
 ### Automação de entrega (PR → merge) — **backlog**
@@ -41,6 +40,7 @@ _(nada planejado)_
 ### Cacheamento de contexto por change
 
 - Context pack por change (L1) — `context-pack-l1` → done (2026-07-24)
+- Trim `agents/doc-planner.md`'s prompt body — `trim-doc-planner-agent-prompt` → done (2026-07-27)
 
 ### Automação de entrega (PR → merge)
 
