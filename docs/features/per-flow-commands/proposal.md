@@ -29,7 +29,7 @@ This change makes the command surface **flow-name-based and generated**. One com
 
 ## Non-goals
 
-- **No change to the engine or the flow YAMLs' step graphs.** `governance/engine/*` and the `steps:` of every flow are untouched; the only flow-YAML edit is the one-line opt-out marker on `docs-onboarding.yaml`.
+- **No change to the engine or the flow YAMLs' step graphs.** `governance/engine/*` and the `steps:` graph, gate options and step semantics of every flow are untouched. Two flow-YAML files are edited, both non-behavioral: (1) the one-line opt-out marker on `docs-onboarding.yaml` (§8, the only *structural* edit); (2) a **prose-only** cross-reference edit to `governance/flows/design.yaml` — three text fields (the flow `description:`, the `gate4` prompt, the `done` terminal message) that today tell the operator to run the removed `/aidakit:flow-build` are repointed to `/aidakit:flow-full` (or `/aidakit:flow-fast`) (design.md §9). This is a migration of a stale handoff reference, not a change to how the design flow runs.
 - **No generic orchestrator command.** The owner settled the topology (brainstorm question 3): each `flow-<x>` is full-featured; the `resume`/`status`/`abort`/`list` prose repeating across commands is accepted duplication, not a defect to factor into a shared command.
 - **`docs-onboarding` is not promoted to an engine-driven command.** Default (b) of the AMBIGUOUS assumption; `aidakit:docs` remains the single door.
 - **No generation hook.** Generation is on-demand via `/aidakit:flow-sync` only — no `SessionStart` or other hook is added or changed (brainstorm assumption `on-demand-not-hook`).
