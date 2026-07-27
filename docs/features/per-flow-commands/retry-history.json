@@ -8,5 +8,10 @@
     "round": 2,
     "step_id": "specify",
     "cause": "finding-1-stale-duplicate-claims"
+  },
+  {
+    "round": 3,
+    "step_id": "specify",
+    "cause": "sentinel-line1-vs-frontmatter-conflict"
   }
 ]
