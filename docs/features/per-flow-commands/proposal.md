@@ -1,3 +1,8 @@
+<!-- check-links: ignore -->
+<!-- Cites commands/flow-build.md as it existed AT PLAN TIME — this change's own implementation
+     removes that file. Exempted like docs/archive/ (reflects the tree at writing time), not a
+     broken cross-reference. -->
+
 # Proposal — per-flow-commands
 
 **Change ID:** `per-flow-commands`

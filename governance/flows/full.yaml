@@ -1,11 +1,11 @@
 flow: full
 description: |
-  Full flow, codeflow/psim style: maximum rigor for broad, architectural, or
-  irreversible work. Adversarial brainstorm that grills the owner BEFORE spending
-  tokens; spec with an independent critic; pre-apply gate; implementation;
-  adversarial bench review (capped rounds); hardening; learning; PR; and the human
-  merge gate. The rich mechanics (brainstorm, review-bench, learn) are skills these
-  steps invoke — the order lives here, the behavior in the skills.
+  Full flow, codeflow/psim style: maximum rigor for broad, architectural, or irreversible work.
+  Adversarial brainstorm that grills the owner BEFORE spending tokens; spec with an
+  independent critic; pre-apply gate; implementation; adversarial bench review (capped
+  rounds); hardening; learning; PR; and the human merge gate. The rich mechanics
+  (brainstorm, review-bench, learn) are skills these steps invoke — the order lives here,
+  the behavior in the skills.
 version: 1
 
 inputs:

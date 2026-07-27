@@ -102,24 +102,24 @@ wc -c -w skills/identify-domain/SKILL.md skills/plan/SKILL.md skills/readiness/S
 | Skill | words | bytes |
 |---|---|---|
 | `skills/identify-domain/SKILL.md` | 490 | 3409 |
-| `skills/plan/SKILL.md` | 2192 | 15519 |
+| `skills/plan/SKILL.md` | 2194 | 15541 |
 | `skills/readiness/SKILL.md` | 3465 | 23776 |
 | `skills/implement/SKILL.md` | 1765 | 12846 |
-| `skills/review/SKILL.md` | 3323 | 24292 |
+| `skills/review/SKILL.md` | 3325 | 24334 |
 | `skills/test/SKILL.md` | 1836 | 12908 |
-| `skills/learn/SKILL.md` | 1735 | 12445 |
+| `skills/learn/SKILL.md` | 1738 | 12535 |
 | `skills/ship/SKILL.md` | 770 | 5359 |
 | `skills/merge/SKILL.md` | 1004 | 7130 |
 | `skills/docs/SKILL.md` | 1791 | 11966 |
-| `skills/design-business/SKILL.md` | 1716 | 11077 |
+| `skills/design-business/SKILL.md` | 1716 | 11097 |
 | `skills/design-modeling/SKILL.md` | 1449 | 9459 |
-| `skills/design-architecture/SKILL.md` | 1675 | 11289 |
-| `skills/design-implementation/SKILL.md` | 1820 | 11775 |
-| **total** | **25031** | **173250** |
+| `skills/design-architecture/SKILL.md` | 1675 | 11309 |
+| `skills/design-implementation/SKILL.md` | 1825 | 11966 |
+| **total** | **25043** | **173635** |
 
-**Drift note:** `skills/readiness/SKILL.md` grew by 361 words / 2511 bytes between this file's first draft and this validation pass — the mandatory rebase onto `origin/main` (§ below, and `inventory.md` F4) pulled in `80610ab` (PR #52), which added "Process §14" (17 lines) to that exact file. The number above is the post-rebase measurement, re-run at validation time; the pre-rebase figure is not shown anywhere in this file (never shipped, corrected before authoring finished).
+**Drift note:** `skills/readiness/SKILL.md` grew by 361 words / 2511 bytes between this file's first draft and this validation pass — the mandatory rebase onto `origin/main` (§ below, and `inventory.md` F4) pulled in `80610ab` (PR #52), which added "Process §14" (17 lines) to that exact file. The number above is the post-rebase measurement, re-run at validation time; the pre-rebase figure is not shown anywhere in this file (never shipped, corrected before authoring finished). **Re-measured again** (per-flow-commands, 2026-07-27): six more rows shifted (`plan`, `review`, `learn`, `design-business`, `design-architecture`, `design-implementation` SKILL.md) after the flow-build → `/aidakit:flow-fast`/`/aidakit:flow-full` cross-reference migration touched their prose — the same concurrent-worktree drift class this file's own regression gate (`governance/__tests__/regression-measured-body-size-tables-match-live-tree.test.mjs`) exists to catch; re-measured via `wc -c -w` against the live tree, not recalled.
 
-**Why this is not merged into §2's agent ranking:** a skill's body loads into the **caller's own context** (it is read, not dispatched, when the flow's `invoke` step pauses for Claude to act on it); an agent's body starts a **fresh isolated context** via the `Agent` tool. Averaging a number that measures "how much of my own context this consumes" with a number that measures "how much a brand-new context starts with" would produce a figure that means nothing about either cost. `skills/review/SKILL.md` (24292 bytes) is the largest skill body on this tree — larger than every single `agents/*.md` file — precisely because it carries the whole bench-dispatch protocol (manifest-first, copy-paste `recordBench` shape, the seven `check-bench.js` invariants) inline, in the caller's context, rather than delegating that protocol to an isolated agent.
+**Why this is not merged into §2's agent ranking:** a skill's body loads into the **caller's own context** (it is read, not dispatched, when the flow's `invoke` step pauses for Claude to act on it); an agent's body starts a **fresh isolated context** via the `Agent` tool. Averaging a number that measures "how much of my own context this consumes" with a number that measures "how much a brand-new context starts with" would produce a figure that means nothing about either cost. `skills/review/SKILL.md` (24334 bytes) is the largest skill body on this tree — larger than every single `agents/*.md` file — precisely because it carries the whole bench-dispatch protocol (manifest-first, copy-paste `recordBench` shape, the seven `check-bench.js` invariants) inline, in the caller's context, rather than delegating that protocol to an isolated agent.
 
 ## §5 — Trim candidates handed to `inventory.md` §5
 

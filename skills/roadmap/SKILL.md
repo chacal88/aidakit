@@ -85,15 +85,15 @@ Relationship with `/aidakit:flow-design`: for a **brand-new project**, the 4-pha
 ### `add-epic` / `add-feature` modes — hand-authoring (escape hatch)
 For when you already know the exact breakdown and just want to write it: create `docs/roadmap/epics/EPIC-<slug>.md` by hand (H1 title, one-line goal, and the `- **Feature:** <name> — changes: <ids>` lines), or add a single feature line to an existing epic. Register a new epic in `docs/roadmap/README.md`. Prefer `from` — it resolves the doubts you didn't know you had. This mode skips the interview.
 
-### `register` mode — defer a single change as a debit (dispatched by `/aidakit:flow-build register`)
+### `register` mode — defer a single change as a debit (dispatched by `/aidakit:flow-fast register`)
 
-For when the owner wants a request declared on the roadmap **for later**, without triggering plan/implement now (`/aidakit:flow-build register "<free-form request>"`). This is deliberately the shallowest mode: one change, minted and written, no interview — a request rich enough to need one should be planned now, not parked (say so and suggest `from` instead).
+For when the owner wants a request declared on the roadmap **for later**, without triggering plan/implement now (`/aidakit:flow-fast register "<free-form request>"`). This is deliberately the shallowest mode: one change, minted and written, no interview — a request rich enough to need one should be planned now, not parked (say so and suggest `from` instead).
 
 1. **Mint the change-id** — kebab-case from the free-form request (the single key, §2.7); it will later name the branch/PR/dir, exactly like any other change-id.
 2. **Refuse a collision** — the id must not already exist anywhere: declared in an epic's `changes:` list (`findDeclaredChange`, [roadmap.js](../../governance/roadmap/roadmap.js)), or with an in-flight `docs/features/<id>/` dir, or an archive dir. On a collision, **ask the owner** (extend the existing change vs. mint a different id) — never silently rename or double-declare.
 3. **Write the feature line + one-line acceptance sub-bullet** via the existing `add-feature` writer path above (same H1/`- **Feature:**` grammar, `FEATURE_RE`, no forked format) — creating the epic first, **proposing it per this skill's own gates**, when `docs/roadmap/epics/` is absent or no epic fits. The acceptance sub-bullet is the durable context a later `aidakit:plan` reads on resume — write it as the one thing that must be true when the change ships.
 4. **`regen`** `ROADMAP.md` (mode below, unchanged) so the new backlog entry is visible immediately.
-5. Report the minted change-id back to the caller (`/aidakit:flow-build register`), which starts the `fast` flow in `mode=register` with `request=<change-id>` — **never the raw sentence** (a free-form sentence would pollute every `${inputs.request}` path downstream, and structurally can never pass the `check_registered` leash since it never matches a declared id).
+5. Report the minted change-id back to the caller (`/aidakit:flow-fast register`), which starts the `fast` flow in `mode=register` with `request=<change-id>` — **never the raw sentence** (a free-form sentence would pollute every `${inputs.request}` path downstream, and structurally can never pass the `check_registered` leash since it never matches a declared id).
 
 Status stays derived-only ([ADR-002](../../docs/decisions/ADR-002-roadmap-status-derived-from-disk.md)): `register` writes **no** status field anywhere — the entry shows `backlog` because nothing exists on disk yet, and only flips to `in-progress` when a later `aidakit:plan` creates `docs/features/<id>/`.
 

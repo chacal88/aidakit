@@ -13,5 +13,15 @@
     "round": 3,
     "step_id": "specify",
     "cause": "sentinel-line1-vs-frontmatter-conflict"
+  },
+  {
+    "round": null,
+    "step_id": "implement",
+    "cause": "bench-veto"
+  },
+  {
+    "round": null,
+    "step_id": "implement",
+    "cause": "bench-veto"
   }
 ]

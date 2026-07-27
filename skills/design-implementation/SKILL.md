@@ -12,7 +12,7 @@ This skill is **phase 4** of the design flow ([governance/flows/design.yaml](../
 ## When to use (and when not)
 
 - **Use** when the design flow reaches the Phase 4 step, or when the user asks to plan the implementation of a project whose Phases 1–3 are already approved in `docs/design/`.
-- **Do not use** to build an already-planned change — that is the execution cycle (`/aidakit:flow-build`; see "Passing the baton"). Do not use before the earlier phases are approved: the implementation plan materializes decisions that only exist if Business, Modeling and Architecture have closed.
+- **Do not use** to build an already-planned change — that is the execution cycle (`/aidakit:flow-fast`/`/aidakit:flow-full`; see "Passing the baton"). Do not use before the earlier phases are approved: the implementation plan materializes decisions that only exist if Business, Modeling and Architecture have closed.
 
 ## Prerequisites
 
@@ -52,15 +52,15 @@ Tone: a senior architect interviewing the product owner — skeptical to the rig
 
 Write `docs/design/4-implementation-plan.md` — the **build sequence in vertical changes**, covering the four axes: the scaffold mirroring the context map, the confirmed stack (each piece traceable to an ADR in `docs/decisions/`), the minimum pipeline (build/test/deploy) and the backlog of vertical changes ordered by risk+value, each change with its acceptance criterion. The first change must come out specified and ready for the aidakit cycle.
 
-**Emit the backlog as roadmap epics.** The ordered backlog is not only prose in this deliverable — write it into `docs/roadmap/` too, so the project has a live, status-derived roadmap from day one. Group the vertical changes into features and the features into one or more epics, and write `docs/roadmap/epics/EPIC-<slug>.md` (per [aidakit:roadmap](../roadmap/SKILL.md) — the same generator its `from` mode uses; you already did the interview and decomposition in this phase, so hand the result straight to the roadmap writer). The change-ids you mint here are the single key (§2.7). The changes start as `backlog` on the roadmap and flip to in-progress when `/aidakit:flow-build` authors each.
+**Emit the backlog as roadmap epics.** The ordered backlog is not only prose in this deliverable — write it into `docs/roadmap/` too, so the project has a live, status-derived roadmap from day one. Group the vertical changes into features and the features into one or more epics, and write `docs/roadmap/epics/EPIC-<slug>.md` (per [aidakit:roadmap](../roadmap/SKILL.md) — the same generator its `from` mode uses; you already did the interview and decomposition in this phase, so hand the result straight to the roadmap writer). The change-ids you mint here are the single key (§2.7). The changes start as `backlog` on the roadmap and flip to in-progress when `/aidakit:flow-fast`/`/aidakit:flow-full` authors each.
 
 ADRs born in this phase (a new stack piece that did not yet have a recorded decision) go in `docs/decisions/ADR-NNN-slug.md`, global sequential numbering, registered in the index `docs/decisions/README.md`. **An ADR is WORM:** an approved decision is never edited — changed your mind, a new ADR that supersedes or amends.
 
 ### Passing the baton (execution)
 
-From the end of this phase, each change of the plan is built with `/aidakit:flow-build` — the human interface that takes **one change of the plan to the PR** over the aidakit flow engine (full reference: `PROCESS.md` at the root of the plugin; git, PR and escalation rules: `GOVERNANCE.md`).
+From the end of this phase, each change of the plan is built with `/aidakit:flow-fast` (or `/aidakit:flow-full` for architectural changes) — the human interface that takes **one change of the plan to the PR** over the aidakit flow engine (full reference: `PROCESS.md` at the root of the plugin; git, PR and escalation rules: `GOVERNANCE.md`).
 
-- The owner **does not need to point at the change by hand**: the first step of the flow picks the next ready change of the plan (via the `aidakit:orchestrator` agent, respecting dependencies). For a specific change, name it in the `/aidakit:flow-build` request.
+- The owner **does not need to point at the change by hand**: the first step of the flow picks the next ready change of the plan (via the `aidakit:orchestrator` agent, respecting dependencies). For a specific change, name it in the `/aidakit:flow-fast`/`/aidakit:flow-full` request.
 - The flow runs the change end-to-end — plan, readiness, TDD implementation, validation/coverage, review against specs/ADRs and commit/PR — pausing at the human gates. **The merge is always the human's, never the agent's** (`GOVERNANCE.md`).
 
 The design remains the owner of the STATE: at the end of each change, record in `STATE.md` the completed change and the next one.
@@ -73,7 +73,7 @@ Do not open the approval gate here: it is the next `human_gate` step of the flow
 
 ## Outputs
 
-- `docs/design/4-implementation-plan.md` — this phase's deliverable (scaffold + stack traced to ADRs + minimum pipeline + backlog of vertical changes with acceptance criteria; first change ready for `/aidakit:flow-build`).
+- `docs/design/4-implementation-plan.md` — this phase's deliverable (scaffold + stack traced to ADRs + minimum pipeline + backlog of vertical changes with acceptance criteria; first change ready for `/aidakit:flow-fast`/`/aidakit:flow-full`).
 - `docs/roadmap/epics/EPIC-<slug>.md` — the backlog emitted as roadmap epics (features → change-ids), so the project has a status-derived roadmap immediately.
 - New ADRs from this phase in `docs/decisions/ADR-NNN-slug.md`, registered in the index `docs/decisions/README.md`.
 - `docs/design/STATE.md` updated with the stopping point and, when the phase closes, the "Execution" section ready to receive the changes. (Marking the phase as *approved* in the STATE happens after the flow's human gate, not here.)
@@ -86,14 +86,14 @@ Do not open the approval gate here: it is the next `human_gate` step of the flow
 - [ ] Minimum pipeline described (build/test/deploy)
 - [ ] Backlog of vertical changes ordered by risk+value, each with an acceptance criterion
 - [ ] Backlog emitted as roadmap epics in `docs/roadmap/epics/` (features → change-ids)
-- [ ] First change specified and ready for the aidakit cycle (`/aidakit:flow-build`)
+- [ ] First change specified and ready for the aidakit cycle (`/aidakit:flow-fast`/`/aidakit:flow-full`)
 
 > The phase's last item — "the project's design is complete; execution begins" — is the **owner's explicit approval**, and it lives in the flow's human gate, not in this checklist. This skill only ensures the five items above and signals `ready`.
 
 ## Gates and guardrails
 
 - **The approval gate belongs to the flow, not to the skill.** This skill runs the phase and returns `ready`; the next `human_gate` of [design.yaml](../../governance/flows/design.yaml) is the one that collects the owner's "I approve". Do not simulate or anticipate that gate.
-- **Order is law:** this is the last phase and depends on the three earlier ones being approved. An execution matter that comes up at the wrong time (e.g. a detail of a specific change) goes to the "Parking lot" of `STATE.md` or to the `/aidakit:flow-build` cycle itself — not into the architecture plan.
+- **Order is law:** this is the last phase and depends on the three earlier ones being approved. An execution matter that comes up at the wrong time (e.g. a detail of a specific change) goes to the "Parking lot" of `STATE.md` or to the `/aidakit:flow-fast`/`/aidakit:flow-full` cycle itself — not into the architecture plan.
 - **An ADR is WORM** (DOCS.md): an approved decision is never edited — a new ADR that supersedes or amends. Contradicting or superseding an existing ADR escalates to the human (`GOVERNANCE.md`).
 - **A new stack piece without an ADR = a premature decision:** do not put it in the plan; go back to Phase 3 and record the decision first.
 - **From here on, execution follows GOVERNANCE.md:** short branch + PR, the human does the merge, the agent never.
@@ -104,7 +104,7 @@ Do not open the approval gate here: it is the next `human_gate` step of the flow
 - `aidakit:design-architecture` — Phase 3 (Architecture), a direct input: the ADRs and the context map that this phase materializes.
 - `aidakit:docs` — deploys and audits the standard `docs/` structure.
 - `aidakit:catalog` — searchable index of all the kit's tools.
-- Post-Phase 4 execution cycle: `/aidakit:flow-build` — builds each change of the plan to the PR (the flow itself picks the next ready change at startup). Reference: `PROCESS.md` at the root of the plugin.
+- Post-Phase 4 execution cycle: `/aidakit:flow-fast`/`/aidakit:flow-full` — builds each change of the plan to the PR (the flow itself picks the next ready change at startup). Reference: `PROCESS.md` at the root of the plugin.
 - Support for the phase: `engineering:system-design`.
 
 <!-- aidakit v0.3 — skill design-implementation (Phase 4, ex-phase of the design skill): runs the implementation interview, delivers docs/design/4-implementation-plan.md, returns the "ready" outcome; the human gate belongs to the design.yaml flow, 2026-07-17 — translated to EN -->
