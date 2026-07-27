@@ -1,4 +1,8 @@
 flow: docs-onboarding
+# aidakit:docs is the single door for onboarding (ADR-005); no generated shortcut.
+# (yaml-min.js does not strip a trailing "# ..." comment from an unquoted value — see its
+# header — so this comment lives on its OWN line, never appended after "false".)
+emit_flow_command: false
 description: |
   The DOC-LEASH for EXISTING PROJECTS: takes a repo that already has code and docs
   scattered around and brings it to the standardized structure without destroying anything.

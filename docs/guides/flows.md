@@ -148,7 +148,7 @@ For the step-by-step of the process the `fast` flow enacts, see the [change-flow
 
 ### Register mode — deferring a request as a debit
 
-`fast.yaml` also carries a `mode` input (`build` | `register`, default `build`). `start … mode=register` skips straight past `select`/`plan`/`implement` and **parks** at a named human gate instead — for "just remember this for later" (`/aidakit:flow-build register "<free-form request>"`, `commands/flow-build.md`):
+`fast.yaml` also carries a `mode` input (`build` | `register`, default `build`). `start … mode=register` skips straight past `select`/`plan`/`implement` and **parks** at a named human gate instead — for "just remember this for later" (`/aidakit:flow-fast register "<free-form request>"`, `commands/flow-fast.md`):
 
 ```console
 $ node governance/cli.js start fast request=add-a-date-filter mode=register

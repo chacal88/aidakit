@@ -1,10 +1,11 @@
 flow: design
 description: |
-  Architecture design in 4 DDD phases on a leash: the engine enforces the order
-  (Business → Modeling → Architecture → Implementation), stops at each human gate
-  and persists state. Each phase invokes the interview skill that drives the
-  conversation; the engine guarantees no phase is skipped and no gate is bypassed.
-  At the end, the vertical changes are ready for /aidakit:flow-build.
+  Architecture design in 4 DDD phases on a leash.
+  The engine enforces the order (Business → Modeling → Architecture → Implementation),
+  stops at each human gate and persists state. Each phase invokes the interview skill
+  that drives the conversation; the engine guarantees no phase is skipped and no gate is
+  bypassed. At the end, the vertical changes are ready. Run /aidakit:flow-full (or
+  /aidakit:flow-fast) to build the first change.
 version: 1
 
 inputs:
@@ -123,8 +124,8 @@ steps:
     prompt: |
       Phase 4 (Implementation) complete — review docs/design/4-implementation-plan.md
       (vertical changes ordered by risk+value, each with an acceptance criterion).
-      Approve? On approval, the design is complete and the first change is ready
-      for /aidakit:flow-build.
+      Approve? On approval, the design is complete and the first change is ready.
+      Run /aidakit:flow-full (or /aidakit:flow-fast) to build the first change.
     options:
       - approve
       - revise
@@ -137,4 +138,4 @@ steps:
     outcome: completed
     message: |
       Design complete. The vertical changes are in docs/design/4-implementation-plan.md.
-      Run /aidakit:flow-build to build the first change.
+      Run /aidakit:flow-full (or /aidakit:flow-fast) to build the first change.

@@ -118,7 +118,7 @@ The change-id is the single end-to-end key ([DOCS.md §2](../../DOCS.md), rule 7
 
 ## The handoff
 
-From here, each change follows the kit's execution cycle ([PROCESS.md §2](../../PROCESS.md)); [GOVERNANCE.md](../../GOVERNANCE.md) applies in full — everything via a short branch + PR, and **the merge is always the human's**. The entry point is `/aidakit:flow-build`: the 1st step of the flow runs the `aidakit:orchestrator`, which picks the next ready change (dependencies shipped) and returns a self-contained prompt for a new session (logic previously exposed as a separate command, now absorbed into build). When `feature-appointment-cancellation` is next in line, it is the one the sibling guide follows from the prompt to the PR URL and the archive: **[change-flow.md](change-flow.md)**.
+From here, each change follows the kit's execution cycle ([PROCESS.md §2](../../PROCESS.md)); [GOVERNANCE.md](../../GOVERNANCE.md) applies in full — everything via a short branch + PR, and **the merge is always the human's**. The entry point is `/aidakit:flow-fast` (or `/aidakit:flow-full` for architectural changes): the 1st step of the flow runs the `aidakit:orchestrator`, which picks the next ready change (dependencies shipped) and returns a self-contained prompt for a new session (logic previously exposed as a separate command, now absorbed into the flow). When `feature-appointment-cancellation` is next in line, it is the one the sibling guide follows from the prompt to the PR URL and the archive: **[change-flow.md](change-flow.md)**.
 
 The design remains the owner of the state: at the end of each change, `STATE.md` records the completed change and the next one.
 

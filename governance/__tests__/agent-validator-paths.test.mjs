@@ -48,7 +48,8 @@ const SOURCE_FILES = [
   "agents/orchestrator.md",
   "agents/doc-planner.md",
   "skills/roadmap/SKILL.md",
-  "commands/flow-build.md",
+  "commands/flow-fast.md",
+  "commands/flow-full.md",
   "commands/flow-design.md",
 ];
 

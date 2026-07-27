@@ -135,7 +135,7 @@ One row per discrete deliverable. `Type` ∈ {Core, Testing, Integration, Docume
 - `aidakit:review` — the mandatory review gate after planning
 - `aidakit:planner` — the agent that authors the artifacts (in the execution session)
 - `aidakit:orchestrator` — the agent that builds the self-contained prompt
-- `/aidakit:flow-build` — downstream: builds the change from the plan (from plan to PR, over the flow engine)
+- `/aidakit:flow-fast` / `/aidakit:flow-full` — downstream: builds the change from the plan (from plan to PR, over the flow engine)
 - `aidakit:adr-reviewer`, `aidakit:spec-reviewer` — the reviewers that must pass before code
 - `aidakit:docs` — deploys and audits the doc structure this skill presupposes
 - Official `commit-commands` plugin (`/commit-push-pr`) — ships the plan-only PR
