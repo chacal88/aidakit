@@ -75,5 +75,5 @@ _(nada planejado)_
 - Testes de step-summaries afirmam exclusão de tipo positivamente — `step-summaries-type-gate-tests` → done (2026-07-25)
 - Brainstorm trava assumptions sobre schema/path em forma literal inequívoca — `brainstorm-schema-path-literal-lock` → done (2026-07-25)
 - Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-alignment` → done (2026-07-25)
-- Builder do context pack lê os headings que o kit realmente manda — `context-pack-heading-drift` → done (2026-07-25)
+- Builder do context pack lê os headings que o kit realmente exige — `context-pack-heading-drift` → done (2026-07-25)
 - `check-links` não lê link ilustrado em code span como link navegável — `check-links-code-span-skip` → done (2026-07-25)
