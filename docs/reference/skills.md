@@ -161,7 +161,7 @@ The six skills that carry a change from start to finish, in flow order: **identi
 
 **Purpose:** the end-of-change learning loop — reads the diff, the correction events, and the ledgers, classifies each learning on 3 axes (kind × action × scope), and **PROPOSES** doc/rule updates as a literal diff (never writes blindly). Closes the error → learn → inform-the-next cycle and records scoped memory served back.
 **Invocation:** end of change (the checkpoint/learn phase, after review), or "what did we learn", "consolidate learnings", "retro".
-**Example (razor):** if the cancellation recurred as an already-mitigated bug (error-2), it proposes a `regression-gate` in `proposed-updates.md` and records 1 line in `.aidakit/memory/learnings.md` (project scope), read at the next `/aidakit:flow-build` startup.
+**Example (razor):** if the cancellation recurred as an already-mitigated bug (error-2), it proposes a `regression-gate` in `proposed-updates.md` and records 1 line in `.aidakit/memory/learnings.md` (project scope), read at the next `/aidakit:flow-fast` startup.
 **Gates:** PROPOSES, does not write (an inviolable principle — applying is a human decision); does not block the ship; a class, not raw content in memory; the narrowest scope on doubt.
 **Source of truth:** [skills/learn/SKILL.md](../../skills/learn/SKILL.md).
 
@@ -172,7 +172,9 @@ The six skills that carry a change from start to finish, in flow order: **identi
 | Command | What it does | Source |
 |---|---|---|
 | `/aidakit:flow-design` | Invokes the `aidakit:flow-design` skill following its protocol (locate `STATE.md`, load only the current phase, interview, gates), passing through the user's arguments | [commands/flow-design.md](../../commands/flow-design.md) |
-| `/aidakit:flow-build` | Builds a change from plan to PR through the flow engine (`start`/`resume`/`status`/`abort`/`list`); the 1st step of the flow picks the ready change (logic previously exposed as a separate command, now absorbed) | [commands/flow-build.md](../../commands/flow-build.md) |
+| `/aidakit:flow-fast` | Builds a change from plan to PR through the flow engine, minimal ceremony (resume/status/abort/list + implicit start); the 1st step of the flow picks the ready change (logic previously exposed as a separate command, now absorbed) | [commands/flow-fast.md](../../commands/flow-fast.md) |
+| `/aidakit:flow-full` | Same lifecycle as `flow-fast`, maximum rigor (adversarial brainstorm, bench review, learning) | [commands/flow-full.md](../../commands/flow-full.md) |
+| `/aidakit:flow-sync` | (Re)generates project-local `flow-<name>` commands from `.aidakit/flows/*.yaml` | [commands/flow-sync.md](../../commands/flow-sync.md) |
 | `/aidakit:plan` | Starts the plan-only planning of a change — authors proposal/design/tasks with no product code | [commands/plan.md](../../commands/plan.md) |
 | `/aidakit:review` | Runs the pre-ship review gate — an adversarial bench of agents in parallel, aggregates verdicts, decides consensus | [commands/review.md](../../commands/review.md) |
 | `/aidakit:docs` | Deploys, audits, indexes, or archives the project's standardized document architecture (DOCS.md) | [commands/docs.md](../../commands/docs.md) |

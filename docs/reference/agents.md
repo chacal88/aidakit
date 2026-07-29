@@ -11,7 +11,7 @@ The skills are the human interface; they delegate to the agents via the `Agent` 
 ```mermaid
 flowchart LR
     subgraph skills["Skills (human interface)"]
-        build["/aidakit:flow-build (1st step)"]
+        build["/aidakit:flow-fast, /aidakit:flow-full (1st step)"]
         plan["aidakit:plan"]
         brainstormSkill["aidakit:brainstorm"]
         implementSkill["aidakit:implement"]
@@ -49,7 +49,7 @@ flowchart LR
     spec -.-> research
 ```
 
-An important flow detail: [aidakit:plan](../../skills/plan/SKILL.md) and the 1st step of `/aidakit:flow-build` invoke the `aidakit:orchestrator` only to **assemble a self-contained prompt**; whoever runs the `aidakit:planner` (or implements) is the **new session** where the human pastes that prompt. The cycle closes when the human reports "`<change-id>` done, PR #N merged" — back to the orchestrator.
+An important flow detail: [aidakit:plan](../../skills/plan/SKILL.md) and the 1st step of `/aidakit:flow-fast`/`/aidakit:flow-full` invoke the `aidakit:orchestrator` only to **assemble a self-contained prompt**; whoever runs the `aidakit:planner` (or implements) is the **new session** where the human pastes that prompt. The cycle closes when the human reports "`<change-id>` done, PR #N merged" — back to the orchestrator.
 
 ---
 
@@ -58,7 +58,7 @@ An important flow detail: [aidakit:plan](../../skills/plan/SKILL.md) and the 1st
 **Role** — coordinates the target repo's multi-agent workflow: it does not execute tasks; it picks the next ready change, generates self-contained execution prompts (serial or parallel with worktrees), and keeps the change pipeline accurate.
 
 - **Model:** `opus` · **Tools:** Read, Bash, Edit, Glob, Grep
-- **Who invokes it:** the 1st step of `/aidakit:flow-build` and the [aidakit:plan](../../skills/plan/SKILL.md) skill; the human, when reporting a change as completed ("`<change-id>` done, PR #N merged").
+- **Who invokes it:** the 1st step of `/aidakit:flow-fast`/`/aidakit:flow-full` and the [aidakit:plan](../../skills/plan/SKILL.md) skill; the human, when reporting a change as completed ("`<change-id>` done, PR #N merged").
 - **Decides on its own:** to reprioritize changes on noticing a real dependency mismatch; to add a discovery task to an in-flight plan (delegating the investigation to `aidakit:research`); to mark a change as blocked with a one-line note; to choose among several ready changes (prefers the one that unblocks the most downstream); to auto-detect serial vs parallel by the surfaces touched in the proposal.
 - **Escalates:** the 3 of GOVERNANCE.md §1, plus two coordination-conflict cases (§6): active changes and the git state diverge with no reconciliation possible; an open decision-log item blocks the next ready change.
 - **Does NOT:** merge a PR (never), commit directly to main (not even bookkeeping), edit plans/specs (the `aidakit:planner`'s work), write product code.

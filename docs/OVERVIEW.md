@@ -23,7 +23,7 @@ Everything in the kit belongs to one of four layers.
 ### Layer 1 — Architecture design · `/aidakit:flow-design`
 A sequential 4-phase interview with gates: **1 Business** → **2 DDD Modeling** → **3 Architecture** (decisions become ADRs) → **4 Implementation** (hands the baton to the pipeline and emits the backlog as roadmap epics). One question at a time; each phase yields a document in `docs/design/` and only advances on explicit approval. State lives in `docs/design/STATE.md` — close the session, resume weeks later.
 
-### Layer 2 — Execution pipeline · `/aidakit:flow-build`
+### Layer 2 — Execution pipeline · `/aidakit:flow-fast` · `/aidakit:flow-full`
 Each change runs the canonical cycle from plan to PR. Skills delegate to agents with **separated roles** — author ≠ reviewer ≠ shipper. The kit stops at the PR URL; **the human merges.** Change artifacts live in `docs/features/<change-id>/`. One key ties it all: **change-id = branch = PR suffix = archive dir**.
 
 ### Layer 3 — Document & execution doctrine · `/aidakit:docs` · `/aidakit:governance`
@@ -124,6 +124,7 @@ Pure Node, zero dependencies — the "leash" the model cannot argue with. Every 
 | **derive-roadmap-status** | Derives each roadmap item's status from disk (features/ vs archive/ vs PR). | `validators/derive-roadmap-status.js` |
 | **check-dna-freshness** | Flags a crystallized test/rule as stale when its origin ADR is superseded. | `validators/check-dna-freshness.js` |
 | **check-plugin-version** | Release leash: fails when a `<!-- aidakit vX.Y -->` footer declares more than `plugin.json`, which is the only number `claude plugin update` reads. | `validators/check-plugin-version.js` |
+| **check-runtime-bump** | Range leash (ADR-016): fails a PR that changes runtime (`hooks/` or `governance/`, minus `__tests__` and `*.md`) without raising `plugin.json` in the same range. Run on every PR by CI. | `validators/check-runtime-bump.js` |
 | **ledgers + DNA** | Token/error ledgers; `deriveCandidates` spots an error recurring ≥3× and `writeDna` crystallizes the lesson into a regression test/rule. | `governance/ledgers/` · `dna/` |
 
 ---
@@ -146,7 +147,7 @@ Planning and shared knowledge without an external tool. Both live in `docs/`, ve
 2. **New project → design first.** Run `/aidakit:flow-design` and answer the 4-phase interview. It writes `docs/design/` + ADRs and, at phase 4, emits the change backlog as roadmap epics.
 3. **New feature on an existing project → describe it.** Run `aidakit:roadmap from "<description>"` — it interviews you and generates the epic → features → changes.
 4. **Existing repo → adopt the structure.** Run `/aidakit:docs` (init) to deploy the canonical `docs/` tree without steamrolling what's there.
-5. **Execute a change.** Run `/aidakit:flow-build` — it picks the next ready change (roadmap gives the order) and drives the cycle. You approve the gates; the kit stops at the PR URL.
+5. **Execute a change.** Run `/aidakit:flow-fast` (or `/aidakit:flow-full` for architectural work) — it picks the next ready change (roadmap gives the order) and drives the cycle. You approve the gates; the kit stops at the PR URL.
 6. **You merge.** Then `aidakit:docs` archives the change (it flips to *done* on the roadmap on its own) and `aidakit:learn` proposes any DNA or knowledge to promote.
 7. **Check status anytime.** `aidakit:roadmap` for Now/Next/Later, `/aidakit:catalog` to find a tool, `/aidakit:governance` when a command was blocked and you want to know why.
 

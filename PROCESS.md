@@ -1,6 +1,6 @@
 ---
 name: PROCESS
-description: Process reference for the aidakit execution flow — how aidakit:flow-design defines the plan (4 gated phases, deliverables in docs/design/) and how the suite executes change by change (aidakit:flow-build → aidakit:plan → aidakit:readiness → implementation with TDD → aidakit:test/aidakit:coverage → aidakit:review → commit/PR → aidakit:docs after the merge). Consult when the user asks "how does the kit's process work", "what's the workflow", "which aidakit skill do I use now", when onboarding a new repo into the kit, or when deciding the next step of a change in progress.
+description: Process reference for the aidakit execution flow — how aidakit:flow-design defines the plan (4 gated phases, deliverables in docs/design/) and how the suite executes change by change (aidakit:flow-fast/aidakit:flow-full → aidakit:plan → aidakit:readiness → implementation with TDD → aidakit:test/aidakit:coverage → aidakit:review → commit/PR → aidakit:docs after the merge). Consult when the user asks "how does the kit's process work", "what's the workflow", "which aidakit skill do I use now", when onboarding a new repo into the kit, or when deciding the next step of a change in progress.
 ---
 
 # aidakit — Process reference
@@ -51,7 +51,7 @@ The kit has three types of piece, and each exists for a reason. When creating so
 
 | Piece | What it is | Quick test | Examples |
 |---|---|---|---|
-| **Command** (`/aidakit:x`) | A shortcut the **human types** to start something. A thin file in `commands/` that invokes a skill or the engine. | "Does the human trigger this on purpose?" | `/aidakit:flow-design`, `/aidakit:flow-build`, `/aidakit:review` |
+| **Command** (`/aidakit:x`) | A shortcut the **human types** to start something. A thin file in `commands/` that invokes a skill or the engine. | "Does the human trigger this on purpose?" | `/aidakit:flow-design`, `/aidakit:flow-fast`, `/aidakit:review` |
 | **Skill** | Doctrine/procedure that Claude applies **in the current context** (does not isolate context). Lives in `skills/`. | "Is it a rule Claude follows while working?" | `test-driven-development`, `docs`, `governance`, `postgres-best-practices` |
 | **Agent** | An **isolated-context** subagent that receives a task, works alone, and comes back with a verdict/result. Lives in `agents/`. | "Does it need its own context and come back with a result?" | the review bench reviewers, `planner`, `orchestrator`, `implementer` |
 
@@ -66,8 +66,8 @@ Every non-trivial change goes through this pipeline:
 ```
 Next change from the design (or a new idea)
         ↓
-  aidakit:flow-build (picks the change and drives)  ←─ aidakit:orchestrator picks the next change
-        ↓                  ready and generates a self-contained prompt for a new session
+  aidakit:flow-fast / aidakit:flow-full             ←─ aidakit:orchestrator picks the next change
+        ↓ (picks the change and drives)              ready and generates a self-contained prompt for a new session
   aidakit:plan          ←─ aidakit:planner authors the plan-only change
         ↓                  (proposal / design / tasks / evidence — no product code)
   aidakit:readiness     ←─ GATE 1: 14-step readiness review of the plan package.
@@ -93,7 +93,7 @@ Next change from the design (or a new idea)
 
 ### Step by step
 
-1. **`/aidakit:flow-build`** — entry point. The first step of the build picks the change and drives: the `aidakit:orchestrator` agent inspects the repo's real artifacts (active changes, `git log`, archive, open decisions), verifies that the dependencies have already been shipped, and returns a self-contained prompt to paste into a new session. The prompt embeds the current commit hash, the artifact paths, the cited decisions, and the escalation triggers of GOVERNANCE.md §1 (never merge, never supersede an ADR without human approval, stay within the approved scope).
+1. **`/aidakit:flow-fast`** (minimal ceremony) **or `/aidakit:flow-full`** (maximum rigor) — entry point. The first step of either flow picks the change and drives: the `aidakit:orchestrator` agent inspects the repo's real artifacts (active changes, `git log`, archive, open decisions), verifies that the dependencies have already been shipped, and returns a self-contained prompt to paste into a new session. The prompt embeds the current commit hash, the artifact paths, the cited decisions, and the escalation triggers of GOVERNANCE.md §1 (never merge, never supersede an ADR without human approval, stay within the approved scope).
 
 2. **`/aidakit:plan <change-id-or-description>`** — when the change doesn't have a spec yet. The `aidakit:planner` agent (in the new session) authors the plan-only artifacts: `proposal.md` + `design.md` + `tasks.md` + a stub of `evidence.md`, plus the change metadata — as an OpenSpec change or in `docs/features/<change-id>/` in kit mode. The implementation plan (effort, risks, file structure per surface) is part of what `plan` produces. The planner reads the repo's recorded decisions, the list of open decisions if one exists, and the specs the change extends. Cross-checks: every cited decision exists; every `design.md` deliverable has a bullet in `tasks.md`; every path in `tasks.md` matches the repo's real layout. **Plan-only — never writes product code.** If the change-id already exists, the planner refuses and asks whether to extend or rename.
 
@@ -165,7 +165,7 @@ The step-by-step usage lives in the [docs/guides/flows.md](docs/guides/flows.md)
 | review | `aidakit:review` |
 | ship | `aidakit:ship` |
 
-**The flow is OPTIONAL.** The skill-guided cycle as today — you calling `/aidakit:flow-build`, `/aidakit:plan`, … in order — remains fully valid and is the default path. The flow does not replace anything: it only adds **deterministic order + resumable state** (close the session, resume days later from where you stopped) for those who want that spine on top of the cycle. The doctrine does not change — the human gates, the never-merge, and the GOVERNANCE.md guardrails hold the same inside or outside the flow.
+**The flow is OPTIONAL.** The skill-guided cycle as today — you calling `/aidakit:flow-fast` (or `/aidakit:flow-full`), `/aidakit:plan`, … in order — remains fully valid and is the default path. The flow does not replace anything: it only adds **deterministic order + resumable state** (close the session, resume days later from where you stopped) for those who want that spine on top of the cycle. The doctrine does not change — the human gates, the never-merge, and the GOVERNANCE.md guardrails hold the same inside or outside the flow.
 
 ---
 
@@ -176,7 +176,7 @@ The step-by-step usage lives in the [docs/guides/flows.md](docs/guides/flows.md)
 | Skill | When to use |
 |---|---|
 | `/aidakit:flow-design` (command, not a skill) | Start or resume the guided architecture design (4 gated phases). New projects, or resuming from `docs/design/STATE.md`. |
-| `/aidakit:flow-build` (command, not a skill) | Build a change from plan to PR. Execution entry point: the 1st step picks the next ready change and generates the execution prompt; it also drives the cycle through the executable flow engine (start/resume/status/abort/list — see §2 "Running the cycle as an executable flow"). |
+| `/aidakit:flow-fast` / `/aidakit:flow-full` (commands, not skills) | Build a change from plan to PR (minimal ceremony / maximum rigor). Execution entry point: the 1st step picks the next ready change and generates the execution prompt; it also drives the cycle through the executable flow engine (resume/status/abort/list — see §2 "Running the cycle as an executable flow"). |
 | `aidakit:plan` | You have an idea/change still without a spec. Generates the prompt for `aidakit:planner` to author the plan-only artifacts (includes the implementation plan: effort, risks, file structure). |
 | `aidakit:spec` | Read/show a spec, discover related specs and decisions, or validate work against a spec. Documents the proposal template with quality checks. |
 | `aidakit:readiness` | The strongest gate: 14-step readiness review of the plan package before implementation (GATE 1). Verdict `Status: APPROVED \| NEEDS-REVISION \| BLOCKED` + `Ready to implement: yes \| no`. |
@@ -225,7 +225,7 @@ Invoked via the `Agent` tool — normally by the skills above, rarely directly. 
 
 | Agent | Model | Role | Invoked by |
 |---|---|---|---|
-| `aidakit:orchestrator` | opus | Coordinates the pipeline: picks the next ready change, generates self-contained prompts (serial or parallel with worktrees), updates the state on "done" reports. **Never merges a PR.** | `aidakit:flow-build` (1st step), `aidakit:plan`, done reports |
+| `aidakit:orchestrator` | opus | Coordinates the pipeline: picks the next ready change, generates self-contained prompts (serial or parallel with worktrees), updates the state on "done" reports. **Never merges a PR.** | `aidakit:flow-fast`/`aidakit:flow-full` (1st step), `aidakit:plan`, done reports |
 | `aidakit:planner` | opus | Authors the plan-only artifacts (proposal/design/tasks/evidence + spec deltas). Reads decisions and specs; cross-checks citations and paths. **Never writes product code.** | `aidakit:plan` |
 | `aidakit:brainstorm` | sonnet | Grills the owner on the 4 attack axes (scope, end effect, edges, confrontation with the law) via `AskUserQuestion`, one line of reasoning at a time. Only extracts requirements — never implements nor writes a spec. Returns premises, acceptance criteria, questions asked, and a trail event. | `aidakit:brainstorm`, 1st step of the `full` flow |
 | `aidakit:implementer` | sonnet | Implements a change task by task with TDD (RED → GREEN → REFACTOR) in isolated context, applying the kit's quality bars and re-inspecting the repo before coding. Returns the diff, marked tasks, outcome success\|failure, and correction events. | `aidakit:implement`, the build's `implement` step |
@@ -296,7 +296,19 @@ So the release step is:
 
 The rule is one-directional: the manifest may be **ahead** of the footers (not every file changes in a release), never **behind**.
 
-> **Why this validator is not a step in `fast.yaml`/`full.yaml`:** those flows run inside *target* repos, which have no `.claude-plugin/plugin.json` — the validator would exit 2 (usage) on every change. It is a release-time check for this repository, not a per-change gate.
+The footer leash guards one edge; the other fired on 2026-07-25: commits changing **runtime code** (`hooks/pre-bash.js`, `governance/engine/*`) landed without any footer moving, the manifest sat still, and installed sessions kept running a stale plugin cache against a newer main. Since then both edges are enforced **per PR** by the repository's first CI workflow (`.github/workflows/pr-checks.yml`, [ADR-016](docs/decisions/ADR-016-runtime-change-requires-plugin-bump.md)):
+
+- `check-runtime-bump` — fails a PR whose range changes runtime (files under `hooks/` or `governance/`, minus `__tests__/` and `*.md`) without raising the manifest version in that same range. The base ref is the trusted one (same resolution as ADR-008's merge carve-out).
+- `check-plugin-version` — the footer rule above.
+
+The range leash also runs locally, against the working tree, so it catches the miss before the commit:
+
+```
+node governance/validators/check-runtime-bump.js .
+```
+
+> **Why these validators are not steps in `fast.yaml`/`full.yaml`:** those flows run inside *target* repos, which have no `.claude-plugin/plugin.json` — both validators exit 2 (usage) there by design, and a target repo's own `hooks/` directory must never trip a kit-release leash. They are per-PR checks for this repository, not per-change gates.
 
 <!-- aidakit v0.3 — reorg 11 agentes + 8 comandos; skills brainstorm/implement/review finas; renome roteiro→design, flow→build, next absorvido pelo build, 2026-07-17 — translated to EN -->
 <!-- aidakit v0.4 — §5 release: manifest-vs-footer numbering + check-plugin-version leash, 2026-07-23 -->
+<!-- aidakit v0.9 — §5: check-runtime-bump range leash + first CI workflow (ADR-016), 2026-07-25 -->

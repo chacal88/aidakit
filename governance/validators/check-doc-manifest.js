@@ -14,14 +14,16 @@
 //     "level": "change" | "project",
 //     "required": [
 //       { "doc": "proposal", "path": "docs/features/feature-x/proposal.md",
-//         "status": "pending"|"resolved"|"n/a", "condition": "optional text",
+//         "status": "pending"|"resolved"|"n/a", "condition": "mandatory on n/a",
 //         "kind": "adr"|"doc"|"index" }
 //     ]
 //   }
-// An "n/a" item (does not apply to this change) is skipped. A "pending"/"resolved"
-// requires that the file EXISTS — the declared status isn't enough; the validator checks
-// the disk (the truth is the file, not the field). A kind:"adr" item also goes through
-// check-adr-format.
+// An "n/a" item (does not apply to this change) is skipped, but ONLY when it carries
+// a "condition" — an "n/a" without one is a manifest-invalid error, exit 2 (fail-closed:
+// silence is not a waiver; same semantics as check-acceptance.js per ADR-010). A
+// "pending"/"resolved" requires that the file EXISTS — the declared status isn't enough;
+// the validator checks the disk (the truth is the file, not the field). A kind:"adr"
+// item also goes through check-adr-format.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, isAbsolute } from "node:path";
@@ -50,10 +52,18 @@ function main() {
 
   const errors = [];
   let requiredCount = 0, resolvedCount = 0;
+  let manifestInvalid = false;
   const adrValidator = new URL("./check-adr-format.js", import.meta.url).pathname;
 
   for (const item of manifest.required) {
-    if (item.status === "n/a") continue;
+    if (item.status === "n/a") {
+      if (!item.condition) {
+        manifestInvalid = true;
+        errors.push({ rule: "manifest-invalid", doc: item.doc ?? null, path: item.path ?? null,
+          message: `item "${item.doc}" is status:"n/a" without a "condition" — a waiver requires a written justification` });
+      }
+      continue;
+    }
     requiredCount++;
     const abs = isAbsolute(item.path) ? item.path : resolve(root, item.path);
     if (!existsSync(abs) || !statSync(abs).isFile()) {
@@ -93,6 +103,7 @@ function main() {
       process.stderr.write(`\nThe flow won't advance until the list is 100%. Resolve the documents above.\n`);
     }
   }
+  if (manifestInvalid) process.exit(2);
   process.exit(errors.length === 0 ? 0 : 1);
 }
 
