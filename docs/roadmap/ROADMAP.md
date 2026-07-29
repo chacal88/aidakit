@@ -16,7 +16,7 @@ _(nada planejado)_
 
 ### Cacheamento de contexto por change — **in-progress**
 
-- Trim `agents/reviewer-quality.md`'s prompt body — `trim-reviewer-quality-agent-prompt` → backlog
+- Trim `agents/reviewer-architecture.md`'s prompt body — `trim-reviewer-architecture-agent-prompt` → backlog
 
 ### Automação de entrega (PR → merge) — **backlog**
 
@@ -27,6 +27,7 @@ _(nada planejado)_
 - Fate do `type: parallel` do engine — `engine-parallel-fate` → backlog
 - `classify` declares structured `domain` output instead of leaking `outcome` — `flow-request-classify-domain-contract` → backlog
 - Split `hardening`'s mechanical suite-run from its anti-hardcode judgment — `hardening-anti-hardcode-split` → backlog
+- Cheap nit-revision path on capped invoke steps — `flow-nit-revision-path` → backlog
 
 ### Endurecimento da disciplina do próprio kit — **backlog**
 
@@ -41,6 +42,7 @@ _(nada planejado)_
 
 - Context pack por change (L1) — `context-pack-l1` → done (2026-07-24)
 - Trim `agents/doc-planner.md`'s prompt body — `trim-doc-planner-agent-prompt` → done (2026-07-27)
+- Trim `agents/reviewer-quality.md`'s prompt body — `trim-reviewer-quality-agent-prompt` → done (2026-07-29)
 
 ### Automação de entrega (PR → merge)
 
