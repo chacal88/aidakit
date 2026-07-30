@@ -6,6 +6,11 @@
 //   exit 0 = derived cleanly · exit 1 = declared change-id nowhere on disk (a gap) · exit 2 = usage
 //   stdout = JSON { validator, ok, epics[...], orphans[] } · stderr = the Now/Next/Later view
 //
+// The Now/Next/Later view is rendered by governance/roadmap/render-view.js — the
+// single owner of that format, shared with `--write` (which writes the same bytes
+// into docs/roadmap/ROADMAP.md). There is no second copy of the format anywhere:
+// what you read on stderr is what the committed file gets.
+//
 // It derives from the SHARED git state (ADR-007 amends ADR-002): the artifact
 // dirs COMMITTED on any branch (docs/features/<id>/, docs/archive/<date>-<id>/),
 // plus git/gh heuristics for open PR / branch. Worktrees share one .git, so this
@@ -15,8 +20,11 @@
 // change with no git signal simply falls back to the local tree, never an error.
 //
 // Usage:
-//   node derive-roadmap-status.js [--root <dir>] [--json] [--strict]
+//   node derive-roadmap-status.js [--root <dir>] [--json] [--strict] [--write]
 //   --strict makes a declared change-id that exists NOWHERE on disk fail (exit 1).
+//   --write  regenerates <root>/docs/roadmap/ROADMAP.md from this run's derivation
+//            (the `regen` mode of skills/roadmap/SKILL.md). Opt-in: without it this
+//            stays a read-only validator, which is how the flows call it.
 //
 // `--change <id>` (add-debit's register-mode leash): short-circuits BEFORE any
 // git/gh spawn — declared-ness is pure epic parsing, no status needed. Prints
@@ -27,8 +35,13 @@
 // never matches a declared kebab-case change-id).
 
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { resolve, join, dirname } from "node:path";
 import { deriveRoadmap, collectEpics, parseEpic, STATUSES, findDeclaredChange } from "../roadmap/roadmap.js";
+import { renderRoadmapView } from "../roadmap/render-view.js";
+
+// Where the generated view lives (docs/roadmap/ROADMAP.md, per DOCS.md §2).
+const VIEW_REL = join("docs", "roadmap", "ROADMAP.md");
 
 /** Best-effort: change-ids that have a local branch (heuristic: branch name ends with the id). */
 function gitBranchChangeIds(root) {
@@ -92,6 +105,7 @@ function main() {
   const argv = process.argv.slice(2);
   const jsonOnly = argv.includes("--json");
   const strict = argv.includes("--strict");
+  const write = argv.includes("--write");
   const rootIdx = argv.indexOf("--root");
   const root = resolve(rootIdx >= 0 ? argv[rootIdx + 1] : process.env.AIDAKIT_PROJECT_ROOT || process.cwd());
 
@@ -143,25 +157,29 @@ function main() {
   };
   process.stdout.write(JSON.stringify(result) + "\n");
 
-  // Human view on stderr: Now (in-progress/in-review) / Next (planned) / Later (backlog) / Done.
-  writeView(epics);
+  // No declared roadmap: nothing to render, and `--write` deliberately writes
+  // NOTHING rather than clobbering the target with an empty shell. No epics also
+  // means no orphans, so `--strict` has nothing to fail on here.
+  if (!epics.length) {
+    process.stderr.write("# roadmap\n\nNo epics declared in docs/roadmap/epics/.\n");
+    process.exit(0);
+  }
+
+  // The Now/Next/Later view — the SAME bytes on stderr (human view) and in the
+  // file (`--write`), because both come from render-view.js. No prose format.
+  const view = renderRoadmapView(epics);
+  if (write) {
+    const target = join(root, VIEW_REL);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, view, "utf8");
+    const items = epics.reduce((n, e) => n + e.features.reduce((m, f) => m + f.changes.length, 0), 0);
+    process.stderr.write(`# derive-roadmap-status\n\nWrote ${VIEW_REL} — ${epics.length} epic(s), ${items} item(s).\n`);
+  } else {
+    process.stderr.write(view);
+  }
 
   if (strict && orphans.length) process.exit(1);
   process.exit(0);
-}
-
-function writeView(epics) {
-  const w = (s) => process.stderr.write(s);
-  if (!epics.length) { w("# roadmap\n\nNo epics declared in docs/roadmap/epics/.\n"); return; }
-  w("# roadmap (derived from disk)\n\n");
-  for (const e of epics) {
-    w(`## ${e.title}  —  **${e.status}**\n`);
-    for (const f of e.features) {
-      w(`- ${f.name} — **${f.status}**\n`);
-      for (const c of f.changes) w(`  - \`${c.id}\` → ${c.status}\n`);
-    }
-    w("\n");
-  }
 }
 
 main();

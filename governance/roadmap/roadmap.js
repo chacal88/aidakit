@@ -93,6 +93,36 @@ function matchesArchiveDir(names, changeId) {
   return false;
 }
 
+// An archive dir under docs/archive/ is named `<YYYY-MM-DD>-<change-id>` (DOCS.md §2).
+const ARCHIVE_DIR = /^(\d{4}-\d{2}-\d{2})-(.+)$/;
+
+/**
+ * The date a change was archived, read from its archive dir NAME — the same
+ * derived-from-disk discipline as the status (ADR-002): the ship date is not a
+ * field anyone writes, it is the archive dir prefix. Feeds the `(YYYY-MM-DD)`
+ * suffix of a Done item in the rendered view.
+ *
+ * Strict on purpose: only `<date>-<changeId>` EXACTLY counts, so a dir whose id
+ * merely ends with this id (`…-heading-alignment` vs `alignment`) contributes no
+ * date. An `openspec/changes/archive/<id>/` dir carries no date → null. Two dirs
+ * for one id (a re-archive) resolve to the EARLIEST date, deterministically.
+ * @param {string} changeId
+ * @param {{root:string, gitArchiveDirs?:Set<string>}} ctx
+ * @returns {string|null} `YYYY-MM-DD`, or null when no dated archive dir names it
+ */
+export function deriveDoneDate(changeId, ctx) {
+  const { root, gitArchiveDirs } = ctx;
+  // Shared git signal ∪ the local working tree — same union as the status derivation.
+  const names = new Set(gitArchiveDirs || []);
+  for (const name of safeReaddir(join(root, "docs", "archive"))) names.add(name);
+  const dates = [];
+  for (const name of names) {
+    const m = ARCHIVE_DIR.exec(name);
+    if (m && m[2] === changeId) dates.push(m[1]);
+  }
+  return dates.length ? dates.sort()[0] : null;
+}
+
 function safeReaddir(p) {
   try { return readdirSync(p); } catch { return []; }
 }
@@ -130,12 +160,18 @@ export function parseEpic(file) {
   return { id, title, file, features };
 }
 
-/** Collects all epic files under docs/roadmap/epics/. */
+/**
+ * Collects all epic files under docs/roadmap/epics/, SORTED by filename.
+ * The sort is what makes epic order deterministic — readdir order is
+ * filesystem-dependent, and the rendered view (render-view.js) must be
+ * byte-identical across machines for the same disk state.
+ */
 export function collectEpics(root = projectRoot()) {
   const dir = join(root, EPICS_DIR);
   if (!existsSync(dir)) return [];
   return safeReaddir(dir)
     .filter((n) => EPIC_NAME.test(n))
+    .sort()
     .map((n) => join(dir, n));
 }
 
@@ -178,7 +214,13 @@ export function deriveRoadmap(opts = {}) {
   const epics = collectEpics(root).map((file) => {
     const epic = parseEpic(file);
     const features = epic.features.map((f) => {
-      const changes = f.changeIds.map((id) => ({ id, status: deriveChangeStatus(id, ctx) }));
+      // `done_at` rides along with the status: the rendered view dates a shipped
+      // item, and the date is derived from the archive dir name, never written.
+      const changes = f.changeIds.map((id) => ({
+        id,
+        status: deriveChangeStatus(id, ctx),
+        done_at: deriveDoneDate(id, ctx),
+      }));
       return { name: f.name, changes, status: aggregateStatus(changes.map((c) => c.status)) };
     });
     return { id: epic.id, title: epic.title, file: epic.file, features, status: aggregateStatus(features.map((f) => f.status)) };
