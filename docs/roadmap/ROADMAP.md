@@ -35,6 +35,9 @@ _(nada planejado)_
 - Validador mecânico de anchors das citações do plano — `design-claims-anchor-validator` → backlog
 - Telemetry rollup reads the two fields its own writer persists — `telemetry-rollup-missing-fields` → backlog
 - Audit and close the roadmap's stale backlog declarations — `stale-backlog-declaration-cleanup` → backlog
+- Audit `docs/archive/*` against every epic's declared `changes:` ids — `archived-change-declaration-audit` → backlog
+- Deriver reports archived change-ids that no epic declares — `roadmap-undeclared-archive-check` → backlog
+- `ROADMAP.md` gets the writer its own header claims — `roadmap-regen-writer` → backlog
 
 ## Done
 
@@ -53,6 +56,7 @@ _(nada planejado)_
 - Agrupamento de comandos + inputs — `command-grouping-and-inputs` → done (2026-07-24)
 - Tabela de progresso do flow — `flow-run-progress-table` → done (2026-07-24)
 - Sumários de passo do flow — `flow-step-summaries` → done (2026-07-24)
+- One `flow-<name>` command per flow YAML, generated from one template — `per-flow-commands` → done (2026-07-27)
 
 ### Coleiras mecânicas do flow engine
 
