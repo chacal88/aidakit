@@ -21,6 +21,8 @@
 //
 // Usage:
 //   node derive-roadmap-status.js [--root <dir>] [--json] [--strict] [--write]
+//   --json   suppresses the stderr human view; stdout stays the same JSON (same
+//            contract as check-links and the other validators' --json).
 //   --strict makes a declared change-id that exists NOWHERE on disk fail (exit 1).
 //   --write  regenerates <root>/docs/roadmap/ROADMAP.md from this run's derivation
 //            (the `regen` mode of skills/roadmap/SKILL.md). Opt-in: without it this
@@ -159,22 +161,24 @@ function main() {
 
   // No declared roadmap: nothing to render, and `--write` deliberately writes
   // NOTHING rather than clobbering the target with an empty shell. No epics also
-  // means no orphans, so `--strict` has nothing to fail on here.
+  // means no orphans, so `--strict` has nothing to fail on here. Under --json the
+  // machine contract holds: stdout only, nothing on stderr.
   if (!epics.length) {
-    process.stderr.write("# roadmap\n\nNo epics declared in docs/roadmap/epics/.\n");
+    if (!jsonOnly) process.stderr.write("# roadmap\n\nNo epics declared in docs/roadmap/epics/.\n");
     process.exit(0);
   }
 
   // The Now/Next/Later view — the SAME bytes on stderr (human view) and in the
   // file (`--write`), because both come from render-view.js. No prose format.
+  // --json is the machine contract: emit stdout only, never the stderr view.
   const view = renderRoadmapView(epics);
   if (write) {
     const target = join(root, VIEW_REL);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, view, "utf8");
     const items = epics.reduce((n, e) => n + e.features.reduce((m, f) => m + f.changes.length, 0), 0);
-    process.stderr.write(`# derive-roadmap-status\n\nWrote ${VIEW_REL} — ${epics.length} epic(s), ${items} item(s).\n`);
-  } else {
+    if (!jsonOnly) process.stderr.write(`# derive-roadmap-status\n\nWrote ${VIEW_REL} — ${epics.length} epic(s), ${items} item(s).\n`);
+  } else if (!jsonOnly) {
     process.stderr.write(view);
   }
 

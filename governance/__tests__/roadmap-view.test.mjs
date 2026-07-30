@@ -11,7 +11,7 @@
 // shipped item, the empty-bucket placeholder, and the exact blank-line/trailing-
 // newline shape. A change to any of those fails HERE, not silently in a "snapshot".
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
@@ -251,6 +251,60 @@ run(["--root", bare, "--write"]);
 let bareWrote = true;
 try { readFileSync(join(bare, "docs/roadmap/ROADMAP.md"), "utf8"); } catch { bareWrote = false; }
 ok(!bareWrote, "no epics declared → --write creates no ROADMAP.md (never clobbers with an empty shell)");
+
+// ── 5. The `--json` output contract ──────────────────────
+// The CLI advertises [--json] and change artifacts invoke it; it must mean "stdout
+// JSON only, nothing on stderr" — the same contract every sibling validator honors.
+// `run` above discards stderr and throws on exit 1, so use a spawn that captures
+// both streams and the exit code. `tmp` (seeded in §3: EPIC-alpha with a-open
+// in-progress, EPIC-zulu backlog, a-shipped archived) is the fixture root here.
+const jrun = (args) => {
+  const r = spawnSync("node", [CLI, "--root", tmp, ...args], { encoding: "utf8" });
+  return { code: r.status, stdout: r.stdout || "", stderr: r.stderr || "" };
+};
+
+// Default: JSON on stdout AND the human view on stderr.
+{
+  const r = jrun([]);
+  ok(r.code === 0, "default: exit 0");
+  ok(JSON.parse(r.stdout).validator === "aidakit.derive-roadmap-status", "default: JSON on stdout");
+  ok(r.stderr.startsWith(VIEW_TITLE), "default: the render-view.js view goes to stderr");
+}
+
+// --json: byte-identical stdout, and stderr stays EMPTY (flag honored, not ignored).
+{
+  const plain = jrun([]);
+  const r = jrun(["--json"]);
+  ok(r.code === 0, "--json: exit 0");
+  ok(JSON.parse(r.stdout).validator === "aidakit.derive-roadmap-status", "--json: JSON still on stdout");
+  ok(r.stderr === "", "--json: nothing on stderr (view suppressed)");
+  ok(r.stdout === plain.stdout, "--json: stdout byte-identical to the default run");
+}
+
+// --json composes with --strict: exit code still comes from the orphan check
+// (EPIC-zulu's z-one is declared-but-backlog → orphan), view stays suppressed.
+{
+  const r = jrun(["--json", "--strict"]);
+  ok(r.code === 1, "--json --strict: exit 1 on a declared-but-backlog change-id");
+  const j = JSON.parse(r.stdout);
+  ok(j.ok === false && j.orphans.length >= 1, "--json --strict: JSON reports the orphan(s)");
+  ok(r.stderr === "", "--json --strict: still nothing on stderr");
+}
+
+// --json --write: the file is still written, but the stderr status line is suppressed.
+{
+  const r = jrun(["--json", "--write"]);
+  ok(r.code === 0, "--json --write: exit 0");
+  ok(r.stderr === "", "--json --write: status line suppressed on stderr");
+  ok(readFileSync(join(tmp, "docs/roadmap/ROADMAP.md"), "utf8") === e2e, "--json --write: still writes the renderer's bytes");
+}
+
+// Empty roadmap + --json: no-epics view suppressed, JSON still emitted.
+{
+  const r = spawnSync("node", [CLI, "--root", bare, "--json"], { encoding: "utf8" });
+  ok((r.stderr || "") === "", "empty roadmap + --json: nothing on stderr");
+  ok(JSON.parse(r.stdout).epics_count === 0, "empty roadmap + --json: JSON still on stdout");
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
