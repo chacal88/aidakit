@@ -27,7 +27,7 @@
 //   node build.js [build|rebuild|verify] --change-id <id> [--root <path>]
 // (no subcommand token defaults to "build" — the shape the flow's `runs` step invokes)
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, dirname, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -48,6 +48,64 @@ function resolveRoot(explicitRoot) {
 
 function readIfExists(absPath) {
   return existsSync(absPath) ? readFileSync(absPath, "utf8") : "";
+}
+
+// ── repo mode ────────────────────────────────────────────────────────────
+
+/** The directory that holds the change's OWN plan artifacts.
+ *
+ * The kit supports two tracking modes with the same artifact names, and the
+ * builder used to know only one of them: OpenSpec repos keep proposal/design/
+ * tasks under `openspec/changes/<id>/` (with the change's spec deltas beside
+ * them under `specs/<capability>/spec.md`), kit-mode repos under
+ * `docs/features/<id>/` per DOCS.md. Reading only the kit-mode path in an
+ * OpenSpec repo found nothing, so every source read came back "" and the pack
+ * built with an EMPTY `sources[]` — `built_at_source_hash: e3b0c442…` (the
+ * sha256 of no input) and all six sections on their placeholder line. That is
+ * worse than no pack: dispatchers read `(no ADRs cited)` as authoritative on a
+ * change citing 13 ADRs.
+ *
+ * Detection is presence-of-directory, the same signal
+ * governance/roadmap/roadmap.js already uses to locate an in-flight change —
+ * no config key, no CLI flag, nothing a repo can get out of sync with.
+ *
+ * The PACK ITSELF does not move: it stays at
+ * `docs/features/<id>/.context-pack.md` in BOTH modes. Both flows' `context_pack`
+ * step hardcodes that path in its freshness check (ADR-013 §Decision-5) and
+ * linkFromPack() computes every ADR href against it — writing the pack anywhere
+ * else would leave the freshness check pointed at a file that never exists,
+ * silently rebuilding the pack on every flow run. */
+export function changeDirFor(root, changeId) {
+  const openspecDir = join("openspec", "changes", changeId);
+  return existsSync(resolve(root, openspecDir)) ? openspecDir : join("docs", "features", changeId);
+}
+
+/** In OpenSpec mode, the change's own spec deltas
+ * (`openspec/changes/<id>/specs/<capability>/spec.md`) plus, for each, the main
+ * spec it amends (`openspec/specs/<capability>/spec.md`) when that exists.
+ *
+ * The deltas are the change's spec DELIVERABLE — as first-class as its
+ * proposal/design/tasks — and they are the reason a `## specs` section derived
+ * only from markdown links comes back empty in an OpenSpec repo: an OpenSpec
+ * change carries its capabilities as sibling directories, not as
+ * `openspec/specs/…` hrefs in the prose.
+ *
+ * Scoped strictly to the change's own directory listing — never a repo-wide
+ * glob (ADR-013 §Decision-4) — and explicitly sorted, because readdirSync order
+ * is filesystem-dependent and the build must be byte-stable. Returns [] in kit
+ * mode, where `<changeDir>/specs/` does not exist. */
+function openspecSpecPaths(root, changeDir) {
+  const deltasRel = join(changeDir, "specs");
+  if (!existsSync(resolve(root, deltasRel))) return [];
+  const out = [];
+  for (const capability of readdirSync(resolve(root, deltasRel)).sort()) {
+    const deltaRel = join(deltasRel, capability, "spec.md");
+    if (!existsSync(resolve(root, deltaRel))) continue; // a stray file, not a capability dir
+    out.push(deltaRel);
+    const mainRel = join("openspec", "specs", capability, "spec.md");
+    if (existsSync(resolve(root, mainRel))) out.push(mainRel);
+  }
+  return out;
 }
 
 // ── source discovery ─────────────────────────────────────────────────────
@@ -321,7 +379,7 @@ function renderFrontmatter(changeId, sources) {
  * @returns {{content:string, sources:Array<{path:string,sha256:string}>}}
  */
 export function buildPackContent({ root, changeId }) {
-  const changeDir = join("docs", "features", changeId);
+  const changeDir = changeDirFor(root, changeId);
   const proposalRel = join(changeDir, "proposal.md");
   const designRel = join(changeDir, "design.md");
   const tasksRel = join(changeDir, "tasks.md");
@@ -330,14 +388,16 @@ export function buildPackContent({ root, changeId }) {
   const designText = readIfExists(resolve(root, designRel));
   const tasksText = readIfExists(resolve(root, tasksRel));
 
-  const alwaysOn = [proposalRel, designRel, tasksRel].filter((rel) => existsSync(resolve(root, rel)));
+  const alwaysOn = [proposalRel, designRel, tasksRel, ...openspecSpecPaths(root, changeDir)].filter((rel) => existsSync(resolve(root, rel)));
   const cited = discoverCitedPaths([proposalText, designText, tasksText]).filter((rel) => existsSync(resolve(root, rel)));
 
   const allPaths = [...new Set([...alwaysOn, ...cited])].map((p) => p.split("\\").join("/")); // POSIX-normalize on any platform
   const sources = allPaths.map((rel) => ({ path: rel, sha256: sha256Buf(readFileSync(resolve(root, rel))) }));
 
   const adrPaths = allPaths.filter((p) => /^docs\/decisions\/ADR-\d+-/.test(p));
-  const specPaths = allPaths.filter((p) => /^docs\/specs\//.test(p) || /^openspec\/specs\//.test(p));
+  const specPaths = allPaths.filter(
+    (p) => /^docs\/specs\//.test(p) || /^openspec\/specs\//.test(p) || /^openspec\/changes\/[^/]+\/specs\//.test(p),
+  );
 
   const sections = [
     ["identity", renderIdentity(proposalText)],

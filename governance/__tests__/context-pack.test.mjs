@@ -751,6 +751,163 @@ function packSections(content) {
     "§dod-single-owner: the pack's DoD lines are exactly what parse-criteria.js returns for the same proposal");
 }
 
+// ── §4c OpenSpec mode: the change's artifacts live in openspec/changes/ ──
+// Regression for the psim-kernel report (2026-08-06): the builder resolved the
+// change dir as `docs/features/<id>/` unconditionally, so in an OpenSpec repo it
+// read NOTHING — every pack shipped with an empty `sources[]`,
+// `built_at_source_hash: e3b0c442…` (the sha256 of no input) and all six sections
+// on their placeholder line. Four packs in that repo were byte-identical in their
+// emptiness while their changes cited 13 ADRs and carried 3 spec deltas each; a
+// dispatcher reading `(no ADRs cited)` as authoritative is worse off than one
+// with no pack at all.
+
+/** An OpenSpec-mode project: plan artifacts under `openspec/changes/<id>/`,
+ * spec deltas beside them, main specs under `openspec/specs/<cap>/`. */
+function makeOpenspecProject(changeId = "openspec-change", { capabilities = ["b-capability", "a-capability"], withMainSpecs = true, alsoKitDir = false } = {}) {
+  const root = mkdtempSync(join(tmpdir(), "context-pack-openspec-"));
+  const changeDir = join(root, "openspec", "changes", changeId);
+  mkdirSync(changeDir, { recursive: true });
+  mkdirSync(join(root, "docs", "decisions"), { recursive: true });
+  mkdirSync(join(root, ".aidakit"), { recursive: true });
+
+  writeFileSync(join(root, "docs", "decisions", "ADR-004-example.md"), "# ADR-004: Example\n\n- **Status:** accepted\n");
+
+  writeFileSync(join(changeDir, "proposal.md"), [
+    `# Proposal — ${changeId}`, "",
+    `**Change ID:** \`${changeId}\``,
+    "**Date:** `2026-08-06`",
+    "**Owner:** `@fixture`",
+    "**Phase / Package:** `fixture phase`", "",
+    "## Why", "",
+    "An OpenSpec repo keeps its plan under openspec/changes/. The builder must read it there.", "",
+    "## Acceptance criteria", "",
+    "- `sources-not-empty` — the pack declares the openspec artifacts as sources.", "",
+    "## Dependencies", "",
+    "- [ADR-004](../../../docs/decisions/ADR-004-example.md) — cited from an openspec change dir.", "",
+  ].join("\n"));
+  writeFileSync(join(changeDir, "design.md"), `# Design — ${changeId}\n\n## Architecture\n\n### A decision\n\nProse.\n`);
+  writeFileSync(join(changeDir, "tasks.md"), `# Tasks — ${changeId}\n\n- [ ] do the thing\n`);
+
+  // Deliberately created in a non-sorted order: the build must sort, never
+  // inherit readdirSync's filesystem-dependent order.
+  for (const cap of capabilities) {
+    mkdirSync(join(changeDir, "specs", cap), { recursive: true });
+    writeFileSync(join(changeDir, "specs", cap, "spec.md"), `## ADDED Requirements\n\n### Requirement: ${cap}\n\nThe system SHALL do it.\n`);
+    if (withMainSpecs) {
+      mkdirSync(join(root, "openspec", "specs", cap), { recursive: true });
+      writeFileSync(join(root, "openspec", "specs", cap, "spec.md"), `# ${cap}\n\n### Requirement: existing\n\nThe system SHALL already do it.\n`);
+    }
+  }
+
+  // psim-kernel's real shape: aidakit's own runtime artifacts (evidence.md,
+  // retry-history.json, the pack itself) live under docs/features/<id>/ even in
+  // an OpenSpec repo, so BOTH directories exist and the mode must still resolve
+  // to openspec.
+  if (alsoKitDir) {
+    mkdirSync(join(root, "docs", "features", changeId), { recursive: true });
+    writeFileSync(join(root, "docs", "features", changeId, "evidence.md"), "# Evidence\n");
+  }
+
+  return { root, changeId };
+}
+
+// N4c-i: OpenSpec mode — the plan artifacts are discovered and declared as sources.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-sources");
+  const { content, sources } = buildPackContent({ root, changeId });
+  const paths = sources.map((s) => s.path);
+  ok(paths.includes(`openspec/changes/${changeId}/proposal.md`)
+    && paths.includes(`openspec/changes/${changeId}/design.md`)
+    && paths.includes(`openspec/changes/${changeId}/tasks.md`),
+    "§build-openspec-mode-sources: proposal/design/tasks are read from openspec/changes/<id>/");
+  ok(!/built_at_source_hash: e3b0c442/.test(content),
+    "§build-openspec-mode-not-empty: the pack is not the sha256-of-nothing empty stub");
+}
+
+// N4c-ii: the six sections carry real content, not the placeholder lines.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-sections");
+  const { content } = buildPackContent({ root, changeId });
+  ok(/- change_id: openspec-sections/.test(content) && /- owner: @fixture/.test(content),
+    "§build-openspec-mode-identity: identity fields come from the openspec proposal");
+  ok(/- summary: An OpenSpec repo keeps its plan under openspec\/changes\/\./.test(content),
+    "§build-openspec-mode-summary: the summary is the first sentence of the openspec proposal's `## Why`");
+  ok(/\[ADR-004\]/.test(content) && !/\(no ADRs cited\)/.test(content),
+    "§build-openspec-mode-adrs: ADRs cited from an openspec change dir are discovered");
+  ok(/the pack declares the openspec artifacts as sources\./.test(content) && !/no acceptance criteria found/.test(content),
+    "§build-openspec-mode-dod: the DoD comes from the openspec proposal's `## Acceptance criteria`");
+}
+
+// N4c-iii: the change's spec deltas — and the main specs they amend — reach
+// `## specs`. An OpenSpec change carries its capabilities as sibling
+// directories, never as `openspec/specs/…` hrefs in the prose, so a specs
+// section derived from markdown links alone comes back empty.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-specs");
+  const { content, sources } = buildPackContent({ root, changeId });
+  const specs = content.split("## specs")[1].split("## code-map-pointers")[0];
+  const paths = sources.map((s) => s.path);
+  for (const cap of ["a-capability", "b-capability"]) {
+    ok(specs.includes(`openspec/changes/${changeId}/specs/${cap}/spec.md`) && paths.includes(`openspec/changes/${changeId}/specs/${cap}/spec.md`),
+      `§build-openspec-mode-delta-specs: the ${cap} spec delta is a source and a specs pointer`);
+    ok(specs.includes(`openspec/specs/${cap}/spec.md`) && paths.includes(`openspec/specs/${cap}/spec.md`),
+      `§build-openspec-mode-main-specs: the main ${cap} spec the delta amends is a source and a specs pointer`);
+  }
+  ok(!/\(no capability specs cited\)/.test(specs),
+    "§build-openspec-mode-specs-not-placeholder: the specs section is not the placeholder");
+}
+
+// N4c-iii-b: a delta with no main spec yet (a brand-new capability) is still a
+// source — the missing main spec is skipped, not fatal.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-new-capability", { capabilities: ["brand-new"], withMainSpecs: false });
+  const paths = buildPackContent({ root, changeId }).sources.map((s) => s.path);
+  ok(paths.includes(`openspec/changes/${changeId}/specs/brand-new/spec.md`) && !paths.some((p) => p.startsWith("openspec/specs/")),
+    "§build-openspec-mode-new-capability: a delta without a main spec is declared alone, never a broken source");
+}
+
+// N4c-iv: the pack still WRITES to docs/features/<id>/.context-pack.md in
+// OpenSpec mode. Both flows hardcode that path in the `context_pack` step's
+// freshness check (ADR-013 §Decision-5); moving the pack would leave that check
+// pointed at a file that never exists, rebuilding on every single flow run.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-pack-location");
+  ok(packPathFor(root, changeId) === join(root, "docs", "features", changeId, ".context-pack.md"),
+    "§build-openspec-mode-pack-location: the pack stays at docs/features/<id>/.context-pack.md in both modes");
+}
+
+// N4c-v: byte-stability holds in OpenSpec mode — readdirSync order over the
+// spec-delta directories is filesystem-dependent and must be sorted away.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-deterministic", { capabilities: ["z-cap", "a-cap", "m-cap"] });
+  const p1 = buildPackContent({ root, changeId }).content;
+  const p2 = buildPackContent({ root, changeId }).content;
+  ok(p1 === p2, "§build-openspec-mode-deterministic: two builds from identical openspec sources are byte-identical");
+  const specs = p1.split("## specs")[1].split("## code-map-pointers")[0];
+  const listed = specs.split(/\r?\n/).filter((l) => /^-\s/.test(l)).map((l) => l.slice(2).trim());
+  ok(JSON.stringify(listed) === JSON.stringify([...listed].sort()),
+    "§build-openspec-mode-specs-sorted: the specs pointers are path-sorted, not readdir-ordered");
+}
+
+// N4c-vi: OpenSpec wins when BOTH directories exist — psim-kernel's real shape,
+// where docs/features/<id>/ holds aidakit's own runtime artifacts (evidence.md,
+// retry-history.json, the pack) while the plan lives under openspec/changes/.
+{
+  const { root, changeId } = makeOpenspecProject("openspec-both-dirs", { alsoKitDir: true });
+  const paths = buildPackContent({ root, changeId }).sources.map((s) => s.path);
+  ok(paths.includes(`openspec/changes/${changeId}/proposal.md`) && !paths.some((p) => p.startsWith("docs/features/")),
+    "§build-openspec-mode-wins: an openspec/changes/<id>/ dir wins over a co-existing docs/features/<id>/");
+}
+
+// N4c-vii: kit mode is untouched — no openspec/changes/<id>/ dir means the
+// builder resolves docs/features/<id>/ exactly as before.
+{
+  const { root, changeId } = makeBuildProject("kit-mode-unchanged");
+  const paths = buildPackContent({ root, changeId }).sources.map((s) => s.path);
+  ok(paths.includes(`docs/features/${changeId}/proposal.md`) && !paths.some((p) => p.startsWith("openspec/")),
+    "§build-kit-mode-unchanged: without openspec/changes/<id>/, the change dir is still docs/features/<id>/");
+}
+
 // ── §5 flow phase `context_pack` in full.yaml / fast.yaml ────────────────
 
 // N5a-i: full.yaml — context_pack step exists, type runs, wired between readiness and implement.

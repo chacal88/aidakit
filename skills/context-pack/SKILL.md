@@ -24,9 +24,22 @@ Precedence: if it diverges from [DOCS.md](../../DOCS.md) / [GOVERNANCE.md](../..
 1. `## identity` — change-id, date, owner, phase, one-line summary (the first sentence of `proposal.md`'s `## Why`; the legacy `## Problem` is accepted as a fallback).
 2. `## decisions` — the local planning decisions from `design.md`, one bullet per decision with a `file:line` pointer.
 3. `## ADRs` — every ADR the change cites, as a read-once address (`- [ADR-NNN](<path>) — role`).
-4. `## specs` — the capability specs the change extends, pointers only.
+4. `## specs` — the capability specs the change extends, pointers only. In OpenSpec mode this also carries the change's own spec deltas (`openspec/changes/<change-id>/specs/<capability>/spec.md`) and, for each, the main spec it amends (`openspec/specs/<capability>/spec.md`) when that already exists — an OpenSpec change declares its capabilities as sibling directories, never as `openspec/specs/…` hrefs in the prose, so link-derived discovery alone would leave this section empty.
 5. `## code-map-pointers` — the files the implementation creates/modifies, pointers only.
 6. `## DoD` — the Definition of Done, lifted verbatim from `proposal.md`'s `## Acceptance criteria` — the section [ADR-010](../../docs/decisions/ADR-010-acceptance-leash.md) §Decision-3 makes mandatory — parsed through [parse-criteria.js](../../governance/acceptance/parse-criteria.js), the single owner of that section's grammar. The legacy `## Success criteria` list is accepted as a fallback. `## Exit criteria` is **never** folded in: ADR-010 keeps validator commands (Exit) and observable-effect promises (Acceptance) as separate sections that do not merge. A change carrying neither criteria section builds `- (no acceptance criteria found)` — a signal to fix the proposal, not the pack.
+
+### Where the sources come from — two repo modes, one pack location
+
+The builder resolves the change's plan artifacts by **mode**, detected as presence-of-directory (the same signal [`governance/roadmap/roadmap.js`](../../governance/roadmap/roadmap.js) uses to locate an in-flight change — no config key, no flag):
+
+| Mode | Detected by | `proposal.md` / `design.md` / `tasks.md` read from |
+| --- | --- | --- |
+| OpenSpec | `openspec/changes/<change-id>/` exists | `openspec/changes/<change-id>/` |
+| kit ([DOCS.md](../../DOCS.md)) | otherwise | `docs/features/<change-id>/` |
+
+**The pack itself does not move** — it is written to `docs/features/<change-id>/.context-pack.md` in *both* modes. Both flows' `context_pack` step hardcodes that path in its freshness check ([ADR-013](../../docs/decisions/ADR-013-context-pack-per-change.md) §Decision-5), and the `## ADRs` hrefs are computed relative to it; writing the pack elsewhere would leave the freshness check pointed at a file that never exists and rebuild the pack on every flow run. In an OpenSpec repo the two directories co-exist: the plan lives under `openspec/changes/<id>/` while `docs/features/<id>/` holds the kit's own runtime artifacts (`evidence.md`, `retry-history.json`, the pack).
+
+> Symptom of the mode being resolved wrong: a pack whose `built_at_source_hash` is `e3b0c442…` — the sha256 of *no input* — with an empty `sources[]` and all six sections on their placeholder line (`(no ADRs cited)`, `(no capability specs cited)`, …). That pack is not merely useless, it is **misleading**: dispatchers read it as authoritative. Rebuild it; if it comes back empty, the change dir the builder resolved is not the one holding the plan.
 
 > The pack is **derived, never hand-edited.** Both the summary and the DoD come from headings in `proposal.md`; if either renders empty, the fix is the proposal's headings followed by a `rebuild` — editing `.context-pack.md` directly desynchronizes it from its own `sources[]` hashes and the next freshness check will contradict you.
 
