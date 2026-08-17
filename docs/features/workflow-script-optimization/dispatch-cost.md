@@ -21,7 +21,7 @@ wc -c -w agents/*.md
 ```
 
 ```
-    1156    8127 agents/acceptance-planner.md
+    1264    8826 agents/acceptance-planner.md
      983    6474 agents/adr-reviewer.md
     1544   10635 agents/brainstorm.md
     1962   13854 agents/doc-planner.md

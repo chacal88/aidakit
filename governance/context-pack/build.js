@@ -34,6 +34,7 @@ import { execFileSync } from "node:child_process";
 import { resolveProjectRoot } from "../engine/project-root.js";
 import { assertValidChangeId } from "../engine/change-id.js";
 import { parseAcceptanceCriteriaText } from "../acceptance/parse-criteria.js";
+import { changeDirFor } from "../engine/change-dir.js";
 
 const REQUIRED_SECTIONS = ["identity", "decisions", "ADRs", "specs", "code-map-pointers", "DoD"];
 
@@ -52,22 +53,10 @@ function readIfExists(absPath) {
 
 // ── repo mode ────────────────────────────────────────────────────────────
 
-/** The directory that holds the change's OWN plan artifacts.
- *
- * The kit supports two tracking modes with the same artifact names, and the
- * builder used to know only one of them: OpenSpec repos keep proposal/design/
- * tasks under `openspec/changes/<id>/` (with the change's spec deltas beside
- * them under `specs/<capability>/spec.md`), kit-mode repos under
- * `docs/features/<id>/` per DOCS.md. Reading only the kit-mode path in an
- * OpenSpec repo found nothing, so every source read came back "" and the pack
- * built with an EMPTY `sources[]` — `built_at_source_hash: e3b0c442…` (the
- * sha256 of no input) and all six sections on their placeholder line. That is
- * worse than no pack: dispatchers read `(no ADRs cited)` as authoritative on a
- * change citing 13 ADRs.
- *
- * Detection is presence-of-directory, the same signal
- * governance/roadmap/roadmap.js already uses to locate an in-flight change —
- * no config key, no CLI flag, nothing a repo can get out of sync with.
+/** Where the change's own plan artifacts live — `openspec/changes/<id>/` or
+ * `docs/features/<id>/`, by repo mode. Owned by governance/engine/change-dir.js
+ * since the acceptance cross-check needed the same answer; re-exported here
+ * because this module published it first.
  *
  * The PACK ITSELF does not move: it stays at
  * `docs/features/<id>/.context-pack.md` in BOTH modes. Both flows' `context_pack`
@@ -75,10 +64,7 @@ function readIfExists(absPath) {
  * linkFromPack() computes every ADR href against it — writing the pack anywhere
  * else would leave the freshness check pointed at a file that never exists,
  * silently rebuilding the pack on every flow run. */
-export function changeDirFor(root, changeId) {
-  const openspecDir = join("openspec", "changes", changeId);
-  return existsSync(resolve(root, openspecDir)) ? openspecDir : join("docs", "features", changeId);
-}
+export { changeDirFor } from "../engine/change-dir.js";
 
 /** In OpenSpec mode, the change's own spec deltas
  * (`openspec/changes/<id>/specs/<capability>/spec.md`) plus, for each, the main

@@ -185,6 +185,33 @@ writeFileSync(join(projRoot, "docs", "features", "feat-x", "proposal.md"),
   ok(r.code === 0 && r.json.ok, "leash: proposal.md fallback also clears the gate when the manifest covers all parsed ids");
 }
 
+// (13) OpenSpec mode: the plan lives in `openspec/changes/<id>/proposal.md`, not
+// `docs/features/<id>/`. Reported from psim-kernel, where the cross-check reported
+// `parsed_criteria: 0` on a change whose proposal carries 13 criteria — the parser
+// looked only at the kit-mode path, found nothing, and 'criterion-orphan' could
+// never fire. Same presence-of-directory detection as context-pack's changeDirFor.
+mkdirSync(join(projRoot, "openspec", "changes", "feat-x"), { recursive: true });
+writeFileSync(join(projRoot, "openspec", "changes", "feat-x", "proposal.md"),
+  "# Proposal\n\n## Acceptance criteria\n\n- `c1` — widget renders\n- `orphan-criterion` — criterion with no manifest entry\n- `from-openspec` — criterion only the OpenSpec plan declares\n");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  eq(r.json.parsed_criteria, 3, "leash: OpenSpec mode reads openspec/changes/<id>/proposal.md");
+  ok(r.code === 1 && !r.json.ok, "leash: a criterion only the OpenSpec plan declares LOCKS the gate");
+  ok(r.json.errors.some((e) => e.rule === "criterion-orphan" && e.criterion_id === "from-openspec"),
+    "leash: 'criterion-orphan' fires on the OpenSpec-sourced criterion");
+}
+
+// (14) Precedence: with BOTH directories present, openspec/changes/ wins — the same
+// order changeDirFor() applies, so a repo mid-migration reads one plan, not two.
+{
+  writeFileSync(join(projRoot, "docs", "features", "feat-x", "proposal.md"),
+    "# Proposal\n\n## Acceptance criteria\n\n- `kit-mode-only` — must NOT be read when openspec/changes/<id>/ exists\n");
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  eq(r.json.parsed_criteria, 3, "leash: openspec/changes/ wins over a co-existing docs/features/<id>/");
+  ok(!r.json.errors.some((e) => e.criterion_id === "kit-mode-only"),
+    "leash: the kit-mode proposal is not read in OpenSpec mode");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
