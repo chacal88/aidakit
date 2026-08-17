@@ -22,7 +22,8 @@ You receive `{ change_id, criteria_source }`, where `criteria_source` is `"brain
 Use [governance/acceptance/parse-criteria.js](../governance/acceptance/parse-criteria.js)'s `parseCriteria({ change_id, root })` semantics as the reference:
 
 - If `.aidakit/tasks/<change-id>/brainstorm.json` exists and carries a non-empty `acceptance_criteria[]`, that is the source — accepts both the legacy shape (plain-prose strings) and the canonical shape (`{ id, criterion }`).
-- Otherwise (typically the `fast` flow), read `docs/features/<change-id>/proposal.md`'s `## Acceptance criteria` section and parse it as a bullet list (`- \`criterion-id\` — prose` or plain `- prose`).
+- Otherwise (typically the `fast` flow), read the change's `proposal.md` — `openspec/changes/<change-id>/` in OpenSpec mode, `docs/features/<change-id>/` in kit mode (`changeDirFor()`) — and parse its `## Acceptance criteria` section as a bullet list (`- \`criterion-id\` — prose` or plain `- prose`).
+- **Prefer the explicit-id bullet shape.** `check-acceptance.js` cross-checks the parsed ids against the manifest's `criterion_id`s and reports every unmatched one as `criterion-orphan`. A plain `- prose` bullet has no id, so the parser derives a slug from the first six words of the prose — and a manifest id chosen independently (a different language, a reworded summary) will not match it, turning the cross-check into noise. When the proposal's bullets carry no explicit id, either reuse the parser's slug verbatim in the manifest or ask the plan's author to name the ids in the proposal.
 - If NEITHER source yields any criteria, do not silently invent one — see Escalation triggers below.
 
 ### Step 1 — Read the plan

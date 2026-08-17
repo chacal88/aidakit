@@ -6,15 +6,18 @@
 //     Accepts BOTH the legacy shape (array of plain-prose strings) and the new
 //     canonical shape (array of `{ id, criterion }`) — see design.md §Brainstorm
 //     output schema formalization.
-//   - `docs/features/<change-id>/proposal.md`'s `## Acceptance criteria` section
-//     (fast flow, no brainstorm step). A Markdown bullet list of either
-//     `- \`criterion-id\` — prose` or plain `- prose`.
+//   - the change's `proposal.md` `## Acceptance criteria` section (fast flow, no
+//     brainstorm step) — `openspec/changes/<change-id>/` or
+//     `docs/features/<change-id>/`, resolved by repo mode via changeDirFor().
+//     A Markdown bullet list of either `- \`criterion-id\` — prose` or plain
+//     `- prose`.
 //
 // Precedence: brainstorm.json first; proposal.md only when brainstorm.json is
 // absent or its acceptance_criteria list is empty/missing. Pure Node, zero-dep.
 
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { changeDirFor } from "../engine/change-dir.js";
 
 const EXPLICIT_BULLET_RE = /^-\s+`([a-z0-9-]+)`\s+—\s+(.+)$/;
 const PLAIN_BULLET_RE = /^-\s+(.+)$/;
@@ -119,7 +122,7 @@ export function parseAcceptanceCriteriaText(text) {
   return criteria;
 }
 
-/** Reads docs/features/<change-id>/proposal.md's `## Acceptance criteria` section. */
+/** Reads the change proposal's `## Acceptance criteria` section. */
 function fromProposal(proposalPath) {
   if (!existsSync(proposalPath)) return null;
   const criteria = parseAcceptanceCriteriaText(readFileSync(proposalPath, "utf8"));
@@ -138,7 +141,12 @@ export function parseCriteria({ change_id, root }) {
     if (result) return { ...result, source_path: relative(root, brainstormPath) };
   }
 
-  const proposalPath = join(root, "docs", "features", change_id, "proposal.md");
+  // The plan's directory is mode-dependent (changeDirFor): reading only the
+  // kit-mode path in an OpenSpec repo returned zero criteria SILENTLY, and a
+  // zero-criteria parse disables check-acceptance.js's 'criterion-orphan'
+  // cross-check without any error — the gate passed vacuously on a change
+  // carrying 13 criteria (reported from psim-kernel).
+  const proposalPath = join(root, changeDirFor(root, change_id), "proposal.md");
   const result = fromProposal(proposalPath);
   if (result) return { ...result, source_path: relative(root, proposalPath) };
 
