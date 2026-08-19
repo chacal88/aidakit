@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>aidakit anatomy · anatomia do aidakit</title>
+<style>
+  :root {
+    --ground: #ECEFF0;
+    --surface: #F8FAFA;
+    --surface-2: #E3E8EA;
+    --ink: #121A1D;
+    --ink-soft: #4B585D;
+    --ink-faint: #6F7C81;
+    --rule: #CDD5D8;
+    --rule-soft: #DDE3E5;
+    --engine: #0E5C66;
+    --engine-wash: #DCEAEC;
+    --gate: #8E5406;
+    --gate-wash: #F2E6D2;
+    --ok: #1D6547;
+
+    --serif: "Iowan Old Style", "Charter", "Bitstream Charter", Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 68ch;
+    --wide: 1000px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0F1417;
+      --surface: #161D21;
+      --surface-2: #1E262B;
+      --ink: #E7ECEE;
+      --ink-soft: #9BA9AF;
+      --ink-faint: #7C8A90;
+      --rule: #2B353B;
+      --rule-soft: #232C31;
+      --engine: #5CC3CF;
+      --engine-wash: #163236;
+      --gate: #E0A249;
+      --gate-wash: #33270F;
+      --ok: #5BC291;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0F1417;
+    --surface: #161D21;
+    --surface-2: #1E262B;
+    --ink: #E7ECEE;
+    --ink-soft: #9BA9AF;
+    --ink-faint: #7C8A90;
+    --rule: #2B353B;
+    --rule-soft: #232C31;
+    --engine: #5CC3CF;
+    --engine-wash: #163236;
+    --gate: #E0A249;
+    --gate-wash: #33270F;
+    --ok: #5BC291;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 0 22px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 58px;
+  }
+
+  h1, h2 { font-family: var(--serif); font-weight: 600; text-wrap: balance; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2.4rem, 7vw, 3.6rem); line-height: 1.04; margin: 0; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.14; margin: 0; }
+  h3 { font-size: 1.02rem; line-height: 1.3; margin: 0; font-family: var(--sans); font-weight: 650; }
+  p { margin: 0; max-width: var(--measure); }
+  a { color: var(--engine); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--engine); outline-offset: 3px; }
+  strong { font-weight: 650; }
+  em { font-style: italic; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.855em;
+    background: var(--surface-2);
+    padding: 0.12em 0.36em;
+    border-radius: 3px;
+    overflow-wrap: break-word;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+  }
+  .lede { font-size: 1.05rem; color: var(--ink-soft); max-width: var(--measure); }
+  .note { font-size: 0.9rem; color: var(--ink-faint); max-width: var(--measure); }
+
+  section { display: flex; flex-direction: column; gap: 20px; }
+  .head { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--rule); padding-top: 14px; }
+
+  /* ---------- language switch ---------- */
+  .langbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .langbar .inner {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 8px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .langbar .label {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: auto;
+  }
+  .langbar button {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 4px 11px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .langbar button[aria-pressed="true"] {
+    color: var(--engine);
+    border-color: var(--engine);
+    background: var(--engine-wash);
+    font-weight: 650;
+  }
+  .langbar button:focus-visible { outline: 2px solid var(--engine); outline-offset: 2px; }
+
+  html[data-lang="en"] [data-l="pt"],
+  html[data-lang="pt"] [data-l="en"] { display: none; }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding-top: 46px; display: flex; flex-direction: column; gap: 24px; }
+  .masthead .kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--engine);
+  }
+  .thesis {
+    font-family: var(--serif);
+    font-size: clamp(1.18rem, 3vw, 1.55rem);
+    line-height: 1.4;
+    max-width: 32ch;
+    margin: 0;
+  }
+  .thesis em { color: var(--engine); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .stat { background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .stat b {
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .stat span { font-size: 0.71rem; color: var(--ink-faint); }
+  .stat.green b { color: var(--ok); }
+
+  /* ---------- code ---------- */
+  pre {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 0.79rem;
+    line-height: 1.78;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 13px 15px;
+    overflow-x: auto;
+    color: var(--ink);
+    tab-size: 2;
+  }
+  pre.tinted { border-left: 3px solid var(--engine); }
+  pre .c { color: var(--ink-faint); }
+  pre .k { color: var(--engine); }
+  pre .g { color: var(--gate); }
+  pre .o { color: var(--ok); }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 7px; }
+  figcaption { font-size: 0.8rem; color: var(--ink-faint); font-family: var(--mono); }
+
+  /* ---------- halves ---------- */
+  .halves { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .half {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .half.det { box-shadow: inset 3px 0 0 var(--engine); }
+  .half.smart { box-shadow: inset 3px 0 0 var(--gate); }
+  .half h3 { font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+  .half .what { font-family: var(--serif); font-size: 1.14rem; line-height: 1.34; }
+  .half ul { margin: 0; padding-left: 18px; font-size: 0.92rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 5px; }
+
+  /* ---------- cards ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .card { background: var(--surface); padding: 17px; display: flex; flex-direction: column; gap: 7px; }
+  .card .tag { font-family: var(--mono); font-size: 0.72rem; color: var(--engine); }
+  .card p { font-size: 0.9rem; color: var(--ink-soft); max-width: none; }
+  .card .count { font-family: var(--mono); font-size: 0.71rem; color: var(--ink-faint); margin-top: auto; padding-top: 6px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- sequence ---------- */
+  .seq { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .beat { background: var(--surface); padding: 15px; display: flex; flex-direction: column; gap: 7px; }
+  .beat .who { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .beat.eng .who { color: var(--engine); }
+  .beat.cc .who { color: var(--gate); }
+  .beat.hum .who { color: var(--ink-faint); }
+  .beat b { font-size: 0.94rem; }
+  .beat span { font-size: 0.87rem; color: var(--ink-soft); }
+
+  /* ---------- track ---------- */
+  .track { display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .lane { background: var(--surface); display: grid; grid-template-columns: 118px 1fr; gap: 16px; padding: 11px 15px; align-items: baseline; }
+  .lane .step { font-family: var(--mono); font-size: 0.8rem; font-weight: 500; }
+  .lane .does { font-size: 0.91rem; color: var(--ink-soft); }
+  .lane.is-gate { background: var(--gate-wash); }
+  .lane.is-gate .step { color: var(--gate); font-weight: 650; }
+  .lane.is-human { background: var(--surface-2); }
+  .lane.is-human .step { color: var(--ink-faint); }
+  .gate-mark {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gate);
+    border: 1px dashed var(--gate);
+    padding: 1px 5px;
+    margin-right: 7px;
+    white-space: nowrap;
+  }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.89rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.name { font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
+  td.blocks { color: var(--ink-soft); }
+  tr.dead td { color: var(--ink-faint); }
+
+  /* ---------- limits ---------- */
+  .limits { display: flex; flex-direction: column; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .limit { background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
+  .limit b { font-size: 0.93rem; }
+  .limit span { font-size: 0.89rem; color: var(--ink-soft); }
+
+  /* ---------- map ---------- */
+  .map { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 26px; }
+  .entry { display: flex; flex-direction: column; gap: 2px; }
+  .entry code { background: none; padding: 0; color: var(--engine); font-size: 0.82rem; }
+  .entry span { font-size: 0.87rem; color: var(--ink-soft); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+    font-family: var(--mono);
+    font-size: 0.71rem;
+    color: var(--ink-faint);
+    line-height: 1.9;
+  }
+
+  @media (max-width: 780px) {
+    .seq { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .halves, .seq { grid-template-columns: 1fr; }
+    .lane { grid-template-columns: 1fr; gap: 3px; }
+    .masthead { padding-top: 34px; }
+    .page { gap: 46px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="langbar" aria-label="Language">
+  <div class="inner">
+    <span class="label" data-l="en">aidakit anatomy</span>
+    <span class="label" data-l="pt">anatomia do aidakit</span>
+    <button type="button" id="lang-en" aria-pressed="true" lang="en">English</button>
+    <button type="button" id="lang-pt" aria-pressed="false" lang="pt">Português</button>
+  </div>
+</nav>
+
+<div class="page">
+
+  <header class="masthead">
+    <span class="kicker" data-l="en">the harness · a Claude Code plugin · v0.11.4</span>
+    <span class="kicker" data-l="pt">o harness · plugin de Claude Code · v0.11.4</span>
+    <h1>aidakit</h1>
+    <p class="thesis" data-l="en">A <em>deterministic engine</em> is the spine. The <em>model</em> is the intelligence. Neither one does the other's job.</p>
+    <p class="thesis" data-l="pt">Um <em>motor determinístico</em> é a espinha. O <em>modelo</em> é a inteligência. Nenhum dos dois faz o trabalho do outro.</p>
+    <p class="lede" data-l="en">The kit carries an entire engineering process into any repo: phased architecture design, a per-change execution pipeline, document doctrine and governance with an active hook, roadmap and tracking inside git itself. It is the hand-built prototype of what aida automates — the engine here is the embryo of the engine there.</p>
+    <p class="lede" data-l="pt">O kit carrega um processo de engenharia inteiro para dentro de qualquer repo: design de arquitetura em fases, pipeline de execução por mudança, doutrina de documento e governança com hook ativo, roadmap e rastreamento no próprio git. É o protótipo manual do que o aida automatiza — o engine aqui é o embrião do engine de lá.</p>
+    <div class="stats">
+      <div class="stat"><b>4</b><span data-l="en">flows</span><span data-l="pt">flows</span></div>
+      <div class="stat"><b>7</b><span data-l="en">step types</span><span data-l="pt">tipos de step</span></div>
+      <div class="stat"><b>38</b><span data-l="en">skills</span><span data-l="pt">skills</span></div>
+      <div class="stat"><b>13</b><span data-l="en">subagents</span><span data-l="pt">subagents</span></div>
+      <div class="stat"><b>14</b><span data-l="en">validators</span><span data-l="pt">validadores</span></div>
+      <div class="stat"><b>0</b><span data-l="en">npm dependencies</span><span data-l="pt">dependências npm</span></div>
+      <div class="stat green"><b>1424</b><span data-l="en">green tests</span><span data-l="pt">testes verdes</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§1 · mental model</span>
+      <span class="eyebrow" data-l="pt">§1 · modelo mental</span>
+      <h2 data-l="en">Two halves that never blur</h2>
+      <h2 data-l="pt">Duas metades que nunca se misturam</h2>
+    </div>
+    <p data-l="en">The kit's single idea is a cutting line. Everything mechanical runs as plain Node and takes no argument. Everything that demands judgement is a skill or a subagent. Where that line blurs, the process goes back to depending on the model's goodwill — which is precisely what cannot be audited.</p>
+    <p data-l="pt">A ideia única do kit é uma linha de corte. Tudo que é mecânico roda como Node puro e não aceita argumento. Tudo que exige julgamento é uma skill ou um subagente. Onde essa linha borra, o processo volta a depender da boa vontade do modelo — que é justamente o que não se pode auditar.</p>
+    <div class="halves">
+      <div class="half det">
+        <h3 data-l="en">deterministic half</h3>
+        <h3 data-l="pt">metade determinística</h3>
+        <div class="what" data-l="en">Plain Node, ESM, zero dependencies. Installs with the plugin, no <code>npm install</code>.</div>
+        <div class="what" data-l="pt">Node puro, ESM, zero dependências. Instala com o plugin, sem <code>npm install</code>.</div>
+        <ul data-l="en">
+          <li>Step order and routing by result</li>
+          <li>Gates that stop the advance</li>
+          <li>State that outlives the session</li>
+          <li>Validation of manifest, document, acceptance, version</li>
+          <li>Blocking a destructive command before it runs</li>
+        </ul>
+        <ul data-l="pt">
+          <li>Ordem dos passos e roteamento por resultado</li>
+          <li>Gates que travam o avanço</li>
+          <li>Estado que sobrevive ao fim da sessão</li>
+          <li>Validação de manifesto, documento, aceite, versão</li>
+          <li>Bloqueio de comando destrutivo antes de executar</li>
+        </ul>
+      </div>
+      <div class="half smart">
+        <h3 data-l="en">intelligent half</h3>
+        <h3 data-l="pt">metade inteligente</h3>
+        <div class="what" data-l="en">Skills and subagents dispatched by Claude, each in its own context.</div>
+        <div class="what" data-l="pt">Skills e subagentes despachados pelo Claude, cada um em contexto próprio.</div>
+        <ul data-l="en">
+          <li>Understanding the request and classifying the domain</li>
+          <li>Writing proposal, design, tasks</li>
+          <li>Implementing with TDD</li>
+          <li>Reviewing in separate roles and issuing a verdict</li>
+          <li>Consolidating what the change taught</li>
+        </ul>
+        <ul data-l="pt">
+          <li>Entender o pedido e classificar o domínio</li>
+          <li>Escrever proposta, design, tarefas</li>
+          <li>Implementar com TDD</li>
+          <li>Revisar em papéis separados e emitir veredito</li>
+          <li>Consolidar o que a mudança ensinou</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§2 · what the plugin installs</span>
+      <span class="eyebrow" data-l="pt">§2 · o que o plugin instala</span>
+      <h2 data-l="en">Four asset types, no new tool</h2>
+      <h2 data-l="pt">Quatro tipos de asset, nenhuma tool nova</h2>
+    </div>
+    <p data-l="en">A Claude Code plugin does not widen what the agent can reach — it defines how the agent works, on top of the tools that already exist: read, edit, run a command, search.</p>
+    <p data-l="pt">Um plugin de Claude Code não amplia o que o agente alcança — ele define como o agente trabalha, em cima das ferramentas que já existem: ler, editar, rodar comando, buscar.</p>
+    <div class="cards">
+      <div class="card">
+        <span class="tag">skills</span>
+        <h3 data-l="en">Instructions on demand</h3>
+        <h3 data-l="pt">Instruções sob demanda</h3>
+        <p data-l="en">Markdown that enters the context only when the subject comes up. Loading all 38 at once would wreck the context; in comes the one that serves the change at hand.</p>
+        <p data-l="pt">Markdown que entra no contexto só quando o assunto aparece. Carregar as 38 de uma vez arruinaria o contexto; entra a que serve à mudança da vez.</p>
+        <span class="count" data-l="en">38 = 22 authored + 16 curated technical</span>
+        <span class="count" data-l="pt">38 = 22 autorais + 16 técnicas curadas</span>
+      </div>
+      <div class="card">
+        <span class="tag">subagents</span>
+        <h3 data-l="en">Roles in isolated context</h3>
+        <h3 data-l="pt">Papéis em contexto isolado</h3>
+        <p data-l="en">They take a task, work alone with a restricted tool set, and return a verdict. The separation is the point: whoever writes is never whoever reviews.</p>
+        <p data-l="pt">Recebem uma tarefa, trabalham sozinhos com um conjunto restrito de ferramentas e devolvem veredito. A separação é o ponto: quem escreve nunca é quem revisa.</p>
+        <span class="count" data-l="en">13 agents · author ≠ reviewer ≠ shipper</span>
+        <span class="count" data-l="pt">13 agentes · autor ≠ revisor ≠ shipper</span>
+      </div>
+      <div class="card">
+        <span class="tag">commands</span>
+        <h3 data-l="en">Named entry points</h3>
+        <h3 data-l="pt">Entradas nomeadas</h3>
+        <p data-l="en">The <code>/aidakit:*</code>. A generator turns flow YAML into a project-local command, so a new flow needs no code.</p>
+        <p data-l="pt">Os <code>/aidakit:*</code>. Um gerador transforma YAML de flow em comando local do projeto, então um flow novo não precisa de código.</p>
+        <span class="count" data-l="en">9 versioned commands</span>
+        <span class="count" data-l="pt">9 comandos versionados</span>
+      </div>
+      <div class="card">
+        <span class="tag">hooks</span>
+        <h3 data-l="en">Interceptors</h3>
+        <h3 data-l="pt">Interceptadores</h3>
+        <p data-l="en"><code>pre-bash.js</code> runs before every Bash call and can return exit 2 to deny. <code>session-start.js</code> injects the session's environment contract.</p>
+        <p data-l="pt"><code>pre-bash.js</code> roda antes de toda chamada de Bash e pode devolver exit 2 para negar. <code>session-start.js</code> injeta o contrato de ambiente da sessão.</p>
+        <span class="count">2 hooks · PreToolUse + SessionStart</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§3 · the flow</span>
+      <span class="eyebrow" data-l="pt">§3 · o flow</span>
+      <h2 data-l="en">A state machine declared in YAML</h2>
+      <h2 data-l="pt">Uma máquina de estados declarada em YAML</h2>
+    </div>
+    <p data-l="en">A flow is a sequence of steps. Each step resolves an <em>outcome</em> and routes to the next one through <code>on_result[outcome]</code>, <code>on_success</code> or <code>on_failure</code> — backwards included, which is how a failed gate hands the work back to the previous step. No implicit graph: the whole topology is in the file.</p>
+    <p data-l="pt">Um flow é uma sequência de steps. Cada step resolve um <em>outcome</em> e roteia para o próximo por <code>on_result[outcome]</code>, <code>on_success</code> ou <code>on_failure</code> — inclusive para trás, que é como um gate reprovado devolve o trabalho ao passo anterior. Nada de grafo implícito: a topologia inteira está no arquivo.</p>
+    <figure data-l="en">
+      <pre class="tinted"><span class="c">// governance/flows/fast.yaml — excerpt</span>
+  - id: readiness
+    type: <span class="k">invoke</span>
+    invoke_target: aidakit:readiness
+    expects:
+      - approved
+      - needs-revision
+      - blocked
+    on_result:
+      approved: context_pack
+      needs-revision: plan        <span class="c"># ← back-edge: redo the plan</span>
+      blocked: aborted</pre>
+      <figcaption>gate 1 declared as data, not as code</figcaption>
+    </figure>
+    <figure data-l="pt">
+      <pre class="tinted"><span class="c">// governance/flows/fast.yaml — recorte</span>
+  - id: readiness
+    type: <span class="k">invoke</span>
+    invoke_target: aidakit:readiness
+    expects:
+      - approved
+      - needs-revision
+      - blocked
+    on_result:
+      approved: context_pack
+      needs-revision: plan        <span class="c"># ← back-edge: refaz o plano</span>
+      blocked: aborted</pre>
+      <figcaption>gate 1 declarado como dado, não como código</figcaption>
+    </figure>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr data-l="en"><th>step type</th><th>what it does</th></tr>
+          <tr data-l="pt"><th>tipo de step</th><th>o que faz</th></tr>
+        </thead>
+        <tbody>
+          <tr data-l="en"><td class="name">invoke</td><td class="blocks">Dispatches a skill <em>or</em> an agent. It does not execute: it <strong>pauses</strong> and asks Claude to run it. It can declare <code>outputs</code>, and then the resume requires those values.</td></tr>
+          <tr data-l="pt"><td class="name">invoke</td><td class="blocks">Despacha uma skill <em>ou</em> um agente. Não executa: <strong>pausa</strong> e pede que o Claude rode. Pode declarar <code>outputs</code>, e aí o resume exige aqueles valores.</td></tr>
+          <tr data-l="en"><td class="name">runs</td><td class="blocks">Runs a deterministic command and routes by exit code. This is the cheap half: a validator, a test, a <code>git</code>.</td></tr>
+          <tr data-l="pt"><td class="name">runs</td><td class="blocks">Roda um comando determinístico e roteia por exit code. É a metade barata: um validador, um teste, um <code>git</code>.</td></tr>
+          <tr data-l="en"><td class="name">human_gate</td><td class="blocks">Pauses and asks the human to choose among declared options.</td></tr>
+          <tr data-l="pt"><td class="name">human_gate</td><td class="blocks">Pausa e pede que o humano escolha entre opções declaradas.</td></tr>
+          <tr data-l="en"><td class="name">human_handoff</td><td class="blocks">Pauses and hands the human a free-text task.</td></tr>
+          <tr data-l="pt"><td class="name">human_handoff</td><td class="blocks">Pausa e entrega uma tarefa em texto livre para o humano.</td></tr>
+          <tr data-l="en"><td class="name">loop</td><td class="blocks">Iterates a body over an array, with a <code>max</code> ceiling and/or an <code>until</code> condition — there is no infinite loop.</td></tr>
+          <tr data-l="pt"><td class="name">loop</td><td class="blocks">Itera um corpo sobre um array, com teto <code>max</code> e/ou condição <code>until</code> — não existe loop infinito.</td></tr>
+          <tr class="dead" data-l="en"><td class="name">parallel</td><td class="blocks">Runs branches sequentially inside the engine; the parallelism is logical, not concurrent. No production flow uses it — real parallelism happens another way (§7).</td></tr>
+          <tr class="dead" data-l="pt"><td class="name">parallel</td><td class="blocks">Roda ramos em sequência dentro do engine; o paralelismo é lógico, não concorrente. Nenhum flow em produção usa — paralelismo real acontece de outro jeito (§7).</td></tr>
+          <tr data-l="en"><td class="name">terminal</td><td class="blocks">Ends the flow as <code>completed</code> or <code>aborted</code>.</td></tr>
+          <tr data-l="pt"><td class="name">terminal</td><td class="blocks">Encerra o flow como <code>completed</code> ou <code>aborted</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note" data-l="en">Values are never sewn into shell text. In a <code>runs</code> step, every <code>${...}</code> becomes a reference to an env var (<code>$AIDAKIT_VAR_n</code>) whose content travels through the child's environment — a value with a newline or a metacharacter neither breaks nor injects the command.</p>
+    <p class="note" data-l="pt">Valores nunca são costurados no texto do shell. Num step <code>runs</code>, cada <code>${...}</code> vira referência a uma env var (<code>$AIDAKIT_VAR_n</code>) cujo conteúdo viaja pelo ambiente do filho — um valor com quebra de linha ou metacaractere não quebra nem injeta o comando.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§4 · the central point</span>
+      <span class="eyebrow" data-l="pt">§4 · o ponto central</span>
+      <h2 data-l="en">Inversion of control</h2>
+      <h2 data-l="pt">Inversão de controle</h2>
+    </div>
+    <p data-l="en">The engine <strong>never dispatches</strong> a skill or a subagent. That is Claude's job. The engine reaches the step, pauses carrying the target, and waits. Each half solves what the other solves badly: the engine guarantees order, gate and state; the model does the work that demands judgement.</p>
+    <p data-l="pt">O engine <strong>nunca despacha</strong> uma skill ou um subagente. Isso é trabalho do Claude. O engine chega no step, pausa carregando o alvo, e espera. Cada metade resolve o que a outra resolve mal: o engine garante ordem, gate e estado; o modelo faz o trabalho que exige julgamento.</p>
+    <div class="seq">
+      <div class="beat eng">
+        <span class="who">engine</span>
+        <b data-l="en">pauses</b>
+        <b data-l="pt">pausa</b>
+        <span data-l="en">Reaches the <code>invoke</code> step and stops, saying what the target is and which outcomes it accepts.</span>
+        <span data-l="pt">Chega no step <code>invoke</code> e para, dizendo qual é o alvo e quais outcomes ele aceita.</span>
+      </div>
+      <div class="beat cc">
+        <span class="who">claude</span>
+        <b data-l="en">dispatches</b>
+        <b data-l="pt">despacha</b>
+        <span data-l="en">Actually runs the skill or the subagent, in its own context, with that role's tools.</span>
+        <span data-l="pt">Roda a skill ou o subagente de verdade, em contexto próprio, com as ferramentas daquele papel.</span>
+      </div>
+      <div class="beat cc">
+        <span class="who">claude</span>
+        <b>resume</b>
+        <span data-l="en">Calls <code>resume &lt;flow_id&gt; &lt;outcome&gt; [key=value …]</code> handing the result back.</span>
+        <span data-l="pt">Chama <code>resume &lt;flow_id&gt; &lt;outcome&gt; [chave=valor …]</code> devolvendo o resultado.</span>
+      </div>
+      <div class="beat eng">
+        <span class="who">engine</span>
+        <b data-l="en">routes</b>
+        <b data-l="pt">roteia</b>
+        <span data-l="en">Validates the outcome against the declared ones, persists the context and decides the next step.</span>
+        <span data-l="pt">Valida o outcome contra os declarados, persiste o contexto e decide o próximo step.</span>
+      </div>
+    </div>
+    <p data-l="en">Where the step declares structured outputs, the resume is <strong>fail-closed</strong>: without the values, the engine re-pauses instead of proceeding with data missing. That is how the <code>change-id</code> resolved by one step arrives intact at every following step, instead of each one reinterpreting the original phrasing of the request.</p>
+    <p data-l="pt">Onde o step declara saídas estruturadas, o resume é <strong>fail-closed</strong>: sem os valores, o engine repausa em vez de seguir com dado faltando. É assim que o <code>change-id</code> resolvido por um passo chega intacto em todos os passos seguintes, em vez de cada um reinterpretar a frase original do pedido.</p>
+    <figure>
+      <pre>resume fast-260727-4575a1 success <span class="k">change_id=</span>trim-doc-planner-agent-prompt</pre>
+      <figcaption data-l="en">the value travels as data, not as prose</figcaption>
+      <figcaption data-l="pt">o valor viaja como dado, não como prosa</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§5 · state</span>
+      <span class="eyebrow" data-l="pt">§5 · estado</span>
+      <h2 data-l="en">The flow outlives the session</h2>
+      <h2 data-l="pt">O flow sobrevive à sessão</h2>
+    </div>
+    <p data-l="en">The engine is single-threaded by decision: it pauses and resumes against state on disk, which is exactly what survives a crash, a <code>/clear</code> or a week-long gap. Two folders per project: <code>state/&lt;flow_id&gt;.json</code> is the resumable state, <code>logs/&lt;flow_id&gt;.log</code> is the log in JSON lines.</p>
+    <p data-l="pt">O engine é single-thread por decisão: pausa e resume contra estado no disco, o que é exatamente o que sobrevive a um crash, a um <code>/clear</code> ou a uma semana de intervalo. Duas pastas por projeto: <code>state/&lt;flow_id&gt;.json</code> é o estado resumível, <code>logs/&lt;flow_id&gt;.log</code> é o log em JSON lines.</p>
+    <figure>
+      <pre>{"at":"…T15:40:28.824Z","event":"flow_start","flow":"fast",…}
+{"at":"…T15:40:28.824Z","event":"step_start","step_id":"route_mode","type":"runs"}
+{"at":"…T15:40:28.830Z","event":"step_end","step_id":"route_mode","result":"failure"}</pre>
+      <figcaption data-l="en">real log · one line per event, parseable</figcaption>
+      <figcaption data-l="pt">log real · uma linha por evento, parseável</figcaption>
+    </figure>
+    <p data-l="en">The CLI is a single binary: <code>node governance/cli.js start|resume|status|summaries|abort|list</code>. Every <code>start</code>, <code>resume</code> and <code>status</code> prints the progress table first — every step declared in the YAML, marked <code>done</code> / <code>current</code> / <code>pending</code>. That is the <strong>position</strong> layer. Under a finished step comes the second line, the <strong>narrative</strong> layer: the one-line summary that step emitted.</p>
+    <p data-l="pt">A CLI é um binário só: <code>node governance/cli.js start|resume|status|summaries|abort|list</code>. Todo <code>start</code>, <code>resume</code> e <code>status</code> imprime primeiro a tabela de progresso — todos os steps declarados no YAML, marcados <code>done</code> / <code>current</code> / <code>pending</code>. Isso é a camada de <strong>posição</strong>. Debaixo de um step concluído aparece a segunda linha, a camada de <strong>narrativa</strong>: o resumo de uma linha que aquele passo emitiu.</p>
+    <figure>
+      <pre>Flow: fast · fast-260727-4575a1 · <span class="o">completed/completed</span>
+   done     select
+             ↳ success
+   done     plan
+             ↳ success
+   done     readiness
+             ↳ <span class="g">approved</span>
+   done     context_pack
+   done     implement
+             ↳ success
+   done     check_implement_bench
+   done     review
+             ↳ <span class="g">pass</span>
+   done     check_review_bench
+   done     document
+             ↳ success
+   done     check_docs
+   done     acceptance
+             ↳ success
+   done     check_acceptance
+   pending  acceptance_escalation
+   done     pr
+             ↳ success
+   done     done</pre>
+      <figcaption data-l="en">real <code>status</code> output · fast flow completed, 30 steps executed</figcaption>
+      <figcaption data-l="pt">saída real de <code>status</code> · flow fast concluído, 30 steps executados</figcaption>
+    </figure>
+    <p class="note" data-l="en">A step re-visited by a back-edge overwrites nothing: it gets a new entry with the visit number, so the history shows the plan was redone twice instead of hiding it.</p>
+    <p class="note" data-l="pt">Um step re-visitado por back-edge não sobrescreve nada: ganha uma entrada nova com o número da visita, então o histórico mostra que o plano foi refeito duas vezes em vez de esconder isso.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§6 · the cycle</span>
+      <span class="eyebrow" data-l="pt">§6 · o ciclo</span>
+      <h2 data-l="en">What a change goes through</h2>
+      <h2 data-l="pt">O que uma mudança atravessa</h2>
+    </div>
+    <p data-l="en">This is the <code>fast</code> flow, for small and reversible work. <code>full</code> is the same skeleton with an adversarial brainstorm, domain classification, the complete review panel and the learning branch from §8 — for what is broad, architectural or irreversible. In amber, the gates.</p>
+    <p data-l="pt">Este é o flow <code>fast</code>, para trabalho pequeno e reversível. O <code>full</code> é o mesmo esqueleto com brainstorm adversarial, classificação de domínio, painel de revisão completo e o ramo de aprendizado do §8 — para o que é amplo, arquitetural ou irreversível. Em âmbar, os gates.</p>
+    <div class="track">
+      <div class="lane"><span class="step">select</span><span class="does" data-l="en">The orchestrator picks the next ready change, checks dependencies in the archive and returns the resolved <code>change_id</code>.</span><span class="does" data-l="pt">O orchestrator escolhe a próxima mudança pronta, checa dependências no arquivo e devolve o <code>change_id</code> resolvido.</span></div>
+      <div class="lane"><span class="step">plan</span><span class="does" data-l="en">Authoring of proposal · design · tasks. Not a line of product code.</span><span class="does" data-l="pt">Autoria de proposal · design · tasks. Nenhuma linha de código de produto.</span></div>
+      <div class="lane is-gate"><span class="step">readiness</span><span class="does" data-l="en"><span class="gate-mark">gate 1</span>Is the plan package implementable without ambiguity? <code>needs-revision</code> goes back to plan.</span><span class="does" data-l="pt"><span class="gate-mark">gate 1</span>O pacote de plano é implementável sem ambiguidade? <code>needs-revision</code> volta para o plan.</span></div>
+      <div class="lane"><span class="step">context_pack</span><span class="does" data-l="en">Distills the change's durable context into a small, stable pack, injected into every dispatch — so the agents stop re-reading everything each time.</span><span class="does" data-l="pt">Destila o contexto durável da mudança num pacote pequeno e estável, injetado em todo despacho — para os agentes pararem de reler tudo a cada vez.</span></div>
+      <div class="lane"><span class="step">implement</span><span class="does" data-l="en">Implementer in isolated context, task by task, TDD: red → green → refactor.</span><span class="does" data-l="pt">Implementer em contexto isolado, tarefa por tarefa, TDD: red → green → refactor.</span></div>
+      <div class="lane is-gate"><span class="step">review</span><span class="does" data-l="en"><span class="gate-mark">gate 2</span>Adversarial bench in real parallel: architecture, security, quality, spec. PASS/FAIL verdict.</span><span class="does" data-l="pt"><span class="gate-mark">gate 2</span>Bancada adversarial em paralelo de verdade: arquitetura, segurança, qualidade, especificação. Veredito PASS/FAIL.</span></div>
+      <div class="lane"><span class="step">document</span><span class="does" data-l="en">Produces the documents the change declared as mandatory.</span><span class="does" data-l="pt">Produz os documentos que a mudança declarou como obrigatórios.</span></div>
+      <div class="lane is-gate"><span class="step">check_docs</span><span class="does" data-l="en"><span class="gate-mark">leash</span>Does every document in the manifest exist on disk? If one is missing, back to <code>document</code>.</span><span class="does" data-l="pt"><span class="gate-mark">coleira</span>Todo documento do manifesto existe no disco? Se falta um, volta para o <code>document</code>.</span></div>
+      <div class="lane is-gate"><span class="step">check_acceptance</span><span class="does" data-l="en"><span class="gate-mark">leash</span>Does every acceptance criterion point at real evidence? The list has to close 100%.</span><span class="does" data-l="pt"><span class="gate-mark">coleira</span>Todo critério de aceite aponta para evidência real? A lista precisa fechar 100%.</span></div>
+      <div class="lane"><span class="step">pr</span><span class="does" data-l="en">Conventional commit, push, PR. It ends at the URL.</span><span class="does" data-l="pt">Commit convencional, push, PR. Termina na URL.</span></div>
+      <div class="lane is-human"><span class="step">merge</span><span class="does" data-l="en">Human, on the git host. Autonomous merge exists as a per-project opt-in, and the opt-in has to be committed on the base branch — a PR does not authorize itself through its own diff.</span><span class="does" data-l="pt">Humano, no host do git. Merge autônomo existe como opt-in por projeto, e o opt-in tem que estar commitado na branch base — um PR não se autoriza pelo próprio diff.</span></div>
+    </div>
+    <p data-l="en">One key ties it all: <strong><code>change-id</code> = branch = PR suffix = artifact directory = archive directory</strong>. A delivered change goes to a dated <code>archive/</code> and becomes case law: new changes cite precedent by archive-id.</p>
+    <p data-l="pt">Uma chave amarra tudo: <strong><code>change-id</code> = branch = sufixo do PR = diretório de artefatos = diretório de arquivo</strong>. Mudança entregue vai para um <code>archive/</code> datado e passa a ser jurisprudência: mudanças novas citam precedente por archive-id.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§7 · the leashes</span>
+      <span class="eyebrow" data-l="pt">§7 · as coleiras</span>
+      <h2 data-l="en">Where the process stops being trust</h2>
+      <h2 data-l="pt">Onde o processo deixa de ser confiança</h2>
+    </div>
+    <p data-l="en">Every validator in the kit has the same contract — <code>exit 0</code> passed, <code>exit 1</code> failed, <code>exit 2</code> infra error; JSON on stdout, human report on stderr. A flow calls a validator as a <code>runs</code> step, so a failure is routing, not a suggestion.</p>
+    <p data-l="pt">Todo validador do kit tem o mesmo contrato — <code>exit 0</code> passou, <code>exit 1</code> falhou, <code>exit 2</code> erro de infra; JSON no stdout, relatório humano no stderr. Um flow chama validador como step <code>runs</code>, então uma reprovação é roteamento, não sugestão.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr data-l="en"><th>leash</th><th>what it closes</th></tr>
+          <tr data-l="pt"><th>coleira</th><th>o que ela fecha</th></tr>
+        </thead>
+        <tbody>
+          <tr data-l="en"><td class="name">check-doc-manifest</td><td class="blocks">Before implementing, an agent assembles the manifest of documents that change requires. Later, the validator checks it item by item on disk. The prose "document this" became a verifiable list.</td></tr>
+          <tr data-l="pt"><td class="name">check-doc-manifest</td><td class="blocks">Antes de implementar, um agente monta o manifesto de documentos obrigatórios daquela mudança. Depois, o validador confere item por item no disco. A prosa "documente isso" virou lista verificável.</td></tr>
+          <tr data-l="en"><td class="name">check-acceptance</td><td class="blocks">Every acceptance criterion is wired to an evidence path — test file, evidence section, log capture. An orphan criterion sends the flow back.</td></tr>
+          <tr data-l="pt"><td class="name">check-acceptance</td><td class="blocks">Cada critério de aceite é ligado a um caminho de evidência — arquivo de teste, seção de evidência, captura de log. Critério órfão devolve o flow.</td></tr>
+          <tr data-l="en"><td class="name">check-bench</td><td class="blocks">The proof that the review bench actually ran — detail below.</td></tr>
+          <tr data-l="pt"><td class="name">check-bench</td><td class="blocks">A prova de que a bancada de revisão rodou mesmo — detalhe abaixo.</td></tr>
+          <tr data-l="en"><td class="name">check-context-pack</td><td class="blocks">Guarantees the context pack is fresh and byte-stable before it is injected into dispatches.</td></tr>
+          <tr data-l="pt"><td class="name">check-context-pack</td><td class="blocks">Garante que o pacote de contexto é fresco e byte-estável antes de ser injetado nos despachos.</td></tr>
+          <tr data-l="en"><td class="name">derive-roadmap-status</td><td class="blocks">A roadmap item's status is <em>derived</em> from disk, never a hand-written field: under <code>features/</code> it is in-progress, an open PR is in-review, in the archive it is done. The board cannot lie.</td></tr>
+          <tr data-l="pt"><td class="name">derive-roadmap-status</td><td class="blocks">Status de item de roadmap é <em>derivado</em> do disco, nunca um campo escrito à mão: em <code>features/</code> é in-progress, PR aberto é in-review, no arquivo é done. O board não consegue mentir.</td></tr>
+          <tr data-l="en"><td class="name">check-adr-format</td><td class="blocks">An ADR outside the 5-section format, or with a status outside the vocabulary, does not get in. An ADR is WORM: you don't edit it, you supersede it.</td></tr>
+          <tr data-l="pt"><td class="name">check-adr-format</td><td class="blocks">ADR fora do formato de 5 seções ou com status fora do vocabulário não entra. ADR é WORM: não se edita, se supersede.</td></tr>
+          <tr data-l="en"><td class="name">check-links</td><td class="blocks">An internal markdown link that does not resolve on disk fails the validation.</td></tr>
+          <tr data-l="pt"><td class="name">check-links</td><td class="blocks">Link markdown interno que não resolve no disco derruba a validação.</td></tr>
+          <tr data-l="en"><td class="name">check-runtime-bump</td><td class="blocks">A PR that changes runtime without bumping the manifest version fails in CI — otherwise the consumers' update becomes a silent no-op and installed sessions keep running the old code.</td></tr>
+          <tr data-l="pt"><td class="name">check-runtime-bump</td><td class="blocks">PR que muda runtime sem subir a versão do manifesto falha no CI — senão o update dos consumidores vira no-op silencioso e as sessões instaladas seguem no código velho.</td></tr>
+          <tr data-l="en"><td class="name">check-dna-freshness</td><td class="blocks">Marks as stale the crystallized rule whose origin ADR has been superseded.</td></tr>
+          <tr data-l="pt"><td class="name">check-dna-freshness</td><td class="blocks">Marca como obsoleta a regra cristalizada cuja ADR de origem foi superseded.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 data-l="en">The bench: how you prove N agents ran together</h3>
+    <h3 data-l="pt">A bancada: como se prova que N agentes rodaram juntos</h3>
+    <p data-l="en">The engine is single-threaded, so real concurrency does not happen inside it: it happens inside a skill, when Claude fires N subagent calls in the <em>same message</em>. That used to be trust in prose — the skill said "I dispatched four reviewers in parallel" and nothing verified it. The <code>bench.ndjson</code> ledger closes that in three beats:</p>
+    <p data-l="pt">O engine é single-thread, então concorrência real não acontece nele: acontece dentro de uma skill, quando o Claude dispara N chamadas de subagente na <em>mesma mensagem</em>. Isso era confiança em prosa — a skill dizia "despachei quatro revisores em paralelo" e nada verificava. O ledger <code>bench.ndjson</code> fecha isso em três tempos:</p>
+    <figure data-l="en">
+      <pre><span class="c">// 1. before dispatching anyone: the round's manifest</span>
+{"type":"bench-manifest","round":1,"roles":["adr-reviewer","spec-reviewer","reviewer-quality"]}
+
+<span class="c">// 2. each returning agent records its own verdict and its own window</span>
+{"type":"bench","round":1,"role":"adr-reviewer","verdict":"<span class="o">pass</span>",
+ "dispatched_at":"…T17:24:05.000Z","returned_at":"…T17:28:46.000Z"}
+{"type":"bench","round":1,"role":"spec-reviewer","verdict":"<span class="o">pass</span>",
+ "dispatched_at":"…T17:24:05.000Z","returned_at":"…T17:28:46.000Z"}</pre>
+      <figcaption>real ledger of one review round</figcaption>
+    </figure>
+    <figure data-l="pt">
+      <pre><span class="c">// 1. antes de despachar ninguém: o manifesto da rodada</span>
+{"type":"bench-manifest","round":1,"roles":["adr-reviewer","spec-reviewer","reviewer-quality"]}
+
+<span class="c">// 2. cada agente que volta registra o próprio veredito e a própria janela</span>
+{"type":"bench","round":1,"role":"adr-reviewer","verdict":"<span class="o">pass</span>",
+ "dispatched_at":"…T17:24:05.000Z","returned_at":"…T17:28:46.000Z"}
+{"type":"bench","round":1,"role":"spec-reviewer","verdict":"<span class="o">pass</span>",
+ "dispatched_at":"…T17:24:05.000Z","returned_at":"…T17:28:46.000Z"}</pre>
+      <figcaption>ledger real de uma rodada de review</figcaption>
+    </figure>
+    <p data-l="en">In the third beat, a <code>runs</code> step right after the <code>invoke</code> calls <code>check-bench.js</code>, which verifies mechanically: <strong>(a)</strong> every role in the manifest reported exactly once; <strong>(b)</strong> the consensus the skill reported to the engine matches what the agents actually said; <strong>(c)</strong> the dispatch windows <em>overlap</em> — proof of real concurrency, not of a sequential queue dressed up as parallel. The manifest has to be the oldest record of the round, otherwise you could shrink the list after seeing a role fail. Any violation routes back and redoes the round.</p>
+    <p data-l="pt">No terceiro tempo, um step <code>runs</code> logo depois do <code>invoke</code> chama <code>check-bench.js</code>, que verifica mecanicamente: <strong>(a)</strong> todo papel do manifesto reportou exatamente uma vez; <strong>(b)</strong> o consenso que a skill relatou ao engine bate com o que os agentes de fato disseram; <strong>(c)</strong> as janelas de despacho <em>se sobrepõem</em> — prova de concorrência real, não de uma fila sequencial fantasiada de paralelo. O manifesto tem que ser o registro mais antigo da rodada, senão daria para encolher a lista depois de ver um papel reprovar. Qualquer violação roteia de volta e refaz a rodada.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§8 · learning</span>
+      <span class="eyebrow" data-l="pt">§8 · aprendizado</span>
+      <h2 data-l="en">From a repeated error to an executable gene</h2>
+      <h2 data-l="pt">De erro repetido a gene executável</h2>
+    </div>
+    <p data-l="en">Half the kit already runs on its own: validators and hooks spend no tokens and reinterpret nothing. The other half — what the change <em>taught</em> — is born as text the model re-reads and reinterprets every session. The DNA is the crossing from one to the other: the lesson stops being re-read memory and becomes code the organism executes.</p>
+    <p data-l="pt">Metade do kit já roda sozinha: validador e hook não gastam token e não reinterpretam nada. A outra metade — o que a mudança <em>ensinou</em> — nasce como texto que o modelo relê e reinterpreta a cada sessão. O DNA é a passagem de uma para a outra: a lição para de ser memória relida e vira código que o organismo executa.</p>
+
+    <div class="seq">
+      <div class="beat eng">
+        <span class="who" data-l="en">1 · record</span>
+        <span class="who" data-l="pt">1 · registro</span>
+        <b data-l="en">per-change ledgers</b>
+        <b data-l="pt">ledgers por mudança</b>
+        <span data-l="en">Every error corrected along the way becomes a record with type, key and phase. Alongside go the token and bench ledgers, all in <code>.aidakit/tasks/&lt;change-id&gt;/</code>.</span>
+        <span data-l="pt">Cada erro corrigido no caminho vira um registro com tipo, chave e fase. Junto vão os ledgers de token e de bench, todos em <code>.aidakit/tasks/&lt;change-id&gt;/</code>.</span>
+      </div>
+      <div class="beat eng">
+        <span class="who" data-l="en">2 · trigger</span>
+        <span class="who" data-l="pt">2 · gatilho</span>
+        <b data-l="en">recurrence ≥ 3×</b>
+        <b data-l="pt">reincidência ≥ 3×</b>
+        <span data-l="en">The trigger is objective, not a feeling: <code>deriveCandidates</code> groups errors by type + key and only returns a candidate once the threshold is passed.</span>
+        <span data-l="pt">O gatilho é objetivo, não é sensação: <code>deriveCandidates</code> agrupa os erros por tipo + chave e só devolve candidato quem passou do limiar.</span>
+      </div>
+      <div class="beat cc">
+        <span class="who" data-l="en">3 · crystallization</span>
+        <span class="who" data-l="pt">3 · cristalização</span>
+        <b data-l="en">becomes an artifact</b>
+        <b data-l="pt">vira artefato</b>
+        <span data-l="en"><code>learn</code> calls <code>writeDna</code> and the candidate becomes a regression test or a validator rule — in staging, never straight into the live tree.</span>
+        <span data-l="pt">O <code>learn</code> chama <code>writeDna</code> e o candidato vira teste de regressão ou regra validadora — em staging, nunca direto na árvore viva.</span>
+      </div>
+      <div class="beat hum">
+        <span class="who" data-l="en">4 · promotion</span>
+        <span class="who" data-l="pt">4 · promoção</span>
+        <b data-l="en">its own PR</b>
+        <b data-l="pt">PR próprio</b>
+        <span data-l="en">The DNA goes up on a dedicated branch, in a PR separate from the feature's PR. It only takes effect when a human merges it.</span>
+        <span data-l="pt">O DNA sobe numa branch dedicada, com PR separado do PR da feature. Só passa a valer quando um humano faz o merge.</span>
+      </div>
+    </div>
+
+    <p data-l="en"><code>learn</code> is a step of the <code>full</code> flow — <code>fast</code> does not carry it, and it can also be called on its own at the end of any change. It reads the diff, the correction events and the ledgers, and asks a single question — <em>would someone landing here on the next change know what to do from the current documentation alone?</em> If not, it is a learning candidate, and it gets classified on three independent axes.</p>
+    <p data-l="pt">O <code>learn</code> é um passo do flow <code>full</code> — o <code>fast</code> não o carrega, e ele também pode ser chamado sozinho no fim de qualquer mudança. Ele lê o diff, os eventos de correção e os ledgers, e faz uma pergunta só — <em>alguém que caísse aqui na próxima mudança saberia o que fazer só com a documentação atual?</em> Se não, é candidato a aprendizado, e ele classifica em três eixos independentes.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr data-l="en"><th>axis</th><th>values</th></tr>
+          <tr data-l="pt"><th>eixo</th><th>valores</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">kind</td><td class="blocks">bug-class · doc-gap · project-rule · process-friction · tooling · environment</td></tr>
+          <tr><td class="name">action</td><td class="blocks">followup · doc-update · rule · regression-gate · memory-only</td></tr>
+          <tr data-l="en"><td class="name">scope</td><td class="blocks">project (holds in this repo) · user (holds for you in any repo). When in doubt, the narrower one — you do not generalize one project's lesson to all of them.</td></tr>
+          <tr data-l="pt"><td class="name">scope</td><td class="blocks">project (vale neste repo) · user (vale para você em qualquer repo). Na dúvida, o mais estreito — não se generaliza lição de um projeto para todos.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p data-l="en"><strong>The inviolable principle is that it proposes and does not write.</strong> Every learning that would become a document or rule change comes out as a literal diff in <code>proposed-updates.md</code>, with target, category and before/after. Applying it remains a human decision — or becomes a change of its own, with the whole cycle.</p>
+    <p data-l="pt"><strong>O princípio inviolável é que ele propõe e não escreve.</strong> Todo aprendizado que viraria mudança de documento ou regra sai como diff literal em <code>proposed-updates.md</code>, com alvo, categoria e antes/depois. Aplicar continua sendo decisão humana — ou vira uma mudança própria, com o ciclo inteiro.</p>
+
+    <h3 data-l="en">Provenance is what lets you kill the gene later</h3>
+    <h3 data-l="pt">A proveniência é o que permite matar o gene depois</h3>
+    <p data-l="en">Every DNA is born with a mandatory provenance header. It is not decorative metadata: without knowing under which premise the rule was created, you can never know when it stopped holding.</p>
+    <p data-l="pt">Todo DNA nasce com um cabeçalho de proveniência obrigatório. Não é metadado decorativo: sem saber sob que premissa a regra foi criada, nunca dá para saber quando ela deixou de valer.</p>
+    <figure>
+      <pre><span class="c">// .aidakit/dna/&lt;change-id&gt;/regression-&lt;slug&gt;.test.mjs</span>
+<span class="k">// @dna-origin-change:</span> feature-appointment
+<span class="k">// @dna-origin-premise:</span> ADR-020
+<span class="k">// @dna-type:</span> regression-gate
+<span class="k">// @dna-created-at:</span> 2026-07-20
+<span class="k">// @dna-trigger:</span> ledger:errorType=agent-rework recurred 3x</pre>
+      <figcaption data-l="en">a plain comment · executable without a parser, readable by grep</figcaption>
+      <figcaption data-l="pt">comentário simples · executável sem parser, legível por grep</figcaption>
+    </figure>
+    <p data-l="en">That header is what <code>check-dna-freshness</code> cross-checks against the ADRs' supersede graph. When the ADR that held up the lesson is superseded, the DNA is marked <strong>stale</strong> and requires human revalidation — because a gate that never expires ends up becoming the bug it once caught. DNA missing the mandatory fields also fails: it exists, but there is no way to judge it.</p>
+    <p data-l="pt">É esse cabeçalho que o <code>check-dna-freshness</code> cruza com o grafo de supersede das ADRs. Quando a ADR que sustentava a lição é superseded, o DNA é marcado <strong>stale</strong> e exige revalidação humana — porque um gate que nunca expira acaba virando o bug que ele um dia pegou. DNA sem os campos obrigatórios também reprova: existe, mas não dá para julgar.</p>
+    <p class="note" data-l="en">Two types, and nothing beyond: <code>regression-gate</code> becomes a <code>.test.mjs</code> in the suite's own pattern; <code>rule</code> becomes a <code>.js</code> validator under the same exit 0/1/2 contract as the others. In the <code>full</code> flow, the <code>dna_gate → dna_freshness → dna_pr</code> branch runs alongside the feature's PR without blocking it. Mixing process evolution with product delivery would pollute both.</p>
+    <p class="note" data-l="pt">Dois tipos, e nada além disso: <code>regression-gate</code> vira um <code>.test.mjs</code> no mesmo padrão da suíte; <code>rule</code> vira um validador <code>.js</code> no mesmo contrato exit 0/1/2 dos outros. No flow <code>full</code>, o ramo <code>dna_gate → dna_freshness → dna_pr</code> corre ao lado do PR da feature sem bloqueá-lo. Misturar evolução do processo com entrega do produto poluiria os dois.</p>
+    <p data-l="en">What does not become a gene still has a destination: operational learning stays as one line read at the start of the next change, and what proves to be durable knowledge — a convention, a recurring trap, a glossary term — is proposed for promotion into the repo's shared knowledge, always via PR.</p>
+    <p data-l="pt">O que não vira gene ainda tem destino: aprendizado operacional fica como uma linha lida no início da próxima mudança, e o que se prova conhecimento durável — uma convenção, uma armadilha recorrente, um termo de glossário — é proposto para promoção ao conhecimento compartilhado do repo, sempre via PR.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§9 · the hook</span>
+      <span class="eyebrow" data-l="pt">§9 · o hook</span>
+      <h2 data-l="en">What dies before it executes</h2>
+      <h2 data-l="pt">O que morre antes de executar</h2>
+    </div>
+    <p data-l="en"><code>pre-bash</code> runs before every Bash call in the session and blocks what governance forbids: <code>push --force</code>, <code>--no-verify</code>, <code>git add -A</code>, <code>reset --hard</code>, <code>clean -f</code>, <code>branch -D</code>, <code>gh pr merge</code>. The general philosophy is <strong>fail-open</strong> — when in doubt, allow, because a paranoid hook would turn into a permanent bypass. The merge rule is the deliberate inversion of that: <strong>fail-closed</strong>, only a literal form recognized as safe gets through, and any ambiguous or obfuscated shell construction dies.</p>
+    <p data-l="pt">O <code>pre-bash</code> roda antes de toda chamada de Bash da sessão e bloqueia o que a governança proíbe: <code>push --force</code>, <code>--no-verify</code>, <code>git add -A</code>, <code>reset --hard</code>, <code>clean -f</code>, <code>branch -D</code>, <code>gh pr merge</code>. A filosofia geral é <strong>fail-open</strong> — na dúvida, libera, porque um hook paranoico viraria bypass permanente. A regra de merge é a inversão deliberada disso: <strong>fail-closed</strong>, só passa uma forma literal reconhecida como segura, e qualquer construção shell ambígua ou obfuscada morre.</p>
+    <figure data-l="en">
+      <pre><span class="c"># conscious bypass, and logged</span>
+AIDAKIT_BYPASS=1 git reset --hard HEAD~1
+
+<span class="c"># → .claude/.cache/aidakit-bypass.log gains date + command</span></pre>
+      <figcaption>the bypass exists for the human to decide, not for the agent to escape</figcaption>
+    </figure>
+    <figure data-l="pt">
+      <pre><span class="c"># bypass consciente, e registrado</span>
+AIDAKIT_BYPASS=1 git reset --hard HEAD~1
+
+<span class="c"># → .claude/.cache/aidakit-bypass.log ganha data + comando</span></pre>
+      <figcaption>o bypass existe para o humano decidir, não para o agente escapar</figcaption>
+    </figure>
+    <p class="note" data-l="en">One exception has no bypass at all: <code>rm -rf</code> at root or home never passes.</p>
+    <p class="note" data-l="pt">Uma exceção não tem bypass nenhum: <code>rm -rf</code> em raiz ou home nunca passa.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§10 · where to read in the repo</span>
+      <span class="eyebrow" data-l="pt">§10 · onde ler no repo</span>
+      <h2 data-l="en">A map for whoever opens the code</h2>
+      <h2 data-l="pt">Mapa para quem vai abrir o código</h2>
+    </div>
+    <div class="map">
+      <div class="entry"><code>governance/engine/</code><span data-l="en">Engine: parser, interpolation, persistence, one file per step type.</span><span data-l="pt">Engine: parser, interpolação, persistência, um arquivo por tipo de step.</span></div>
+      <div class="entry"><code>governance/engine/yaml-min.js</code><span data-l="en">A YAML parser of its own, written to avoid bringing in a dependency.</span><span data-l="pt">Parser de YAML próprio, escrito para não trazer dependência.</span></div>
+      <div class="entry"><code>governance/flows/*.yaml</code><span data-l="en">The 4 flows: fast, full, design, docs-onboarding.</span><span data-l="pt">Os 4 flows: fast, full, design, docs-onboarding.</span></div>
+      <div class="entry"><code>governance/validators/</code><span data-l="en">The 14 leashes, each with its contract in the file header.</span><span data-l="pt">As 14 coleiras, cada uma com o contrato no header do arquivo.</span></div>
+      <div class="entry"><code>governance/ledgers/ledger.js</code><span data-l="en">Bench, token and error ledgers.</span><span data-l="pt">Ledgers de bench, token e erro.</span></div>
+      <div class="entry"><code>governance/__tests__/</code><span data-l="en">26 files, 1424 cases, no framework: <code>node &lt;file&gt;.test.mjs</code>.</span><span data-l="pt">26 arquivos, 1424 casos, sem framework: <code>node &lt;arquivo&gt;.test.mjs</code>.</span></div>
+      <div class="entry"><code>hooks/pre-bash.js</code><span data-l="en">The blocking rules, and the honest limit documented in its own header.</span><span data-l="pt">As regras de bloqueio, e o limite honesto documentado no próprio header.</span></div>
+      <div class="entry"><code>skills/ · agents/</code><span data-l="en">The intelligent half: 38 skills, 13 agents, all markdown.</span><span data-l="pt">A metade inteligente: 38 skills, 13 agentes, tudo markdown.</span></div>
+      <div class="entry"><code>docs/decisions/</code><span data-l="en">17 ADRs. Every structural decision of the kit has one, and it is immutable.</span><span data-l="pt">17 ADRs. Toda decisão estrutural do kit tem uma, e ela é imutável.</span></div>
+      <div class="entry"><code>GOVERNANCE.md · DOCS.md</code><span data-l="en">The doctrine that the governance/ directory makes executable.</span><span data-l="pt">A doutrina que o diretório governance/ torna executável.</span></div>
+      <div class="entry"><code>.aidakit/flows/{state,logs}</code><span data-l="en">State and log per run, in the consuming project. Ephemeral, gitignore recommended.</span><span data-l="pt">Estado e log por run, no projeto consumidor. Efêmero, gitignore recomendado.</span></div>
+      <div class="entry"><code>.aidakit/tasks/&lt;change-id&gt;/</code><span data-l="en">Doc manifest, acceptance manifest and bench.ndjson of that change.</span><span data-l="pt">Manifesto de docs, manifesto de aceite e bench.ndjson daquela mudança.</span></div>
+    </div>
+    <figure data-l="en">
+      <pre>git clone git@github.com:chacal88/aidakit.git
+
+<span class="c">/plugin marketplace add /path/to/aidakit</span>
+<span class="c">/plugin install aidakit@aidakit</span></pre>
+      <figcaption>installation · the last two run inside Claude Code</figcaption>
+    </figure>
+    <figure data-l="pt">
+      <pre>git clone git@github.com:chacal88/aidakit.git
+
+<span class="c">/plugin marketplace add /caminho/para/aidakit</span>
+<span class="c">/plugin install aidakit@aidakit</span></pre>
+      <figcaption>instalação · os dois últimos rodam dentro do Claude Code</figcaption>
+    </figure>
+    <p class="note" data-l="en">To confirm the leash is up, ask for any <code>git push --force</code>: if the hook is loaded, the call dies before executing, with the reason on stderr.</p>
+    <p class="note" data-l="pt">Para conferir que a coleira subiu, peça um <code>git push --force</code> qualquer: se o hook está carregado, a chamada morre antes de executar, com a razão no stderr.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow" data-l="en">§11 · limits</span>
+      <span class="eyebrow" data-l="pt">§11 · limites</span>
+      <h2 data-l="en">What it is not</h2>
+      <h2 data-l="pt">O que ele não é</h2>
+    </div>
+    <div class="limits">
+      <div class="limit">
+        <b data-l="en">The hook is not a security sandbox.</b>
+        <b data-l="pt">O hook não é sandbox de segurança.</b>
+        <span data-l="en">It protects against accidental, inattentive use — not against a hostile agent or one hit by prompt injection: whoever wants to get around it hides the payload in a file the hook does not read. This is written in <code>pre-bash.js</code>'s own header; it is no footnote surprise.</span>
+        <span data-l="pt">Protege contra uso acidental e desatento, não contra um agente hostil ou vítima de prompt injection — quem quer contornar esconde o payload num arquivo que o hook não lê. Está escrito no header do próprio <code>pre-bash.js</code>, não é surpresa de rodapé.</span>
+      </div>
+      <div class="limit">
+        <b data-l="en">The engine is not concurrent.</b>
+        <b data-l="pt">O engine não é concorrente.</b>
+        <span data-l="en">Single-threaded by decision, because what matters is the state outliving the session. Real parallelism only exists in the bench pattern, inside a skill.</span>
+        <span data-l="pt">Single-thread por decisão, porque o que importa é o estado sobreviver à sessão. Paralelismo real só existe no padrão de bancada, dentro de uma skill.</span>
+      </div>
+      <div class="limit">
+        <b data-l="en">It does not replace judgement.</b>
+        <b data-l="pt">Ele não substitui julgamento.</b>
+        <span data-l="en">The gates stop the advance and show the reason. Proceeding, reviewing or aborting remains the decision of whoever is reading.</span>
+        <span data-l="pt">Os gates param o avanço e mostram a razão. Seguir, revisar ou abortar continua sendo decisão de quem está lendo.</span>
+      </div>
+      <div class="limit">
+        <b data-l="en">It does not have good visibility.</b>
+        <b data-l="pt">Ele não tem boa visibilidade.</b>
+        <span data-l="en">It works well from the inside, but almost everything it knows lives in markdown, JSON lines and stderr. There is no dashboard, no browsable history, no view of the process from outside. This is where the pieces are missing.</span>
+        <span data-l="pt">Funciona bem por dentro, mas quase tudo que ele sabe vive em markdown, JSON lines e stderr. Não há painel, nem histórico navegável, nem visão de fora do processo. É aqui que faltam peças.</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    github.com/chacal88/aidakit · plugin v0.11.4<br>
+    <span data-l="en">everything on this page was measured on the working tree: 4 flows, 7 step types, 38 skills, 13 subagents, 9 commands, 14 validators, 17 ADRs, 2 hooks, 26 test files, 1424 green cases, 0 failures, 0 runtime dependencies</span>
+    <span data-l="pt">tudo nesta página foi medido na árvore de trabalho: 4 flows, 7 tipos de step, 38 skills, 13 subagents, 9 comandos, 14 validadores, 17 ADRs, 2 hooks, 26 arquivos de teste, 1424 casos verdes, 0 falhas, 0 dependências de runtime</span>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = { en: document.getElementById("lang-en"), pt: document.getElementById("lang-pt") };
+    function apply(lang) {
+      if (lang !== "en" && lang !== "pt") lang = "en";
+      root.setAttribute("data-lang", lang);
+      root.setAttribute("lang", lang === "pt" ? "pt-BR" : "en");
+      buttons.en.setAttribute("aria-pressed", String(lang === "en"));
+      buttons.pt.setAttribute("aria-pressed", String(lang === "pt"));
+      try { localStorage.setItem("aidakit-anatomy-lang", lang); } catch (e) {}
+    }
+    var stored = null;
+    try { stored = localStorage.getItem("aidakit-anatomy-lang"); } catch (e) {}
+    var initial = stored || (/^pt\b/i.test(navigator.language || "") ? "pt" : "en");
+    apply(initial);
+    buttons.en.addEventListener("click", function () { apply("en"); });
+    buttons.pt.addEventListener("click", function () { apply("pt"); });
+  })();
+</script>
+
+</body>
+</html>
