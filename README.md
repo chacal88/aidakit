@@ -4,6 +4,8 @@ Pre-aida development kit: while aida isn't ready, this plugin brings the full pr
 
 > 📖 **New here? Read the [field guide / overview](docs/OVERVIEW.md)** — the whole kit on one page (a visual version is at [`docs/overview.html`](docs/overview.html)).
 
+> 🔬 **Want the long look? Open the [anatomy](docs/anatomy.html)** — an illustrated paper on how the kit actually works (the deterministic/intelligent split, the flow engine, the leashes, the limits), bilingual EN/PT with a switch at the top of the page.
+
 > **Names updated in v0.3:** `roteiro` → `design`, `flow` → `build`, `next` absorbed into `build`.
 
 > **Precedence:** this README summarizes and points. If it diverges from the doctrine ([DOCS.md](DOCS.md), [GOVERNANCE.md](GOVERNANCE.md), [PROCESS.md](PROCESS.md)) or from a plugin `SKILL.md`, the other wins and this file gets corrected.
