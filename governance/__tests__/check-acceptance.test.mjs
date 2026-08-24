@@ -301,6 +301,28 @@ sectionManifest("openspec/changes/feat-x/evidence.md");
     "section: 'evidence-anchor-missing' — a section criterion must name its section");
 }
 
+// (21b) REGRESSION, found while dogfooding this change in psim-kernel: the pt-BR
+// word "método" contains "todo", and JavaScript's `\b` is ASCII-only — it sees a
+// boundary between `é` and `t`. The gate blocked its own evidence section on
+// `**Registro de método:**`. Boundaries are Unicode lookarounds now.
+writeFileSync(evidencePath, [
+  "# Evidence", "", "### `bench-proof`", "",
+  "> **Registro de método:** a varredura leu 58 arquivos.", "",
+  "O **método** empregado e os **métodos** alternativos.", "",
+].join("\n"));
+sectionManifest("openspec/changes/feat-x/evidence.md#bench-proof");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 0 && r.json.ok, "section: 'método'/'métodos' do not read as the TODO marker (ASCII \\b would)");
+}
+// …and the marker is still seen when it really is one, in the same accented prose.
+writeFileSync(evidencePath, "# Evidence\n\n### `bench-proof`\n\n> **Registro de método: TODO**\n");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && r.json.errors.some((e) => e.rule === "evidence-section-pending"),
+    "section: a real TODO next to accented prose is still caught");
+}
+
 // (21) The bar keys on the ANCHOR too, not only on `kind`: a markdown path with
 // an anchor is a section promise whatever the kind field says (closes the dodge
 // of relabelling the item `kind: "file"`).

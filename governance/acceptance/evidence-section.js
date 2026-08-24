@@ -96,8 +96,14 @@ export function findSection(markdown, anchor) {
   return { heading: lines[start].line, lines: lines.slice(start + 1) };
 }
 
-/** Words that declare an unfinished promise, in the artifacts' two languages. */
-const PENDING_WORD = /\b(pendentes?|pending|todo|tbd)\b/i;
+// Words that declare an unfinished promise, in the artifacts' two languages.
+// The boundaries are Unicode lookarounds, NOT `\b`: JavaScript's `\b` is
+// ASCII-only, so it sees a boundary between `é` and `t` and reads "todo" out of
+// the middle of the pt-BR word "método". Measured while dogfooding this very
+// change — the gate blocked its own evidence section on `**Registro de método:**`.
+const WORD = String.raw`(?<![\p{L}\p{N}])(?:%s)(?![\p{L}\p{N}])`;
+const PENDING_WORD = new RegExp(WORD.replace("%s", "pendentes?|pending|todo|tbd"), "iu");
+const PENDING_WORD_CAPS = new RegExp(WORD.replace("%s", "PENDENTES?|PENDING|TODO|TBD"), "u");
 /** An unchecked task box — `- [ ]`, `* [ ]`, `+ [ ]`. */
 const UNCHECKED_BOX = /^\s*[-*+]\s+\[\s\]\s*/;
 /** Emphasis spans: **bold**, __bold__, *italic*, _italic_. */
@@ -124,14 +130,14 @@ export function findPendingMarker(sectionLines) {
   for (const { line, fenced } of sectionLines) {
     if (fenced) continue;
     if (UNCHECKED_BOX.test(line)) return { marker: "unchecked-box", line: line.trim() };
-    const caps = /\b(PENDENTES?|PENDING|TODO|TBD)\b/.exec(line);
-    if (caps) return { marker: caps[1], line: line.trim() };
+    const caps = PENDING_WORD_CAPS.exec(line);
+    if (caps) return { marker: caps[0], line: line.trim() };
     EMPHASIS.lastIndex = 0;
     let m;
     while ((m = EMPHASIS.exec(line)) !== null) {
       const inner = m[1] ?? m[2] ?? m[3] ?? m[4] ?? "";
       const hit = PENDING_WORD.exec(inner);
-      if (hit) return { marker: hit[1], line: line.trim() };
+      if (hit) return { marker: hit[0], line: line.trim() };
     }
   }
   return null;
