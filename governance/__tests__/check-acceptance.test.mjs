@@ -212,6 +212,109 @@ writeFileSync(join(projRoot, "openspec", "changes", "feat-x", "proposal.md"),
     "leash: the kit-mode proposal is not read in OpenSpec mode");
 }
 
+// ---------------------------------------------------------------------------
+// (15)-(20) SECTION BAR (ADR-018) — an `evidence-section` criterion is resolved
+// against the SECTION its anchor names, not against the file. Reported from
+// psim-kernel: a change closed "OK — 10/10 acceptance criteria resolved" while
+// the pointed-at section said PENDENTE in writing, because the file existed
+// (it held the other nine criteria) and the anchor was never read.
+// ---------------------------------------------------------------------------
+const evidenceDir = join(projRoot, "openspec", "changes", "feat-x");
+const evidencePath = join(evidenceDir, "evidence.md");
+// One proposal, one manifest id, for every case below — the cross-check stays quiet
+// so the section bar is the only thing under test.
+writeFileSync(join(evidenceDir, "proposal.md"),
+  "# Proposal\n\n## Acceptance criteria\n\n- `bench-proof` — the capture exists\n");
+function sectionManifest(path) {
+  writeManifest([
+    { criterion_id: "bench-proof", criterion: "the capture exists", evidence: { kind: "evidence-section", path }, status: "resolved" },
+  ]);
+}
+
+// (15) Section exists and is complete → gate RELEASED.
+writeFileSync(evidencePath, "# Evidence\n\n### `bench-proof`\n\nCaptured on the bench, both devices.\n");
+sectionManifest("openspec/changes/feat-x/evidence.md#bench-proof");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 0 && r.json.ok, "section: a complete section clears the gate (exit 0)");
+  eq(r.json.enforces.includes("evidence-section-content"), true, "section: the envelope declares the 'evidence-section-content' rule");
+}
+
+// (16) THE REGRESSION. File exists (other sections live in it), the anchor names
+// a section that is NOT there → 'evidence-section-missing', naming the criterion.
+writeFileSync(evidencePath, "# Evidence\n\n### `some-other-criterion`\n\nDone.\n");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && !r.json.ok, "section: an anchor with no matching heading LOCKS the gate (exit 1)");
+  ok(r.json.errors.some((e) => e.rule === "evidence-section-missing" && e.criterion_id === "bench-proof"),
+    "section: 'evidence-section-missing' names the criterion — the file existing is not the criterion being met");
+}
+
+// (17) Section exists but is marked pending — the three markers, one per run.
+for (const [label, body] of [
+  ["ALL-CAPS word", "> **PENDENTE — blocked on the human gate.**\n"],
+  ["emphasised word", "1. Command that triggers the flow: **pendente**\n"],
+  ["unchecked box", "- [ ] capture the 5 outputs on both devices\n"],
+]) {
+  writeFileSync(evidencePath, `# Evidence\n\n### \`bench-proof\`\n\n${body}`);
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && !r.json.ok, `section: a section marked pending (${label}) LOCKS the gate (exit 1)`);
+  ok(r.json.errors.some((e) => e.rule === "evidence-section-pending" && e.criterion_id === "bench-proof"),
+    `section: 'evidence-section-pending' names the criterion (${label})`);
+}
+
+// (18) FENCE AWARENESS. A captured terminal session inside the section contains
+// lines that look like headings (`### 1 — comando`) and words that look like
+// markers. Reading a fenced line as a heading would truncate the body and hide
+// the pendency that follows it — which is exactly the shape of the real file.
+writeFileSync(evidencePath, [
+  "# Evidence", "", "### `bench-proof`", "",
+  "```", "### 1 — comando", "$ curl ... # nothing pending here", "```", "",
+  "#### suites", "", "- `door` on both aliases: **pendente**", "",
+].join("\n"));
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && !r.json.ok, "section: a heading-shaped line inside a code fence does not end the section");
+  ok(r.json.errors.some((e) => e.rule === "evidence-section-pending" && e.criterion_id === "bench-proof"),
+    "section: pendency AFTER a fenced capture is still seen");
+}
+
+// (19) The section ends at the next heading of the same or higher level — a
+// pending marker belonging to the NEXT criterion must not block this one.
+writeFileSync(evidencePath, [
+  "# Evidence", "", "### `bench-proof`", "", "Captured on the bench, both devices.", "",
+  "### `another-criterion`", "", "- [ ] not this criterion's problem", "",
+].join("\n"));
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 0 && r.json.ok, "section: a pending marker in the NEXT section does not block this criterion");
+}
+
+// (20) `kind: "evidence-section"` with no anchor at all → 'evidence-anchor-missing'.
+// Without this, dropping the anchor would restore the old free pass.
+writeFileSync(evidencePath, "# Evidence\n\n### `bench-proof`\n\n> **PENDENTE**\n");
+sectionManifest("openspec/changes/feat-x/evidence.md");
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && !r.json.ok, "section: evidence-section without an anchor LOCKS the gate (exit 1)");
+  ok(r.json.errors.some((e) => e.rule === "evidence-anchor-missing" && e.criterion_id === "bench-proof"),
+    "section: 'evidence-anchor-missing' — a section criterion must name its section");
+}
+
+// (21) The bar keys on the ANCHOR too, not only on `kind`: a markdown path with
+// an anchor is a section promise whatever the kind field says (closes the dodge
+// of relabelling the item `kind: "file"`).
+writeManifest([
+  { criterion_id: "bench-proof", criterion: "the capture exists", status: "resolved",
+    evidence: { kind: "file", path: "openspec/changes/feat-x/evidence.md#bench-proof" } },
+]);
+{
+  const r = run([manifestPath], { AIDAKIT_PROJECT_ROOT: projRoot });
+  ok(r.code === 1 && !r.json.ok, "section: kind:'file' with a .md#anchor is still judged as a section");
+  ok(r.json.errors.some((e) => e.rule === "evidence-section-pending" && e.criterion_id === "bench-proof"),
+    "section: relabelling the kind does not buy back the free pass");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 rmSync(tmp, { recursive: true, force: true });
 process.exit(fail ? 1 : 0);
