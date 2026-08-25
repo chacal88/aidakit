@@ -1,6 +1,6 @@
 ---
 name: acceptance-planner
-description: Agent that ASSEMBLES the acceptance-manifest of a change — the GOAL-LEASH. Maps each acceptance criterion (from brainstorm.json in full, or from proposal.md's `## Acceptance criteria` section in fast) to a concrete evidence path (test file, evidence.md section, log capture), and emits acceptance-manifest.json that check-acceptance.js verifies path-by-path — the flow ONLY ADVANCES when the list is 100%. Use at the acceptance step of a flow, after check_docs. Receives { change_id, criteria_source } and returns the manifest. Weak-bar (path-exists), no re-execution — tests remain the job of hardening/aidakit:test.
+description: Agent that ASSEMBLES the acceptance-manifest of a change — the GOAL-LEASH. Maps each acceptance criterion (from brainstorm.json in full, or from proposal.md's `## Acceptance criteria` section in fast) to a concrete evidence path (test file, evidence.md section, log capture), and emits acceptance-manifest.json that check-acceptance.js verifies path-by-path — the flow ONLY ADVANCES when the list is 100%. Use at the acceptance step of a flow, after check_docs. Receives { change_id, criteria_source } and returns the manifest. Weak-bar (path-exists; `evidence-section` additionally resolves the #anchor and rejects a section still marked pending), no re-execution — tests remain the job of hardening/aidakit:test.
 tools: Read, Glob, Grep, Write
 model: sonnet
 ---
@@ -38,6 +38,7 @@ For each criterion, decide the evidence:
 - A criterion about a **flow's wiring** maps to the flow YAML or an engine test section — `evidence.kind: "test"` or `"file"`.
 - A criterion about an **artifact existing** (a new agent file, a new ADR) maps to the artifact's own path — `evidence.kind: "file"`.
 - A criterion about **human-visible behavior** maps to a captured section of `evidence.md` (path + `#anchor`) — `evidence.kind: "evidence-section"`.
+  The `#anchor` is **mandatory and load-bearing**: `check-acceptance.js` resolves it to the actual heading and reads the section body. A section that does not exist, or that still carries a pending marker (`PENDENTE`/`pending`/`TODO`/`TBD` in caps or emphasis, or an unchecked `- [ ]`), fails the gate naming the criterion ([ADR-018](../docs/decisions/ADR-018-acceptance-section-bar.md)). Never point an `evidence-section` at a file without an anchor — the file always exists, so it would resolve for free.
 
 When no mapping fits cleanly, mark the item `status: "n/a"` with a written `condition` explaining why — never a fictional path. An unmappable criterion after reading the plan means the plan does not deliver what the criterion promised; see Escalation triggers.
 
@@ -97,6 +98,7 @@ In all cases: name the conflict, cite the criterion and the file you could not f
 
 - **Don't write tests or evidence.** You record where they LIVE (or will live); filling them in is `aidakit:implement`'s job.
 - **Don't run the validator.** `check-acceptance.js` is a `runs` step of the flow, not something you invoke.
+- **Don't point a section criterion at a section you have not read.** `evidence-section` is the one kind whose CONTENT the validator reads; naming an anchor whose section is still a pending stub blocks the gate, by design.
 - **Don't mark `resolved` for convenience** — same discipline as `aidakit:doc-planner`. The disk is the truth; the validator checks it independently of your `status` field.
 - **Don't invent evidence paths** to make the manifest "complete." An unmappable criterion is escalated, not lied about.
 

@@ -5,6 +5,17 @@
 // (design.md §Weak-bar rationale): path-exists only, NEVER re-executes a test —
 // `hardening`/`aidakit:test` already re-run the suite; this leash only checks
 // that a criterion's promise was mapped to a real artifact.
+//
+// ONE EXCEPTION TO THE PATH-EXISTS BAR (ADR-018, amending ADR-010 §Decision 2 at
+// the review trigger that ADR wrote for itself): a criterion whose evidence NAMES
+// A SECTION — `kind: "evidence-section"`, or any `*.md#anchor` — is resolved
+// against the SECTION, not the file. The section SHALL exist and SHALL NOT be
+// marked pending. Without it the anchor was decorative: the file always exists
+// (it holds the change's other criteria), so `evidence.md#whatever` resolved for
+// free. Reported from psim-kernel, where a change closed
+// `OK — 10/10 acceptance criteria resolved. Gate cleared.` with the pointed-at
+// section saying `PENDENTE` in writing — at the last gate before the PR, in a
+// repo with `pr.auto_merge` enabled. Still static: no test is re-executed.
 // Pure Node, zero-dep. Contract: exit 0 pass · 1 incomplete · 2 usage/error.
 //
 // Usage: node check-acceptance.js <path-to-acceptance-manifest.json>
@@ -37,13 +48,23 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, isAbsolute } from "node:path";
 import { findProjectRoot } from "../engine/project-root.js";
 import { parseCriteria } from "../acceptance/parse-criteria.js";
+import { findSection, findPendingMarker } from "../acceptance/evidence-section.js";
+
+// Rules this validator enforces, declared in the JSON envelope so a CONSUMER can
+// tell an old installed plugin from a new one mechanically. The kit ships inside
+// `~/.claude/plugins/`, which no target repo's `git clone` carries: a project
+// that depends on the section bar can assert this list instead of trusting that
+// whoever cloned it also ran `claude plugin update`.
+const ENFORCES = ["evidence-path-exists", "criterion-orphan", "evidence-section-content"];
 
 function fail(msg) { process.stderr.write(`check-acceptance — error: ${msg}\n`); process.exit(2); }
 
-/** Strips a trailing '#anchor' suffix — same convention as check-links.js. */
-function stripAnchor(path) {
+/** Splits 'docs/x.md#anchor' into { file, anchor } — anchor is null when absent. */
+function splitAnchor(path) {
   const i = path.indexOf("#");
-  return i === -1 ? path : path.slice(0, i);
+  return i === -1
+    ? { file: path, anchor: null }
+    : { file: path.slice(0, i), anchor: path.slice(i + 1) };
 }
 
 function main() {
@@ -77,6 +98,7 @@ function main() {
       ok: false,
       change_id, level,
       required: 0, resolved: 0,
+      enforces: ENFORCES,
       errors: [{ rule: "manifest-invalid", criterion_id: null, path: null,
         message: Array.isArray(manifest.required)
           ? "manifest 'required' list is empty — a change without acceptance criteria is a red flag, not a normal case"
@@ -112,12 +134,36 @@ function main() {
         message: `required criterion missing an evidence.path: ${item.criterion_id}` });
       continue;
     }
-    const stripped = stripAnchor(rawPath);
-    const abs = isAbsolute(stripped) ? stripped : resolve(root, stripped);
+    const { file, anchor } = splitAnchor(rawPath);
+    const abs = isAbsolute(file) ? file : resolve(root, file);
     if (!existsSync(abs) || !statSync(abs).isFile()) {
       errors.push({ rule: "evidence-missing", criterion_id: item.criterion_id ?? null, path: rawPath,
         message: `evidence path missing: ${item.criterion_id} (${rawPath})${item.condition ? ` [${item.condition}]` : ""}` });
       continue;
+    }
+
+    // SECTION BAR (ADR-018). Applies when the criterion promises a section:
+    // declared `kind: "evidence-section"`, or any markdown path carrying an
+    // anchor — naming an anchor IS the promise, whatever the kind field says.
+    const isSectionKind = (item.evidence.kind ?? "") === "evidence-section";
+    if (isSectionKind || (anchor && /\.mdx?$/i.test(file))) {
+      if (!anchor) {
+        errors.push({ rule: "evidence-anchor-missing", criterion_id: item.criterion_id ?? null, path: rawPath,
+          message: `evidence-section without an '#anchor': ${item.criterion_id} (${rawPath}) — a section criterion must name the section it promises, otherwise the whole file resolves it for free` });
+        continue;
+      }
+      const section = findSection(readFileSync(abs, "utf8"), anchor);
+      if (!section) {
+        errors.push({ rule: "evidence-section-missing", criterion_id: item.criterion_id ?? null, path: rawPath,
+          message: `evidence section missing: ${item.criterion_id} — no heading in ${file} resolves to '#${anchor}'${item.condition ? ` [${item.condition}]` : ""}` });
+        continue;
+      }
+      const pending = findPendingMarker(section.lines);
+      if (pending) {
+        errors.push({ rule: "evidence-section-pending", criterion_id: item.criterion_id ?? null, path: rawPath,
+          message: `evidence section still marked pending: ${item.criterion_id} — ${file} '#${anchor}' carries "${pending.marker}" (${pending.line})${item.condition ? ` [${item.condition}]` : ""}` });
+        continue;
+      }
     }
     resolvedCount++;
   }
@@ -146,6 +192,7 @@ function main() {
     required: requiredCount,
     resolved: resolvedCount,
     parsed_criteria: parsedCriteria.length,
+    enforces: ENFORCES,
     errors,
   };
   process.stdout.write(JSON.stringify(result) + "\n");

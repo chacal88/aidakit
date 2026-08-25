@@ -21,7 +21,7 @@ wc -c -w agents/*.md
 ```
 
 ```
-    1264    8826 agents/acceptance-planner.md
+    1384    9655 agents/acceptance-planner.md
      983    6474 agents/adr-reviewer.md
     1544   10635 agents/brainstorm.md
     1962   13854 agents/doc-planner.md
@@ -34,8 +34,16 @@ wc -c -w agents/*.md
     1592   10786 agents/reviewer-security.md
     1129    7573 agents/spec-reviewer.md
     2030   12676 agents/tester.md
-   20428  137870 total
+   20656  139398 total
 ```
+
+**Re-medição 2026-08-24 (`agents/acceptance-planner.md`).** O guard
+`regression-measured-body-size-tables-match-live-tree` disparou quando a change
+`acceptance-evidence-section-content` (ADR-018) acrescentou ao contrato do agente a
+regra da âncora obrigatória em `evidence-section`: tabela 1264 palavras / 8826 bytes,
+árvore viva 1384 / 9655 (+120 / +829). A linha e o `total` acima foram re-medidos com
+`wc -c -w agents/*.md` e colados verbatim; nenhum outro arquivo mudou. O ranking do §2
+não muda de ordem — o agente segue o menor corpo da lista.
 
 **Drift note (`agents/doc-planner.md`, caught in review-bench round 2, the same drift class round 1 caught for `skills/readiness/SKILL.md` — see §4's note below):** the plan-time/first-draft figure (2161 words / 14752 bytes) is stale. `48f4731` (PR #54, "fix(doc-leash): align condicao→condition and make waiver justification mechanical") — an ancestor of the `6af0e7a` base this change's second rebase landed on — changed `agents/doc-planner.md` (25 lines) before this table's first draft, and the file was never re-measured after that rebase pulled it in. Re-measured this pass: **2198 words / 15105 bytes** (+37 words / +353 bytes). The 13-file total moves from 20800/139797 to **20837 words / 140150 bytes**. The other 12 `agents/*.md` files are byte-identical to the first-draft measurement, re-confirmed this pass (`wc -c -w agents/*.md`, diffed line by line against the table above). Bytes and words are both recorded; neither is converted to tokens.
 
